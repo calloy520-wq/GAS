@@ -32,9 +32,7 @@
   let nearbyLocations = []; 
   let giftTargetNPC = null; 
   let historyPushed = false;
-  let categorizedMapData = null; 
-  let drugTargetNPC = null; // 🔴 新增：記錄要下藥的對象
-  let currentDrugType = null; // 🔴 新增：記錄當前是下毒(poison)還是媚藥(aphro)
+  let categorizedMapData = null;
   let sellMode = false; // 🔴 變賣模式旗標
   
   const _RC = window.KYUSHU_REALM || {}; 
@@ -302,11 +300,10 @@ function renderRecentLocs(recents = null) {
              }
           } else { // 🌟 完美的 else 區塊對齊
             const isGiftMode = (giftTargetNPC !== null);
-            const isDrugMode = (drugTargetNPC !== null); 
             const isSellMode = sellMode;
             const isEquipped = eqNames.includes(item.name.trim());
-            
-            if ((isGiftMode || isDrugMode || isSellMode) && isEquipped) return "";
+
+            if ((isGiftMode || isSellMode) && isEquipped) return "";
 
             let actionButtonsHtml = "";
             let equippedTag = "";
@@ -323,16 +320,6 @@ function renderRecentLocs(recents = null) {
                  }
                } else if (isGiftMode) {
                  actionButtonsHtml = `<button class="btn" style="padding:2px 10px; font-size:11px; border-color:#daa520; color:#daa520;" onclick="handleGiftAction('${item.id}', '${item.name}', '${item.type}')">贈送給 ${giftTargetNPC}</button>`;
-               } else if (isDrugMode) {
-                 let isValidDrug = false;
-                 if (currentDrugType === 'poison' && ((item.name.includes("毒") && !item.name.includes("解毒") && !item.name.includes("避毒")) || item.type.includes("毒藥"))) isValidDrug = true;
-                 if (currentDrugType === 'aphro' && (item.name.includes("媚") || item.name.includes("春") || item.type.includes("媚藥"))) isValidDrug = true;
-
-                 if (isValidDrug) {
-                   actionButtonsHtml = `<button class="btn" style="padding:2px 10px; font-size:11px; border-color:#800080; color:#800080;" onclick="handleDrugAction('${item.id}', '${item.name}', '${item.type}')">對 ${drugTargetNPC} 下藥</button>`;
-                 } else {
-                   actionButtonsHtml = `<span style="color:#888; font-size:11px; font-style:italic;">(非對應藥物，無法使用)</span>`;
-                 }
                } else {
                    actionButtonsHtml = `
                    <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#4682b4; color:#4682b4;" onclick="lockBtn(event, () => handleItemAction('inspect', '${item.id}', '${item.name}', '${item.type}'))">🔍 端詳</button>
@@ -420,9 +407,7 @@ function renderRecentLocs(recents = null) {
     const modal = document.getElementById(modalId);
     if (modal) modal.style.display = 'none';
     if (modalId === 'inventory-overlay') {
-      giftTargetNPC = null; 
-      drugTargetNPC = null;
-      currentDrugType = null;
+      giftTargetNPC = null;
       sellMode = false;        // 🔴 關閉背包時清空變賣模式
     }
   }
@@ -935,14 +920,6 @@ function renderRecentLocs(recents = null) {
   
   
 
-  function openDrugInventory(type, npcName, isExact) {
-    if (!isExact) { alert(`必須在同一地點才能對「${npcName}」下手。`); return; }
-    drugTargetNPC = npcName;
-    currentDrugType = type;
-    openSystemModal('inventory-overlay'); 
-    closeNpcList();
-  }
-  
   // ==========================================
   // 💰 給予銀兩：前端阻斷防呆、後端交感與 AI 敘事對接
   // ==========================================
@@ -994,25 +971,6 @@ function renderRecentLocs(recents = null) {
     }
   }
   
-  function handleDrugAction(itemId, itemName, itemType) {
-    const targetNpc = drugTargetNPC;
-    const dType = currentDrugType;
-    closeSystemModal('inventory-overlay');
-
-    const story = document.getElementById('story');
-    story.innerHTML += `<div class="msg-player"><b>【系統】：</b>從行囊取出「${itemName}」，暗中對「${targetNpc}」下手...</div>`;
-    story.scrollTop = story.scrollHeight;
-
-    const actionText = dType === 'poison'
-      ? `【系統動作：玩家使用「${itemName}」暗中對「${targetNpc}」下毒。請天道根據此毒物的特性，自動推演出極具巧思的下藥手段與過程。】`
-      : `【系統動作：玩家使用「${itemName}」悄悄對「${targetNpc}」下媚藥。請天道根據此藥物的特性，自動推演出極具巧思且撩人的下藥手段與氛圍。】`;
-
-    // 🔴 帶上具體的 itemId 送給後端
-    const payloadCombatData = { targetName: targetNpc, type: dType, actionItemId: itemId, itemName: itemName };
-    send(actionText, true, payloadCombatData);
-  }
-
-
 
 
 

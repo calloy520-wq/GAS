@@ -1483,20 +1483,6 @@ function actionPlay(userData, pcId, sheets) {
         d20Context = `\n★【系統介入】：企圖對「${tName}」動手，但對方早已是無反應的昏死或屍體！請描繪場景，絕對不可反擊！`;
       } else {
         switch (cType) {
-          case "poison":
-          case "aphro":
-            let aId = actionItemId, cItem = itemName;
-            if (!aId) {
-              const validIt = itemData.find(r => r[COL.ITEM.OWNER] == pcId && r[COL.ITEM.NAME].includes(isPoison ? "毒" : "春") && !r[COL.ITEM.NAME].includes("解"));
-              if (validIt) { aId = validIt[COL.ITEM.ID]; cItem = validIt[COL.ITEM.NAME]; }
-            }
-            if (!aId) d20Context = `\n★【系統介入】：企圖下藥，但行囊無藥！請生動描寫摸了個空的尷尬。`;
-            else {
-              const iIdx = itemData.findIndex(r => r[COL.ITEM.OWNER] == pcId && r[COL.ITEM.ID] === aId);
-              if (iIdx > -1) { sheets.item.deleteRow(iIdx + 1); itemData.splice(iIdx, 1); }
-              d20Context = `\n★【天道審判 - 藥理交鋒】：玩家使用了「${cItem}」！系統已扣除物品。請『嚴格比對雙方境界與神識』裁決：若成功則描寫藥力化開；若被識破則描寫震怒反擊！`;
-            }
-            break;
           case "craft":
             craftOwnerLock = true;   // 🔴 後端強制覆寫旗標：本回合為煉成，成品必歸玩家
             let consumedDetails = [];
@@ -1978,6 +1964,7 @@ ${d20Context}
     let protectedItemIds = soulGiftProtectedIds.slice(); // 併入傾心信物保護
     if (aiData.items_transferred && Array.isArray(aiData.items_transferred) && sheets.item) {
       aiData.items_transferred.forEach(transfer => {
+        if (craftOwnerLock) return; // 🔴 煉成回合：嚴禁本回合任何物品轉移，避免成品被當場送人
         // 解析新擁有者 ID
         let newOwnerName = String(transfer.new_owner || "").trim();
         let targetPcMatch = pcData.find(r => String(r[COL.PC.NAME]).trim() === newOwnerName);
