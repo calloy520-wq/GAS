@@ -2880,16 +2880,17 @@ function actionAttackNpc(userData, pcId, sheets) {
 function actionMultiAttack(userData, pcId, sheets) {
   const { rawInput } = userData;
   let pcData = sheets.pc.getDataRange().getValues();
+  let itemData = sheets.item ? sheets.item.getDataRange().getValues() : [];
   const pIdx = pcData.findIndex(r => r[COL.PC.ID] == pcId);
   if (pIdx === -1) return JSON.stringify({ success: false, message: "查無此人" });
   const pName = pcData[pIdx][COL.PC.NAME];
   const pLoc = String(pcData[pIdx][COL.PC.LOC]).trim();
 
-  const tagRegex = /\[攻擊(.+?)\]([^\[]*)/g;
+  const tagRegex = /\[(攻擊|下毒|媚藥)(.+?)\]([^\[]*)/g;
   let segments = [];
   let m;
   while ((m = tagRegex.exec(String(rawInput || ""))) !== null) {
-    segments.push({ targetName: m[1].trim(), flavor: m[2].trim() });
+    segments.push({ actionType: m[1], targetName: m[2].trim(), flavor: m[3].trim() });
   }
   if (segments.length === 0) {
     return JSON.stringify({ success: false, message: "未偵測到攻擊指令" });
@@ -2908,14 +2909,74 @@ function actionMultiAttack(userData, pcId, sheets) {
     const nIdx = pcData.findIndex(r => r[COL.PC.ID] != pcId && !String(r[COL.PC.ID]).startsWith("DEAD_") &&
       String(r[COL.PC.LOC]).trim() === pLoc && String(r[COL.PC.NAME]).includes(seg.targetName));
     if (nIdx === -1) {
-      results.push({ targetName: seg.targetName, skipped: true });
-      aiPromptParts.push(`【系統】玩家欲攻擊「${seg.targetName}」，但對方查無此人或不在場，此招落空未能命中任何人。玩家原話：「${seg.flavor || "（未多說）"}」`);
+      results.push({ actionType: seg.actionType, targetName: seg.targetName, skipped: true });
+      aiPromptParts.push(`【系統】玩家欲對「${seg.targetName}」動作，但對方查無此人或不在場，此招落空未能命中任何人。玩家原話：「${seg.flavor || "（未多說）"}」`);
       continue;
     }
     const npcName = pcData[nIdx][COL.PC.NAME];
-    if ((parseInt(pcData[nIdx][COL.PC.HP]) || 0) <= 1 && knockedOutAll.includes(npcName)) {
-      results.push({ targetName: npcName, skipped: true, reason: "already_down" });
+    if (seg.actionType === "攻擊" && (parseInt(pcData[nIdx][COL.PC.HP]) || 0) <= 1 && knockedOutAll.includes(npcName)) {
+      results.push({ actionType: seg.actionType, targetName: npcName, skipped: true, reason: "already_down" });
       aiPromptParts.push(`【系統】「${npcName}」已昏迷倒地，玩家未再追擊。`);
+      continue;
+    }
+
+    if (seg.actionType === "下毒" || seg.actionType === "媚藥") {
+      const isPoison = seg.actionType === "下毒";
+      const itIdx = itemData.findIndex(r => r[COL.ITEM.OWNER] == pcId &&
+        String(r[COL.ITEM.NAME]).includes(isPoison ? "毒" : "春") && !String(r[COL.ITEM.NAME]).includes("解"));
+      if (itIdx === -1) {
+        results.push({ actionType: seg.actionType, targetName: npcName, skipped: true, reason: "no_item" });
+        aiPromptParts.push(`【系統】玩家想對「${npcName}」${seg.actionType}，但翻遍行囊找不到合適的藥材，此招落空，未能對其下藥。玩家原話：「${seg.flavor || "（未多說）"}」`);
+        continue;
+      }
+      const usedItemName = itemData[itIdx][COL.ITEM.NAME];
+      sheets.item.deleteRow(itIdx + 1);
+      itemData.splice(itIdx, 1);
+
+      const nTotal = getCharacterTotalStats(pcData[nIdx][COL.PC.ID], sheets, pcData);
+      const pRoll = Math.floor(Math.random() * 20) + 1;
+      const nRoll = Math.floor(Math.random() * 20) + 1;
+      const pMod = Math.round(((pTotal.INT || 0) + (pTotal.LUK || 0)) / 6);
+      const nMod = Math.round(((nTotal.CON || 0) + (nTotal.INT || 0)) / 6);
+      let pScore = pRoll + pMod;
+      let nScore = nRoll + nMod;
+      const pCrit = pRoll === 20, pFumble = pRoll === 1;
+      const nCrit = nRoll === 20, nFumble = nRoll === 1;
+
+      let success, critFlavor = "";
+      if (pFumble && !nFumble) { success = false; critFlavor = "player_fumble"; }
+      else if (nFumble && !pFumble) { success = true; critFlavor = "npc_fumble"; }
+      else if (pCrit && !nCrit) { success = true; critFlavor = "player_crit"; }
+      else if (nCrit && !pCrit) { success = false; critFlavor = "npc_crit"; }
+      else { success = pScore >= nScore; }
+
+      let resultMsg = "";
+      if (success) {
+        let vs = parseVisibleStatus(pcData[nIdx][COL.PC.STATUS]);
+        vs["負面"] = isPoison ? "中毒" : "媚惑";
+        pcData[nIdx][COL.PC.STATUS] = JSON.stringify(vs);
+        resultMsg = `「${usedItemName}」奏效，「${npcName}」已${isPoison ? "中毒" : "被媚藥侵體"}！`;
+      } else {
+        resultMsg = `「${npcName}」識破了這一手，「${usedItemName}」未能奏效！`;
+      }
+
+      let critText = "";
+      if (critFlavor === "player_crit") critText = "玩家骰出【大成功】，下藥手法不著痕跡，對方毫無察覺！";
+      else if (critFlavor === "npc_crit") critText = `「${npcName}」骰出【大成功】，神識敏銳，當場識破並躲開了藥效！`;
+      else if (critFlavor === "player_fumble") critText = "玩家骰出【大失敗】，手法生硬，動作被對方瞧個正著！";
+      else if (critFlavor === "npc_fumble") critText = `「${npcName}」骰出【大失敗】，毫無防備，正中下懷！`;
+
+      aiPromptParts.push(
+        `【${seg.actionType}：玩家 vs 「${npcName}」】玩家原話：「${seg.flavor || "（未多說，直接動手）"}」\n` +
+        `擲骰：玩家 ${pRoll}+${pMod}=${pScore}，「${npcName}」 ${nRoll}+${nMod}=${nScore}。${critText}\n` +
+        `結果：${resultMsg}`
+      );
+
+      results.push({
+        actionType: seg.actionType, targetName: npcName, pRoll: pRoll, pMod: pMod, pScore: pScore,
+        nRoll: nRoll, nMod: nMod, nScore: nScore,
+        playerWins: success, critFlavor: critFlavor, flavor: seg.flavor
+      });
       continue;
     }
 
@@ -2984,7 +3045,7 @@ function actionMultiAttack(userData, pcId, sheets) {
     );
 
     results.push({
-      targetName: npcName, pRoll: pRoll, pMod: pMod, pScore: pScore,
+      actionType: "攻擊", targetName: npcName, pRoll: pRoll, pMod: pMod, pScore: pScore,
       nRoll: nRoll, nMod: nMod, nScore: nScore,
       playerWins: playerWins, damage: damage, critFlavor: critFlavor, flavor: seg.flavor
     });
@@ -3011,12 +3072,12 @@ function actionMultiAttack(userData, pcId, sheets) {
     }
   });
 
-  const aiPrompt = `【系統戰報·群戰已裁定，嚴禁更改任何勝負或傷害數值】玩家『${pName}』展開連續攻擊：\n\n` +
+  const aiPrompt = `【系統戰報·已裁定，嚴禁更改任何勝負、傷害或藥效判定】玩家『${pName}』展開連續動作：\n\n` +
     aiPromptParts.join("\n\n") + `\n\n` +
-    `★請依此結果，將以上每一場交手依序串接成一段流暢生動的武打描寫，可參考玩家自己描述的招式與語氣。\n` +
+    `★請依此結果，將以上每一段交手依序串接成一段流暢生動的描寫，可參考玩家自己描述的招式、語氣與下藥手法。\n` +
     `★【鐵律】任何被擊倒者最多只是重傷昏迷倒地，【絕對禁止】描寫死亡、斷氣、隕落或屍體！生死由玩家後續定奪。\n` +
-    `★【鐵律】嚴禁輸出任何 stat_changes 的生命變化，傷害已結算完畢，重複輸出會導致天道崩塌！\n` +
-    `★【鐵律】此為單純切磋交手，嚴禁輸出 items_gained、items_transferred 或 money_transferred！` +
+    `★【鐵律】嚴禁輸出任何 stat_changes 的生命變化或負面狀態變化，已結算完畢，重複輸出會導致天道崩塌！\n` +
+    `★【鐵律】此為單純切磋／下藥交鋒，嚴禁輸出 items_gained、items_transferred 或 money_transferred！` +
     (playerDead ? `\n★【鐵律】玩家中途力竭被擊倒，已自動送醫並放過先前打昏的對象，請描寫玩家狼狽敗退、被送醫的過程，絕對禁止描寫對方追殺或補刀！` : "");
 
   return JSON.stringify({

@@ -1801,8 +1801,8 @@ async function checkName(event) {
     if (!msg) return;
     if (!customMsg && btn.disabled) return;
 
-    // 🟢 多目標攻擊標籤：[攻擊XXX]敘述... 走專屬 GAS 裁決路徑，數值不交給AI自由心證
-    if (!combatData && /\[攻擊.+?\]/.test(msg)) {
+    // 🟢 多目標動作標籤：[攻擊/下毒/媚藥 XXX]敘述... 走專屬 GAS 裁決路徑，數值不交給AI自由心證
+    if (!combatData && /\[(攻擊|下毒|媚藥).+?\]/.test(msg)) {
       return handleMultiAttack(msg);
     }
 
@@ -2010,10 +2010,10 @@ let plainTextContext = cleanText;
       html += `<div style="grid-column: span 2; border-top: 1px dashed rgba(77,184,163,0.3); margin-top: 5px; padding-top: 10px; color:#7b9991; font-size:12px; text-align:center; font-weight:bold;">—— 危險舉動 ——</div>`;
       
       if (!isPC) {
-          html += `<button class="btn" style="border-color:#a52a2a; color:#a52a2a; font-weight:bold;" onclick="closeInteractMenu(); quickAttack('${npcName}')">⚔️ 動手</button>`;
+          html += `<button class="btn" style="border-color:#a52a2a; color:#a52a2a; font-weight:bold;" onclick="closeInteractMenu(); insertActionTag('攻擊', '${npcName}')">⚔️ 動手</button>`;
           html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="executeInteract('speed')">🖐️ 偷竊</button>`;
-          html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="closeInteractMenu(); openDrugInventory('poison', '${npcName}', true)">🧪 下毒</button>`;
-          html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="closeInteractMenu(); openDrugInventory('aphro', '${npcName}', true)">🌸 媚藥</button>`;
+          html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="closeInteractMenu(); insertActionTag('下毒', '${npcName}')">🧪 下毒</button>`;
+          html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="closeInteractMenu(); insertActionTag('媚藥', '${npcName}')">🌸 媚藥</button>`;
       }
 
       document.getElementById('interact-dynamic-buttons').innerHTML = html;
@@ -2098,9 +2098,9 @@ function spareNpc(npcName, cardId) {
 // ==========================================
 // ⚔️ 玩家攻擊：[攻擊XXX]敘述 標籤式輸入，一次可連打多人，由 GAS 依序裁決
 // ==========================================
-function quickAttack(npcName) {
+function insertActionTag(actionType, npcName) {
   const input = document.getElementById('u-in');
-  input.value += `[攻擊${npcName}]`;
+  input.value += `[${actionType}${npcName}]`;
   input.focus();
 }
 
@@ -2136,10 +2136,13 @@ async function handleMultiAttack(rawMsg) {
 
     (res.results || []).forEach(r => {
       if (r.skipped) {
+        const skipMsg = r.reason === "no_item" ? `（行囊中找不到合適的藥材，無法對「${r.targetName}」動手）`
+          : r.reason === "already_down" ? `（「${r.targetName}」已昏迷倒地，未再追擊）`
+          : `（「${r.targetName}」查無此人在場，此招落空）`;
         story.insertAdjacentHTML('beforeend',
-          `<div style="text-align:center; color:#888; font-size:12px; margin:4px 0;">（「${r.targetName}」查無此人在場，此招落空）</div>`);
+          `<div style="text-align:center; color:#888; font-size:12px; margin:4px 0;">${skipMsg}</div>`);
       } else {
-        renderCombatReport({ playerName: pc.name, npcName: r.targetName, pRoll: r.pRoll, pMod: r.pMod, pScore: r.pScore, nRoll: r.nRoll, nMod: r.nMod, nScore: r.nScore, playerWins: r.playerWins, damage: r.damage, critFlavor: r.critFlavor });
+        renderCombatReport({ actionType: r.actionType, playerName: pc.name, npcName: r.targetName, pRoll: r.pRoll, pMod: r.pMod, pScore: r.pScore, nRoll: r.nRoll, nMod: r.nMod, nScore: r.nScore, playerWins: r.playerWins, damage: r.damage, critFlavor: r.critFlavor });
       }
     });
     story.scrollTop = story.scrollHeight;
@@ -2175,7 +2178,15 @@ function renderCombatReport(c) {
   else if (c.critFlavor === "npc_fumble") critBadge = `<div style="color:#d4af37; font-weight:bold;">💥 ${c.npcName}·大失敗！</div>`;
 
   const winColor = c.playerWins ? "#2e8b57" : "#a52a2a";
-  const winText = c.playerWins ? `你擊中 ${c.npcName}` : `${c.npcName} 反擊得手`;
+  const actionType = c.actionType || "攻擊";
+  let winText, bottomLine;
+  if (actionType === "攻擊") {
+    winText = c.playerWins ? `你擊中 ${c.npcName}` : `${c.npcName} 反擊得手`;
+    bottomLine = `⚔️ ${winText}，造成 ${c.damage} 點傷害`;
+  } else {
+    winText = c.playerWins ? `${actionType}成功！「${c.npcName}」已中招` : `${actionType}失敗，被「${c.npcName}」識破`;
+    bottomLine = `${actionType === "下毒" ? "🧪" : "🌸"} ${winText}`;
+  }
 
   story.insertAdjacentHTML('beforeend', `
     <div style="background:rgba(0,0,0,0.04); border:1px solid ${winColor}; border-radius:8px; padding:12px; margin:5px 0; font-size:13px;">
@@ -2193,7 +2204,7 @@ function renderCombatReport(c) {
         </div>
       </div>
       ${critBadge}
-      <div style="text-align:center; color:${winColor}; font-weight:bold; margin-top:6px;">⚔️ ${winText}，造成 ${c.damage} 點傷害</div>
+      <div style="text-align:center; color:${winColor}; font-weight:bold; margin-top:6px;">${bottomLine}</div>
     </div>
   `);
   story.scrollTop = story.scrollHeight;
