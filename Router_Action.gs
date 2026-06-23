@@ -1491,7 +1491,7 @@ function actionPlay(userData, pcId, sheets) {
                 consumedDetails.push(`「${itemData[i][COL.ITEM.NAME]}」`); sheets.item.deleteRow(i + 1); itemData.splice(i, 1);
               }
             }
-            d20Context = `\n★【天道審判 - 煉成】：陣法【${method}】| 意圖「${intent}」| 投入素材：${consumedDetails.join("、")}。請裁決結果，成功則在 items_gained 產出，失敗走火入魔扣生命！\n🛑【煉成歸屬鐵律】：此為玩家『${pcName}』親手開爐煉製，所有 items_gained 成品【絕對只能】歸玩家，每件 owner 欄位【強制填「自己」】！❌即使現場有 NPC 在旁，也嚴禁將成品 owner 指定給任何 NPC！`;
+            d20Context = `\n★【天道審判 - 煉成】：陣法【${method}】| 意圖「${intent}」| 投入素材：${consumedDetails.join("、")}。請裁決結果，成功則在 items_gained 產出，失敗走火入魔扣生命！\n🛑【煉成歸屬鐵律】：此為玩家『${pcName}』親手開爐煉製，所有 items_gained 成品【絕對只能】歸玩家，每件 owner 欄位【強制填「自己」】！❌即使現場有 NPC 在旁，也嚴禁將成品 owner 指定給任何 NPC！\n🛑【敘事聚焦】：這是玩家自己的事，敘事請專注於煉成過程與結果本身，禁止讓在場NPC對此大驚小怪、出聲詢問或主動搭話。`;
             break;
           case "speed":
             const itemToSteal = stealItemName || stealItem;
