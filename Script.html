@@ -1271,6 +1271,9 @@ function renderRecentLocs(recents = null) {
     if (s.length >= 26) {
         setUI('ui-intent', s[25], "尚未暴露的可愛弱點");
     }
+    if (s.length >= 28) {
+        renderLifeskillStatus(s[27]);
+    }
     // 地點標題
     const headerEl = document.getElementById('header-loc');
     if (headerEl) headerEl.innerText = s[3] ? "📍 " + s[3] : "未知區域";
@@ -3071,6 +3074,86 @@ document.getElementById('cultivate-count-text').innerHTML =
           const formattedMsg = data.message.replace(/\n/g, '<br>');
           document.getElementById('dice-result-msg').innerHTML = formattedMsg;
       }, 800);
+  }
+
+  // ==========================================
+  // 🌾 生活技能：伐木/釣魚/挖礦/採藥/搜索/狩獵/淘金/採果 (等級寫死後台GAS加成，僅敘述用AI)
+  // ==========================================
+  const LIFESKILL_INFO = {
+    "伐木": { icon: "🪵" }, "釣魚": { icon: "🎣" }, "挖礦": { icon: "⛏️" }, "採藥": { icon: "🌿" },
+    "搜索": { icon: "🔍" }, "狩獵": { icon: "🏹" }, "淘金": { icon: "✨" }, "採果": { icon: "🍎" }
+  };
+  let lifeskillLevels = {};
+  let lifeskillSelected = null;
+
+  function openLifeskillMenu() {
+      document.getElementById('lifeskill-overlay').style.display = 'flex';
+      document.getElementById('lifeskill-roll-panel').style.display = 'none';
+      lifeskillSelected = null;
+      renderLifeskillList();
+  }
+
+  function renderLifeskillList() {
+      const listEl = document.getElementById('lifeskill-list');
+      listEl.innerHTML = Object.keys(LIFESKILL_INFO).map(name => {
+          const lv = lifeskillLevels[name] || 0;
+          const info = LIFESKILL_INFO[name];
+          return `<button class="btn" style="border-color:#8b5a2b; color:#8b5a2b; padding: 10px 4px; font-size:13px;" onclick="selectLifeskill('${name}')">${info.icon} ${name}<br><span style="font-size:11px; color:#aaa;">Lv${lv}</span></button>`;
+      }).join('');
+  }
+
+  function selectLifeskill(name) {
+      lifeskillSelected = name;
+      document.getElementById('lifeskill-roll-panel').style.display = 'block';
+      document.getElementById('lifeskill-selected-name').innerText = `${LIFESKILL_INFO[name].icon} ${name}`;
+      document.getElementById('lifeskill-selected-level').innerText = lifeskillLevels[name] || 0;
+      document.getElementById('lifeskill-result-msg').innerHTML = "";
+  }
+
+  async function executeLifeskillGather(rollCount) {
+      if (!lifeskillSelected) return;
+      const btns = document.querySelectorAll('#lifeskill-roll-panel .btn');
+      btns.forEach(b => b.disabled = true);
+      document.getElementById('lifeskill-result-msg').innerHTML = `<span style="color:#aaa;">天道演化中...</span>`;
+
+      try {
+          const res = await gasRun({ action: "lifeskill_gather", pcId: pc.id, skill: lifeskillSelected, rollCount: rollCount });
+          btns.forEach(b => b.disabled = false);
+
+          if (!res.success) {
+              document.getElementById('lifeskill-result-msg').innerHTML = `<span style="color:#ff6347;">${res.message || "這趟生活技能未能結算。"}</span>`;
+              return;
+          }
+
+          if (res.statusString) {
+              localStorage.setItem('kyushu_last_status', res.statusString);
+              updateUI(res.statusString.split('§'));
+          }
+
+          document.getElementById('lifeskill-selected-level').innerText = res.newLevel;
+
+          let html = `<div style="font-size:15px; line-height:1.6;">${res.narration}</div>`;
+          if (res.itemsGained && res.itemsGained.length > 0) {
+              html += `<div style="margin-top:8px; color:#ffd700; font-weight:bold;">獲得：${res.itemsGained.map(it => `${it.name}(${it.tier})`).join('、')}</div>`;
+          } else {
+              html += `<div style="margin-top:8px; color:#aaa;">這趟一無所獲。</div>`;
+          }
+          document.getElementById('lifeskill-result-msg').innerHTML = html;
+          renderLifeskillList();
+      } catch (e) {
+          btns.forEach(b => b.disabled = false);
+          document.getElementById('lifeskill-result-msg').innerHTML = `<span style="color:#ff6347;">連線失敗，生活技能未能結算。</span>`;
+      }
+  }
+
+  function renderLifeskillStatus(lifeskillStr) {
+      try { lifeskillLevels = JSON.parse(lifeskillStr || "{}"); } catch (e) { lifeskillLevels = {}; }
+      const el = document.getElementById('ui-lifeskill');
+      if (!el) return;
+      el.innerHTML = Object.keys(LIFESKILL_INFO).map(name => {
+          const lv = lifeskillLevels[name] || 0;
+          return `<span style="display:inline-block; margin:2px 4px;">${LIFESKILL_INFO[name].icon}${name}Lv${lv}</span>`;
+      }).join('');
   }
 
   // ==========================================
