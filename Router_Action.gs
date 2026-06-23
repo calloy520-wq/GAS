@@ -53,6 +53,7 @@ const ActionRouter = {
   "spare_npc": actionSpareNpc,
   "give_money": actionGiveMoney,
   "attack_npc": actionAttackNpc,
+  "multi_attack": actionMultiAttack,
   "narrate_only": actionNarrateOnly
 
 };
@@ -2867,6 +2868,162 @@ function actionAttackNpc(userData, pcId, sheets) {
     },
     aiPrompt: aiPrompt,
     knockedOut: knockedOut,
+    justRevived: justRevived,
+    statusString: getFreshStatusString(pcId, pIdx, sheets)
+  });
+}
+
+// ==========================================
+// ⚔️ 多目標群戰裁決：解析玩家輸入中的 [攻擊XXX]敘述 標籤，依序逐一裁定
+// 中途玩家陣亡則立即停止後續目標，並自動放過本次連擊中已被打昏者（不可能補刀）
+// ==========================================
+function actionMultiAttack(userData, pcId, sheets) {
+  const { rawInput } = userData;
+  let pcData = sheets.pc.getDataRange().getValues();
+  const pIdx = pcData.findIndex(r => r[COL.PC.ID] == pcId);
+  if (pIdx === -1) return JSON.stringify({ success: false, message: "查無此人" });
+  const pName = pcData[pIdx][COL.PC.NAME];
+  const pLoc = String(pcData[pIdx][COL.PC.LOC]).trim();
+
+  const tagRegex = /\[攻擊(.+?)\]([^\[]*)/g;
+  let segments = [];
+  let m;
+  while ((m = tagRegex.exec(String(rawInput || ""))) !== null) {
+    segments.push({ targetName: m[1].trim(), flavor: m[2].trim() });
+  }
+  if (segments.length === 0) {
+    return JSON.stringify({ success: false, message: "未偵測到攻擊指令" });
+  }
+
+  const pTotal = getCharacterTotalStats(pcId, sheets, pcData);
+  let results = [];
+  let knockedOutAll = [];
+  let justRevived = false;
+  let aiPromptParts = [];
+  let playerDead = false;
+
+  for (const seg of segments) {
+    if (playerDead) break;
+
+    const nIdx = pcData.findIndex(r => r[COL.PC.ID] != pcId && !String(r[COL.PC.ID]).startsWith("DEAD_") &&
+      String(r[COL.PC.LOC]).trim() === pLoc && String(r[COL.PC.NAME]).includes(seg.targetName));
+    if (nIdx === -1) {
+      results.push({ targetName: seg.targetName, skipped: true });
+      aiPromptParts.push(`【系統】玩家欲攻擊「${seg.targetName}」，但對方查無此人或不在場，此招落空未能命中任何人。玩家原話：「${seg.flavor || "（未多說）"}」`);
+      continue;
+    }
+    const npcName = pcData[nIdx][COL.PC.NAME];
+    if ((parseInt(pcData[nIdx][COL.PC.HP]) || 0) <= 1 && knockedOutAll.includes(npcName)) {
+      results.push({ targetName: npcName, skipped: true, reason: "already_down" });
+      aiPromptParts.push(`【系統】「${npcName}」已昏迷倒地，玩家未再追擊。`);
+      continue;
+    }
+
+    const nTotal = getCharacterTotalStats(pcData[nIdx][COL.PC.ID], sheets, pcData);
+    const pRoll = Math.floor(Math.random() * 20) + 1;
+    const nRoll = Math.floor(Math.random() * 20) + 1;
+    const pMod = Math.round(((pTotal.STR || 0) + (pTotal.AGI || 0)) / 6);
+    const nMod = Math.round(((nTotal.CON || 0) + (nTotal.AGI || 0)) / 6);
+    let pScore = pRoll + pMod;
+    let nScore = nRoll + nMod;
+    const pCrit = pRoll === 20, pFumble = pRoll === 1;
+    const nCrit = nRoll === 20, nFumble = nRoll === 1;
+
+    let playerWins, critFlavor = "", dmgMultiplier = 1;
+    if (pFumble && !nFumble) { playerWins = false; dmgMultiplier = 1.5; critFlavor = "player_fumble"; }
+    else if (nFumble && !pFumble) { playerWins = true; dmgMultiplier = 1.5; critFlavor = "npc_fumble"; }
+    else if (pCrit && !nCrit) { playerWins = true; critFlavor = "player_crit"; }
+    else if (nCrit && !pCrit) { playerWins = false; critFlavor = "npc_crit"; }
+    else { playerWins = pScore >= nScore; }
+
+    let diff = Math.abs(pScore - nScore);
+    let damage = Math.max(1, diff * 7);
+    if ((playerWins && pCrit && !nCrit) || (!playerWins && nCrit && !pCrit)) damage += 30;
+    damage = Math.round(damage * dmgMultiplier);
+
+    let resultMsg = "";
+    if (playerWins) {
+      let nHp = parseInt(pcData[nIdx][COL.PC.HP]) || 0;
+      let nHpAfter = nHp - damage;
+      if (nHpAfter <= 5) {
+        pcData[nIdx][COL.PC.HP] = 1;
+        pcData[nIdx][COL.PC.STATUS] = JSON.stringify({ "衣服": "衣衫破爛", "姿勢": "倒地不起", "負面": "重傷昏迷", "顏面": "面色慘白" });
+        knockedOutAll.push(npcName);
+      } else {
+        pcData[nIdx][COL.PC.HP] = nHpAfter;
+      }
+      resultMsg = `你擊中了「${npcName}」，造成 ${damage} 點傷害！`;
+    } else {
+      let pHp = parseInt(pcData[pIdx][COL.PC.HP]) || 0;
+      let pHpAfter = pHp - damage;
+      if (pHpAfter <= 0) {
+        const healLoc = "小醫仙藥鋪";
+        pcData[pIdx][COL.PC.HP] = 50;
+        pcData[pIdx][COL.PC.STATUS] = JSON.stringify({ "衣服": "換上乾淨素衣", "姿勢": "平躺靜養", "負面": "重傷初癒", "顏面": "蒼白" });
+        pcData[pIdx][COL.PC.LOC] = healLoc;
+        pcData[pIdx][COL.PC.MONEY] = Math.max(0, (parseInt(pcData[pIdx][COL.PC.MONEY]) || 0) - 20);
+        justRevived = true;
+        playerDead = true;
+        if (sheets.epic) sheets.epic.appendRow([pcId, `【奇蹟救治】${pName} 於生死邊緣被救回。`, new Date()]);
+      } else {
+        pcData[pIdx][COL.PC.HP] = pHpAfter;
+      }
+      resultMsg = `「${npcName}」反擊得手，你受了 ${damage} 點傷！`;
+    }
+
+    let critText = "";
+    if (critFlavor === "player_crit") critText = "玩家骰出【大成功】，這一擊精妙絕倫、無視防禦命中要害！";
+    else if (critFlavor === "npc_crit") critText = `「${npcName}」骰出【大成功】，玩家的進攻被完美化解並遭凌厲反擊！`;
+    else if (critFlavor === "player_fumble") critText = "玩家骰出【大失敗】，招式露出致命破綻，被對方狠狠教訓！";
+    else if (critFlavor === "npc_fumble") critText = `「${npcName}」骰出【大失敗】，露出天大破綻，被玩家打得毫無還手之力！`;
+
+    aiPromptParts.push(
+      `【對戰：玩家 vs 「${npcName}」】玩家原話：「${seg.flavor || "（未多說，直接出手）"}」\n` +
+      `擲骰：玩家 ${pRoll}+${pMod}=${pScore}，「${npcName}」 ${nRoll}+${nMod}=${nScore}。${critText}\n` +
+      `結果：${resultMsg}`
+    );
+
+    results.push({
+      targetName: npcName, pRoll: pRoll, pMod: pMod, pScore: pScore,
+      nRoll: nRoll, nMod: nMod, nScore: nScore,
+      playerWins: playerWins, damage: damage, critFlavor: critFlavor, flavor: seg.flavor
+    });
+  }
+
+  // 玩家中途陣亡：不可能補刀，自動放過本次連擊中所有被打昏者
+  if (playerDead && knockedOutAll.length > 0) {
+    knockedOutAll.forEach(name => {
+      const idx = pcData.findIndex(r => r[COL.PC.NAME] === name && !String(r[COL.PC.ID]).startsWith("DEAD_"));
+      if (idx !== -1) {
+        const maxHp = parseInt(pcData[idx][COL.PC.MAX_HP]) || 100;
+        pcData[idx][COL.PC.HP] = Math.max(1, Math.floor(maxHp * 0.2));
+        pcData[idx][COL.PC.STATUS] = JSON.stringify({ "衣服": "衣衫破損", "姿勢": "勉強起身", "負面": "傷勢未癒", "顏面": "虛弱" });
+      }
+    });
+    knockedOutAll = [];
+  }
+
+  sheets.pc.getRange(pIdx + 1, 1, 1, pcData[pIdx].length).setValues([pcData[pIdx]]);
+  const touchedNames = new Set(results.map(r => r.targetName).filter(Boolean));
+  pcData.forEach((row, idx) => {
+    if (idx !== pIdx && touchedNames.has(row[COL.PC.NAME])) {
+      sheets.pc.getRange(idx + 1, 1, 1, row.length).setValues([row]);
+    }
+  });
+
+  const aiPrompt = `【系統戰報·群戰已裁定，嚴禁更改任何勝負或傷害數值】玩家『${pName}』展開連續攻擊：\n\n` +
+    aiPromptParts.join("\n\n") + `\n\n` +
+    `★請依此結果，將以上每一場交手依序串接成一段流暢生動的武打描寫，可參考玩家自己描述的招式與語氣。\n` +
+    `★【鐵律】任何被擊倒者最多只是重傷昏迷倒地，【絕對禁止】描寫死亡、斷氣、隕落或屍體！生死由玩家後續定奪。\n` +
+    `★【鐵律】嚴禁輸出任何 stat_changes 的生命變化，傷害已結算完畢，重複輸出會導致天道崩塌！\n` +
+    `★【鐵律】此為單純切磋交手，嚴禁輸出 items_gained、items_transferred 或 money_transferred！` +
+    (playerDead ? `\n★【鐵律】玩家中途力竭被擊倒，已自動送醫並放過先前打昏的對象，請描寫玩家狼狽敗退、被送醫的過程，絕對禁止描寫對方追殺或補刀！` : "");
+
+  return JSON.stringify({
+    success: true,
+    results: results,
+    aiPrompt: aiPrompt,
+    knockedOut: knockedOutAll,
     justRevived: justRevived,
     statusString: getFreshStatusString(pcId, pIdx, sheets)
   });

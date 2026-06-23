@@ -1797,10 +1797,15 @@ async function checkName(event) {
     const nsfwToggle = document.getElementById('nsfw-mode-toggle');
     const isNsfw = nsfwToggle ? nsfwToggle.checked : false;
     let msg = customMsg || input.value.trim();
-    
+
     if (!msg) return;
-    if (!customMsg && btn.disabled) return; 
-    
+    if (!customMsg && btn.disabled) return;
+
+    // 🟢 多目標攻擊標籤：[攻擊XXX]敘述... 走專屬 GAS 裁決路徑，數值不交給AI自由心證
+    if (!combatData && /\[攻擊.+?\]/.test(msg)) {
+      return handleMultiAttack(msg);
+    }
+
     if (/^[1-4]$/.test(msg) && currentOptions.length >= parseInt(msg)) {
       const optIndex = parseInt(msg) - 1;
       msg = currentOptions[optIndex]; 
@@ -1839,12 +1844,8 @@ const data = await gasRun({ action: "play", pcId: pc.id, message: msg, combatDat
       }
       
 
-      // 🔴 新增：昏迷 NPC 處決確認
-       if (data.knockedOut && data.knockedOut.length > 0) {
-       data.knockedOut.forEach(npcName => {
-       setTimeout(() => showKillConfirm(npcName), 500);
-       });
-      }
+      // 🔴 昏迷 NPC 處決確認：統一以打掃戰場卡片列出
+      renderBattlefieldCleanup(data.knockedOut);
       if (data.justRevived) {
   setTimeout(() => {
     send(`【系統動作：玩家從重傷中甦醒，躺在小醫仙藥鋪的病榻上，身旁是忙碌的藥童。請重新描寫甦醒場景並給出符合當下情境的選項。】`, true);
@@ -2009,7 +2010,7 @@ let plainTextContext = cleanText;
       html += `<div style="grid-column: span 2; border-top: 1px dashed rgba(77,184,163,0.3); margin-top: 5px; padding-top: 10px; color:#7b9991; font-size:12px; text-align:center; font-weight:bold;">—— 危險舉動 ——</div>`;
       
       if (!isPC) {
-          html += `<button class="btn" style="border-color:#a52a2a; color:#a52a2a; font-weight:bold;" onclick="closeInteractMenu(); openAttackPrompt('${npcName}')">⚔️ 動手</button>`;
+          html += `<button class="btn" style="border-color:#a52a2a; color:#a52a2a; font-weight:bold;" onclick="closeInteractMenu(); quickAttack('${npcName}')">⚔️ 動手</button>`;
           html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="executeInteract('speed')">🖐️ 偷竊</button>`;
           html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="closeInteractMenu(); openDrugInventory('poison', '${npcName}', true)">🧪 下毒</button>`;
           html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="closeInteractMenu(); openDrugInventory('aphro', '${npcName}', true)">🌸 媚藥</button>`;
@@ -2043,38 +2044,6 @@ let plainTextContext = cleanText;
           send(actionText, true, payloadCombatData);
       }
   }
-  function showKillConfirm(npcName) {
-  const story = document.getElementById('story');
-  
-  // 在對話框插入確認卡片，比 confirm() 更有武俠沉浸感
-  const cardId = 'kill-confirm-' + Date.now();
-  story.insertAdjacentHTML('beforeend', `
-    <div id="${cardId}" style="
-      background: rgba(128,0,0,0.1); 
-      border: 1px solid #800; 
-      border-radius: 8px; 
-      padding: 15px; 
-      margin: 5px 0;
-      text-align: center;
-    ">
-      <div style="color:#800; font-weight:bold; margin-bottom:10px;">
-        ⚠️ 【${npcName}】已重傷昏迷，倒地不起
-      </div>
-      <div style="display:flex; gap:10px; justify-content:center;">
-        <button class="btn" style="border-color:#800; color:#800; padding:8px 20px;" 
-          onclick="confirmExecute('${npcName}', '${cardId}')">
-          ⚔️ 補刀處決
-        </button>
-        <button class="btn" style="border-color:#2e8b57; color:#2e8b57; padding:8px 20px;" 
-          onclick="spareNpc('${npcName}', '${cardId}')">
-          🕊️ 放他一命
-        </button>
-      </div>
-    </div>
-  `);
-  story.scrollTop = story.scrollHeight;
-}
-
 
 // 🔮 遠端人物互動 (打聽 / 移動 / 飛書)
 
@@ -2127,47 +2096,71 @@ function spareNpc(npcName, cardId) {
 }
 
 // ==========================================
-// ⚔️ 玩家攻擊：先讓玩家補招式描述，再走 GAS 裁決
+// ⚔️ 玩家攻擊：[攻擊XXX]敘述 標籤式輸入，一次可連打多人，由 GAS 依序裁決
 // ==========================================
-function openAttackPrompt(npcName) {
-  const skill = prompt(`你要如何攻擊「${npcName}」？\n(可描述招式動作，或直接留空樸實地打)`, `攻擊${npcName}`);
-  if (skill === null) return; // 取消
-  doAttack(npcName, skill.trim());
+function quickAttack(npcName) {
+  const input = document.getElementById('u-in');
+  input.value += `[攻擊${npcName}]`;
+  input.focus();
 }
 
-async function doAttack(npcName, skillName) {
+async function handleMultiAttack(rawMsg) {
+  const input = document.getElementById('u-in');
+  const btn = document.getElementById('send-btn');
   const story = document.getElementById('story');
+  input.value = ""; input.disabled = true;
+  btn.disabled = true;
+
   story.insertAdjacentHTML('beforeend',
-    `<div class="msg-player" style="border-color:#a52a2a; color:#a52a2a;"><b>【出手】：</b>${skillName || `攻向「${npcName}」`}</div>`);
+    `<div class="msg-player"><span class="msg-name">${pc.name}</span><span class="msg-text">${rawMsg}</span></div>`);
+  story.scrollTop = story.scrollHeight;
+
+  const loadId = "L" + Date.now();
+  story.insertAdjacentHTML('beforeend', `<div id="${loadId}" class="loading-text">天道演化中...</div>`);
   story.scrollTop = story.scrollHeight;
 
   try {
-    const res = await gasRun({ action: "attack_npc", pcId: pc.id, npcName: npcName, skillName: skillName });
-    if (!res.success) { alert(res.message || "攻擊失敗。"); return; }
+    const res = await gasRun({ action: "multi_attack", pcId: pc.id, rawInput: rawMsg });
+    document.getElementById(loadId)?.remove();
 
-    // 即時更新玩家狀態
+    if (!res.success) {
+      input.disabled = false; btn.disabled = false;
+      alert(res.message || "攻擊未能結算。");
+      return;
+    }
+
     if (res.statusString) {
       localStorage.setItem('kyushu_last_status', res.statusString);
       updateUI(res.statusString.split('§'));
     }
 
-    // 戰報卡
-    renderCombatReport(res.combatResult);
+    (res.results || []).forEach(r => {
+      if (r.skipped) {
+        story.insertAdjacentHTML('beforeend',
+          `<div style="text-align:center; color:#888; font-size:12px; margin:4px 0;">（「${r.targetName}」查無此人在場，此招落空）</div>`);
+      } else {
+        renderCombatReport({ playerName: pc.name, npcName: r.targetName, pRoll: r.pRoll, pMod: r.pMod, pScore: r.pScore, nRoll: r.nRoll, nMod: r.nMod, nScore: r.nScore, playerWins: r.playerWins, damage: r.damage, critFlavor: r.critFlavor });
+      }
+    });
+    story.scrollTop = story.scrollHeight;
 
-    // 把已裁定的結果餵給 AI 描寫
+    // 一次列出本次連擊中所有昏迷對象，統一打掃戰場
+    renderBattlefieldCleanup(res.knockedOut);
+
+    input.disabled = false; btn.disabled = false;
+
+    // 把已裁定的結果（含玩家自己的招式敘述）餵給 AI 描寫
     send(res.aiPrompt, true);
 
-    // 昏迷 → 跳處決/放過卡片
-    if (res.knockedOut && res.knockedOut.length > 0) {
-      res.knockedOut.forEach(name => setTimeout(() => showKillConfirm(name), 800));
-    }
-    // 玩家被打趴送藥鋪
+    // 玩家中途被打趴送藥鋪
     if (res.justRevived) {
       setTimeout(() => {
         send(`【系統動作：玩家從重傷中甦醒，躺在小醫仙藥鋪的病榻上。請描寫甦醒場景並給出選項。】`, true);
       }, 1500);
     }
   } catch (e) {
+    document.getElementById(loadId)?.remove();
+    input.disabled = false; btn.disabled = false;
     alert("天道阻礙，攻擊未能結算。");
   }
 }
@@ -2201,6 +2194,32 @@ function renderCombatReport(c) {
       </div>
       ${critBadge}
       <div style="text-align:center; color:${winColor}; font-weight:bold; margin-top:6px;">⚔️ ${winText}，造成 ${c.damage} 點傷害</div>
+    </div>
+  `);
+  story.scrollTop = story.scrollHeight;
+}
+
+// 🩸 打掃戰場：一次列出本回合所有昏迷對象，各自獨立的 處決/放過 按鈕
+function renderBattlefieldCleanup(npcNames) {
+  if (!npcNames || npcNames.length === 0) return;
+  const story = document.getElementById('story');
+  const groupId = 'sweep-' + Date.now();
+  const rows = npcNames.map((name, idx) => {
+    const rowId = `${groupId}-${idx}`;
+    return `
+    <div id="${rowId}" style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed rgba(128,0,0,0.2);">
+      <span style="font-weight:bold; color:#800;">「${name}」已重傷昏迷</span>
+      <div style="display:flex; gap:8px;">
+        <button class="btn" style="border-color:#800; color:#800; padding:4px 12px; font-size:12px;" onclick="confirmExecute('${name}', '${rowId}')">⚔️ 處決</button>
+        <button class="btn" style="border-color:#2e8b57; color:#2e8b57; padding:4px 12px; font-size:12px;" onclick="spareNpc('${name}', '${rowId}')">🕊️ 放過</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  story.insertAdjacentHTML('beforeend', `
+    <div style="background: rgba(128,0,0,0.07); border: 1px solid #800; border-radius: 8px; padding: 12px; margin: 5px 0;">
+      <div style="color:#800; font-weight:bold; margin-bottom:8px; text-align:center;">⚠️ 打掃戰場：以下對象已倒地不起</div>
+      ${rows}
     </div>
   `);
   story.scrollTop = story.scrollHeight;
