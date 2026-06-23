@@ -118,7 +118,7 @@ ${backLocked
 【五、純淨江湖】
 1. 武學意境：筆墨集中真氣流轉、兵刃交鋒、身法破風、環境殺氣，嚴禁任何性暗示或情慾描寫。
 2. 邊界守護：好感未達80保持距離，NPC具獨立意志，禁言行表現傾心倒貼或擅自無腦聯手。
-3. 因果結算：買情報寫 quests；搜屍於 items_transferred 轉移。懸賞銀兩由底層發放，禁在此輸出銀兩 stat_changes。`;
+3. 因果結算：買情報寫 quests。★【禁止搜屍】：系統並未記錄屍體/戰敗對象身上的實際物品，【絕對禁止】因玩家描述「搜屍/翻找屍體」而憑空輸出 items_transferred 或 items_gained，僅可描寫「搜尋無獲」或對方早已被人捲走財物。懸賞銀兩由底層發放，禁在此輸出銀兩 stat_changes。`;
 
   return baseRules + "\n" + specificRules + "\n\n★【輸出範本】\n" + JSON.stringify(baseJson, null, 2);
 }
