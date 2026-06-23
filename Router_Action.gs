@@ -2996,7 +2996,12 @@ function actionMultiAttack(userData, pcId, sheets) {
     const pRoll = Math.floor(Math.random() * 20) + 1;
     const nRoll = Math.floor(Math.random() * 20) + 1;
     const pMod = Math.round(((pTotal.STR || 0) + (pTotal.AGI || 0)) / 6);
-    const nMod = Math.round(((nTotal.CON || 0) + (nTotal.AGI || 0)) / 6);
+
+    // 🔴 中毒/媚惑狀態懲罰：之前下藥成功命中的對象，攻防骰 -2
+    const nDebuff = parseVisibleStatus(pcData[nIdx][COL.PC.STATUS])["負面"];
+    const nIsDebuffed = nDebuff === "中毒" || nDebuff === "媚惑";
+    const nMod = Math.round(((nTotal.CON || 0) + (nTotal.AGI || 0)) / 6) - (nIsDebuffed ? 2 : 0);
+
     let pScore = pRoll + pMod;
     let nScore = nRoll + nMod;
     const pCrit = pRoll === 20, pFumble = pRoll === 1;
@@ -3052,6 +3057,7 @@ function actionMultiAttack(userData, pcId, sheets) {
 
     aiPromptParts.push(
       `【對戰：玩家 vs 「${npcName}」】玩家原話：「${seg.flavor || "（未多說，直接出手）"}」\n` +
+      (nIsDebuffed ? `（「${npcName}」身上「${nDebuff}」尚未消退，反應遲滯，可在敘述中帶到這點）\n` : "") +
       `擲骰：玩家 ${pRoll}+${pMod}=${pScore}，「${npcName}」 ${nRoll}+${nMod}=${nScore}。${critText}\n` +
       `結果：${resultMsg}`
     );
