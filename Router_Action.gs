@@ -10,6 +10,7 @@ const ActionRouter = {
   "send_mail": actionSendMail,
   "cultivate": actionCultivate,
   "consume_item": actionConsumeItem,
+  "use_item_on_npc": actionUseItemOnNpc,
   "breakthrough": actionBreakthrough,
   "empower_npc": actionEmpowerNpc,
   "claim_quest_reward": actionClaimQuestReward,
@@ -230,6 +231,61 @@ function actionConsumeItem(userData, pcId, sheets) {
   sheets.pc.getRange(pIdx + 1, 1, 1, pcColCount).setValues([pcData[pIdx]]);
 
   return JSON.stringify({ success: true, itemName: itemRow[COL.ITEM.NAME], effectStr: effectStr, statusString: getFreshStatusString(pcId, pIdx, sheets) });
+}
+
+// 🟢 對同地 NPC 使用丹藥/恢復道具：補血回滿、或單純解去中毒/媚惑等負面狀態
+function actionUseItemOnNpc(userData, pcId, sheets) {
+  const { itemId, targetName } = userData;
+  let pcData = sheets.pc.getDataRange().getValues();
+  const pIdx = pcData.findIndex(r => r[COL.PC.ID] == pcId);
+  if (pIdx === -1) return JSON.stringify({ success: false, message: "查無此人命格。" });
+  const pLoc = String(pcData[pIdx][COL.PC.LOC]).trim();
+
+  const nIdx = pcData.findIndex(r => r[COL.PC.ID] != pcId && !String(r[COL.PC.ID]).startsWith("DEAD_") &&
+    String(r[COL.PC.LOC]).trim() === pLoc && String(r[COL.PC.NAME]).includes(targetName));
+  if (nIdx === -1) return JSON.stringify({ success: false, message: "對方已不在場，無法施藥。" });
+  const npcName = pcData[nIdx][COL.PC.NAME];
+
+  let itemData = sheets.item.getDataRange().getValues();
+  const iIdx = itemData.findIndex(r => r[COL.ITEM.OWNER] == pcId && r[COL.ITEM.ID] === itemId);
+  if (iIdx === -1) return JSON.stringify({ success: false, message: "行囊中找不到此丹藥的氣息！" });
+
+  const itemRow = itemData[iIdx];
+  const consumableTypes = ["丹藥", "恢復道具"];
+  if (!consumableTypes.includes(String(itemRow[COL.ITEM.TYPE]))) {
+    return JSON.stringify({ success: false, message: `天道阻擋：「${itemRow[COL.ITEM.NAME]}」並非可施用於他人的丹藥或恢復道具！` });
+  }
+
+  const itemName = itemRow[COL.ITEM.NAME];
+  const isHealItem =
+    itemRow[COL.ITEM.TYPE] === "恢復道具" ||
+    itemName.includes("回血") || itemName.includes("補血") ||
+    itemName.includes("回氣") || itemName.includes("補氣") ||
+    itemName.includes("回復") || itemName.includes("恢復") ||
+    itemName.includes("靈泉") || itemName.includes("傷藥") ||
+    itemName.includes("療傷");
+  const isCureItem = itemName.includes("解");
+
+  let effectStr = "";
+  if (isHealItem) {
+    const maxStats = calculateMaxStats(pcData[nIdx][COL.PC.REALM], pcData[nIdx][COL.PC.CON], pcData[nIdx][COL.PC.INT]);
+    pcData[nIdx][COL.PC.HP] = maxStats.hp;
+    pcData[nIdx][COL.PC.MP] = maxStats.mp;
+    pcData[nIdx][COL.PC.STATUS] = JSON.stringify({ "衣服": "穿戴整齊", "姿勢": "站立", "負面": "無", "顏面": "氣息平穩" });
+    effectStr = `「${npcName}」氣血與真氣全面回滿，所有負面狀態一掃而空！`;
+  } else if (isCureItem) {
+    let vs = parseVisibleStatus(pcData[nIdx][COL.PC.STATUS]);
+    vs["負面"] = "無";
+    pcData[nIdx][COL.PC.STATUS] = JSON.stringify(vs);
+    effectStr = `「${npcName}」體內的異樣藥力被解去，神色恢復如常。`;
+  } else {
+    return JSON.stringify({ success: false, message: `「${itemName}」不是能施用於他人身上的丹藥。` });
+  }
+
+  sheets.item.deleteRow(iIdx + 1);
+  sheets.pc.getRange(nIdx + 1, 1, 1, pcData[nIdx].length).setValues([pcData[nIdx]]);
+
+  return JSON.stringify({ success: true, itemName: itemName, targetName: npcName, effectStr: effectStr });
 }
 
 function actionBreakthrough(userData, pcId, sheets) {
@@ -2965,9 +3021,14 @@ function actionMultiAttack(userData, pcId, sheets) {
       let resultMsg = "";
       if (success) {
         let vs = parseVisibleStatus(pcData[nIdx][COL.PC.STATUS]);
-        vs["負面"] = isPoison ? "中毒" : "媚惑";
+        const debuffName = isPoison ? "中毒" : "媚惑";
+        // 🔴 同類藥效可疊加層數(上限3層)，每層戰鬥骰 -2，異類則覆蓋重新計層
+        const curMatch = String(vs["負面"] || "").match(/^(中毒|媚惑)\((\d)\)$/);
+        const tier = (curMatch && curMatch[1] === debuffName) ? Math.min(parseInt(curMatch[2], 10) + 1, 3) : 1;
+        vs["負面"] = `${debuffName}(${tier})`;
         pcData[nIdx][COL.PC.STATUS] = JSON.stringify(vs);
-        resultMsg = `「${usedItemName}」奏效，「${npcName}」已${isPoison ? "中毒" : "被媚藥侵體"}！`;
+        const tierFlavor = ["輕度", "中度", "重度"][tier - 1];
+        resultMsg = `「${usedItemName}」奏效，「${npcName}」${tierFlavor}${debuffName}加深！`;
       } else {
         resultMsg = `「${npcName}」識破了這一手，「${usedItemName}」未能奏效！`;
       }
@@ -2997,10 +3058,12 @@ function actionMultiAttack(userData, pcId, sheets) {
     const nRoll = Math.floor(Math.random() * 20) + 1;
     const pMod = Math.round(((pTotal.STR || 0) + (pTotal.AGI || 0)) / 6);
 
-    // 🔴 中毒/媚惑狀態懲罰：之前下藥成功命中的對象，攻防骰 -2
-    const nDebuff = parseVisibleStatus(pcData[nIdx][COL.PC.STATUS])["負面"];
-    const nIsDebuffed = nDebuff === "中毒" || nDebuff === "媚惑";
-    const nMod = Math.round(((nTotal.CON || 0) + (nTotal.AGI || 0)) / 6) - (nIsDebuffed ? 2 : 0);
+    // 🔴 中毒/媚惑狀態懲罰：層數越高扣越多(每層 -2，上限3層 = -6)
+    const nDebuffRaw = parseVisibleStatus(pcData[nIdx][COL.PC.STATUS])["負面"];
+    const nDebuffMatch = String(nDebuffRaw || "").match(/^(中毒|媚惑)\((\d)\)$/);
+    const nDebuffName = nDebuffMatch ? nDebuffMatch[1] : "";
+    const nDebuffTier = nDebuffMatch ? parseInt(nDebuffMatch[2], 10) : 0;
+    const nMod = Math.round(((nTotal.CON || 0) + (nTotal.AGI || 0)) / 6) - nDebuffTier * 2;
 
     let pScore = pRoll + pMod;
     let nScore = nRoll + nMod;
@@ -3057,7 +3120,7 @@ function actionMultiAttack(userData, pcId, sheets) {
 
     aiPromptParts.push(
       `【對戰：玩家 vs 「${npcName}」】玩家原話：「${seg.flavor || "（未多說，直接出手）"}」\n` +
-      (nIsDebuffed ? `（「${npcName}」身上「${nDebuff}」尚未消退，反應遲滯，可在敘述中帶到這點）\n` : "") +
+      (nDebuffTier > 0 ? `（「${npcName}」身上${["輕度", "中度", "重度"][nDebuffTier - 1]}「${nDebuffName}」尚未消退，反應遲滯，可在敘述中帶到這點）\n` : "") +
       `擲骰：玩家 ${pRoll}+${pMod}=${pScore}，「${npcName}」 ${nRoll}+${nMod}=${nScore}。${critText}\n` +
       `結果：${resultMsg}`
     );
@@ -3083,7 +3146,26 @@ function actionMultiAttack(userData, pcId, sheets) {
   }
 
   sheets.pc.getRange(pIdx + 1, 1, 1, pcData[pIdx].length).setValues([pcData[pIdx]]);
-  const touchedNames = new Set(results.map(r => r.targetName).filter(Boolean));
+  // 🔴 連擊結束：未在本次被重新下藥的中毒/媚惑對象，狀態自動退一層(回合制衰退)
+  const redosedNames = new Set();
+  results.forEach(r => {
+    if ((r.actionType === "下毒" || r.actionType === "媚藥") && r.playerWins) redosedNames.add(r.targetName);
+  });
+  const decayedNames = new Set();
+  pcData.forEach((row, idx) => {
+    if (idx === pIdx) return;
+    if (String(row[COL.PC.LOC]).trim() !== pLoc) return;
+    if (redosedNames.has(row[COL.PC.NAME])) return;
+    const vs = parseVisibleStatus(row[COL.PC.STATUS]);
+    const m = String(vs["負面"] || "").match(/^(中毒|媚惑)\((\d)\)$/);
+    if (!m) return;
+    const newTier = parseInt(m[2], 10) - 1;
+    vs["負面"] = newTier > 0 ? `${m[1]}(${newTier})` : "無";
+    row[COL.PC.STATUS] = JSON.stringify(vs);
+    decayedNames.add(row[COL.PC.NAME]);
+  });
+
+  const touchedNames = new Set([...results.map(r => r.targetName).filter(Boolean), ...decayedNames]);
   pcData.forEach((row, idx) => {
     if (idx !== pIdx && touchedNames.has(row[COL.PC.NAME])) {
       sheets.pc.getRange(idx + 1, 1, 1, row.length).setValues([row]);

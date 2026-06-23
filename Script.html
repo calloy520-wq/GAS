@@ -30,7 +30,8 @@
   let currentStatusTargetName = pc ? pc.name : "";
   let localNPCs = [];
   let nearbyLocations = []; 
-  let giftTargetNPC = null; 
+  let giftTargetNPC = null;
+  let useItemTargetNPC = null;
   let historyPushed = false;
   let categorizedMapData = null;
   let sellMode = false; // 🔴 變賣模式旗標
@@ -301,9 +302,11 @@ function renderRecentLocs(recents = null) {
           } else { // 🌟 完美的 else 區塊對齊
             const isGiftMode = (giftTargetNPC !== null);
             const isSellMode = sellMode;
+            const isUseOnNpcMode = (useItemTargetNPC !== null);
             const isEquipped = eqNames.includes(item.name.trim());
 
             if ((isGiftMode || isSellMode) && isEquipped) return "";
+            if (isUseOnNpcMode && !["丹藥", "恢復道具"].includes(item.type)) return "";
 
             let actionButtonsHtml = "";
             let equippedTag = "";
@@ -320,6 +323,8 @@ function renderRecentLocs(recents = null) {
                  }
                } else if (isGiftMode) {
                  actionButtonsHtml = `<button class="btn" style="padding:2px 10px; font-size:11px; border-color:#daa520; color:#daa520;" onclick="handleGiftAction('${item.id}', '${item.name}', '${item.type}')">贈送給 ${giftTargetNPC}</button>`;
+               } else if (isUseOnNpcMode) {
+                 actionButtonsHtml = `<button class="btn" style="padding:2px 10px; font-size:11px; border-color:#e91e63; color:#e91e63;" onclick="lockBtn(event, () => handleUseItemOnNpcAction('${item.id}', '${item.name}'))">💊 用在 ${useItemTargetNPC}</button>`;
                } else {
                    actionButtonsHtml = `
                    <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#4682b4; color:#4682b4;" onclick="lockBtn(event, () => handleItemAction('inspect', '${item.id}', '${item.name}', '${item.type}'))">🔍 端詳</button>
@@ -408,6 +413,7 @@ function renderRecentLocs(recents = null) {
     if (modal) modal.style.display = 'none';
     if (modalId === 'inventory-overlay') {
       giftTargetNPC = null;
+      useItemTargetNPC = null;
       sellMode = false;        // 🔴 關閉背包時清空變賣模式
     }
   }
@@ -923,6 +929,31 @@ function renderRecentLocs(recents = null) {
   // ==========================================
   // 💰 給予銀兩：前端阻斷防呆、後端交感與 AI 敘事對接
   // ==========================================
+  // 🟢 對 NPC 使用丹藥/恢復道具：開啟行囊並切換成「用在他人」模式
+  function openUseItemOnNpcModal(npcName) {
+    useItemTargetNPC = npcName;
+    openSystemModal('inventory-overlay');
+  }
+
+  async function handleUseItemOnNpcAction(itemId, itemName) {
+    if (!useItemTargetNPC) return;
+    const targetNpc = useItemTargetNPC;
+    useItemTargetNPC = null;
+    closeSystemModal('inventory-overlay');
+
+    try {
+      const res = await gasRun({ action: "use_item_on_npc", pcId: pc.id, itemId: itemId, targetName: targetNpc });
+      if (res.success) {
+        const promptMsg = `【純敘事】玩家取出「${itemName}」，施用於「${targetNpc}」身上。結果：${res.effectStr}請生動描寫施藥的過程與對方的反應，地點與在場人物務必與當前場景一致。`;
+        narrate(promptMsg);
+      } else {
+        alert(res.message || "施藥失敗。");
+      }
+    } catch (e) {
+      alert("連線失敗，無法施藥。");
+    }
+  }
+
   async function openGiveMoneyPrompt(npcName) {
     const currentMoney = parseInt(document.getElementById('ui-money').innerText) || 0;
     const amountInput = prompt(`你要給予「${npcName}」多少銀兩？\n(當前身上擁有：${currentMoney} 兩)`);
@@ -1997,6 +2028,7 @@ let plainTextContext = cleanText;
       
       html += `<button class="btn" style="border-color:#4db8a3; color:#4db8a3;" onclick="closeInteractMenu(); interactNpc('贈禮', '${npcName}', '${currentLoc}', true)">🎁 贈禮</button>`;
       html += `<button class="btn" style="border-color:#4db8a3; color:#4db8a3;" onclick="closeInteractMenu(); openGiveMoneyPrompt('${npcName}')">💰 給銀兩</button>`;
+      html += `<button class="btn" style="border-color:#4db8a3; color:#4db8a3; grid-column: span 2;" onclick="closeInteractMenu(); openUseItemOnNpcModal('${npcName}')">💊 使用道具 (補血/解狀態)</button>`;
 
       if (!isPC) {
           // 命格 (深邃碧玉色 #2ca68c)
@@ -2012,10 +2044,18 @@ let plainTextContext = cleanText;
       html += `<div style="grid-column: span 2; border-top: 1px dashed rgba(77,184,163,0.3); margin-top: 5px; padding-top: 10px; color:#7b9991; font-size:12px; text-align:center; font-weight:bold;">—— 危險舉動 ——</div>`;
       
       if (!isPC) {
-          html += `<button class="btn" style="border-color:#a52a2a; color:#a52a2a; font-weight:bold;" onclick="closeInteractMenu(); insertActionTag('攻擊', '${npcName}')">⚔️ 動手</button>`;
+          html += `<div style="grid-column: span 2; display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:2px; font-size:12px; color:#7b9991;">
+            連續次數：<select id="combo-count-select" style="padding:2px 6px; border-radius:4px; border:1px solid #8fa39b; background:#fff; color:#553311;">
+              <option value="1">x1</option>
+              <option value="3">x3</option>
+              <option value="5">x5</option>
+              <option value="10">x10</option>
+            </select>
+          </div>`;
+          html += `<button class="btn" style="border-color:#a52a2a; color:#a52a2a; font-weight:bold;" onclick="insertActionTag('攻擊', '${npcName}')">⚔️ 動手</button>`;
           html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="executeInteract('speed')">🖐️ 偷竊</button>`;
-          html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="closeInteractMenu(); insertActionTag('下毒', '${npcName}')">🧪 下毒</button>`;
-          html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="closeInteractMenu(); insertActionTag('媚藥', '${npcName}')">🌸 媚藥</button>`;
+          html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="insertActionTag('下毒', '${npcName}')">🧪 下毒</button>`;
+          html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="insertActionTag('媚藥', '${npcName}')">🌸 媚藥</button>`;
       }
 
       document.getElementById('interact-dynamic-buttons').innerHTML = html;
@@ -2102,7 +2142,11 @@ function spareNpc(npcName, cardId) {
 // ==========================================
 function insertActionTag(actionType, npcName) {
   const input = document.getElementById('u-in');
-  input.value += `[${actionType}${npcName}]`;
+  const countSel = document.getElementById('combo-count-select');
+  const count = countSel ? (parseInt(countSel.value, 10) || 1) : 1;
+  for (let i = 0; i < count; i++) {
+    input.value += `[${actionType}${npcName}]`;
+  }
   input.focus();
 }
 
