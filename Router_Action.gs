@@ -3115,6 +3115,7 @@ function actionMultiAttack(userData, pcId, sheets) {
     aiPrompt: aiPrompt,
     knockedOut: knockedOutAll,
     justRevived: justRevived,
+    touchedNames: Array.from(touchedNames),
     statusString: getFreshStatusString(pcId, pIdx, sheets)
   });
 }
@@ -3155,7 +3156,8 @@ function actionNarrateOnly(userData, pcId, sheets) {
 
 // ==========================================
 // 🟢 連擊戰報專用輕量路由：同樣不讀規矩表，但帶 2 筆歷史以維持語氣連貫，
-// 並要求 AI 補回 4 個行動選項(options)，取代 actionMultiAttack 原本走的完整 play 管線
+// 取代 actionMultiAttack 原本走的完整 play 管線。不產生 options，
+// 因為連擊後直接點同地NPC名字(超連結)繼續打即可，不需要選項。
 // ==========================================
 function actionMultiAttackNarrate(userData, pcId, sheets) {
   const { promptText, isNsfw } = userData;
@@ -3167,13 +3169,12 @@ function actionMultiAttackNarrate(userData, pcId, sheets) {
 3. 強制分段：每2~3句插入 <br><br>，整段至少3個 <br><br>，禁止整坨。換行一律用 <br><br>，禁止真實換行，禁止輸出任何 HTML 標籤。
 4. ★這是純敘事補完，系統底層已結算完所有勝負、傷害與藥效數值，你只負責寫過程的字，禁止更改任何結果。
 5. 敘事務必與提供的【場景】地點、【近期因果】與【參戰者資料】(性格/特徵/關係)一致，禁止憑空換地點或讓角色性格走偏。
-6. 結尾必須給出4個行動選項，固定格式且順序不可變：[主動]強勢掌握、[被動]委婉試探、[接續]延續互動、[反差]跳脫氛圍，每項20字內，且須貼合交鋒剛結束的情境。
-7. 只輸出 JSON：{"narration":"你的敘述，內含<br><br>分段","options":["1. [主動]...","2. [被動]...","3. [接續]...","4. [反差]..."]}，禁止任何其他欄位、禁止 Markdown。`;
+6. 只輸出 JSON：{"narration":"你的敘述，內含<br><br>分段"}，禁止任何其他欄位、禁止 Markdown。`;
 
   let aiConfig = {
     temperature: 0.85,
     ignoreLaw: true,           // 不疊規矩表(節慶/天時)
-    max_tokens: 900,           // 比 actionPlay 的 2000 省一大半，但比 narrate_only 多留點空間給 options
+    max_tokens: 700,           // 比 actionPlay 的 2000 砍掉一大半
     model: "google/gemini-3.1-flash-lite",
     isNsfwMode: !!isNsfw
   };
@@ -3193,13 +3194,9 @@ function actionMultiAttackNarrate(userData, pcId, sheets) {
     const start = raw.indexOf('{');
     const end = raw.lastIndexOf('}');
     const data = JSON.parse(raw.substring(start, end + 1));
-    return JSON.stringify({
-      success: true,
-      text: data.narration || "天地靜默，一片祥和。",
-      options: Array.isArray(data.options) ? data.options : []
-    });
+    return JSON.stringify({ success: true, text: data.narration || "天地靜默，一片祥和。" });
   } catch (e) {
-    return JSON.stringify({ success: true, text: "（此處因果已定，天機微微一閃。）", options: [] });
+    return JSON.stringify({ success: true, text: "（此處因果已定，天機微微一閃。）" });
   }
 }
 

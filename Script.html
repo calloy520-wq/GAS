@@ -1750,11 +1750,13 @@ async function checkName(event) {
   }
 
   // ==========================================
-  // 🟢 連擊戰報專用輕量敘事：narrate() 同等成本，但額外帶回 options 讓玩家能繼續抉擇
+  // 🟢 連擊戰報專用輕量敘事：narrate() 同等成本，但會把同地參戰NPC名字轉成可點擊超連結，
+  // 讓玩家能直接點名字繼續連擊，不需要 AI 額外生成 options
   // ==========================================
-  async function narrateCombatResult(promptText) {
+  async function narrateCombatResult(promptText, touchedNames) {
     const story = document.getElementById('story');
     const optContainer = document.getElementById('options-container');
+    if (optContainer) optContainer.innerHTML = '';
     const loadId = "L" + Date.now();
     story.insertAdjacentHTML('beforeend', `<div id="${loadId}" class="loading-text">天道演化中...</div>`);
     story.scrollTop = story.scrollHeight;
@@ -1766,25 +1768,21 @@ async function checkName(event) {
 
       if (res.success && res.text) {
         let cleanText = res.text.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n');
-        const displayText = cleanText.replace(/\n{2,}/g, "<br><br>").replace(/\n/g, "<br><br>");
-        story.insertAdjacentHTML('beforeend', `<div class="msg-ai"><b>【天道演化】</b>${displayText}</div>`);
+        let displayText = cleanText.replace(/\n{2,}/g, "<br><br>").replace(/\n/g, "<br><br>");
 
-        let plainTextContext = cleanText;
-        if (res.options && Array.isArray(res.options) && res.options.length > 0) {
-          currentOptions = res.options;
-          let optionsHtml = `<div style="color: var(--gold-accent); font-weight: bold; border-bottom: 1px dashed rgba(212, 175, 55, 0.3); padding-bottom: 6px; margin-bottom: 8px;">【命運的抉擇】</div>`;
-          optionsHtml += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">`;
-          plainTextContext += `\n\n【命運的抉擇】\n`;
-          res.options.forEach(optText => {
-            optionsHtml += `<button class="btn-option" onclick="send('${optText.replace(/'/g, "\\'")}', true)">${optText}</button>`;
-            plainTextContext += optText + `\n`;
-          });
-          optionsHtml += `</div>`;
-          if (optContainer) optContainer.innerHTML = optionsHtml;
-        } else {
-          if (optContainer) optContainer.innerHTML = '';
+        // 🔴 同地參戰NPC一律是「實際在場」，直接做成可點擊超連結，方便繼續連擊
+        if (touchedNames && touchedNames.length > 0) {
+          const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const uniqueNames = [...new Set(touchedNames)].filter(n => n && n.length >= 2);
+          if (uniqueNames.length > 0) {
+            uniqueNames.sort((a, b) => b.length - a.length);
+            const combinedRegex = new RegExp(uniqueNames.map(escapeRegExp).join('|'), 'g');
+            displayText = displayText.replace(combinedRegex, matched => `<span class="npc-link" data-interact="${matched}">${matched}</span>`);
+          }
         }
-        lastAiContext = plainTextContext;
+
+        story.insertAdjacentHTML('beforeend', `<div class="msg-ai"><b>【天道演化】</b>${displayText}</div>`);
+        lastAiContext = cleanText;
 
         localStorage.setItem('kyushu_story', story.innerHTML);
         story.scrollTop = story.scrollHeight;
@@ -2157,7 +2155,7 @@ async function handleMultiAttack(rawMsg) {
     input.disabled = false; btn.disabled = false;
 
     // 把已裁定的結果（含玩家自己的招式敘述）餵給 AI 描寫(輕量路徑，帶地點/因果/角色資料)
-    narrateCombatResult(res.aiPrompt);
+    narrateCombatResult(res.aiPrompt, res.touchedNames);
 
     // 玩家中途被打趴送藥鋪
     if (res.justRevived) {
