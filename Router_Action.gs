@@ -3148,7 +3148,12 @@ function actionNarrateOnly(userData, pcId, sheets) {
     const start = raw.indexOf('{');
     const end = raw.lastIndexOf('}');
     const data = JSON.parse(raw.substring(start, end + 1));
-    return JSON.stringify({ success: true, text: data.narration || "天地靜默，一片祥和。" });
+    const narrationText = data.narration || "天地靜默，一片祥和。";
+    saveGameHistoryBatch(pcId, [
+      { speaker: "player", content: promptText },
+      { speaker: "ai", content: narrationText }
+    ]);
+    return JSON.stringify({ success: true, text: narrationText });
   } catch (e) {
     return JSON.stringify({ success: true, text: "（此處因果已定，天機微微一閃。）" });
   }
@@ -3194,7 +3199,26 @@ function actionMultiAttackNarrate(userData, pcId, sheets) {
     const start = raw.indexOf('{');
     const end = raw.lastIndexOf('}');
     const data = JSON.parse(raw.substring(start, end + 1));
-    return JSON.stringify({ success: true, text: data.narration || "天地靜默，一片祥和。" });
+    const narrationText = data.narration || "天地靜默，一片祥和。";
+
+    saveGameHistoryBatch(pcId, [
+      { speaker: "player", content: promptText },
+      { speaker: "ai", content: narrationText }
+    ]);
+
+    // 🔴 補上因果紀錄：連擊戰報結束後也要寫入「因果」表，否則後續近期因果/play()歷史都看不到這場戰鬥
+    if (sheets.log) {
+      const pcData = sheets.pc.getDataRange().getValues();
+      const pIdx = pcData.findIndex(r => r[COL.PC.ID] == pcId);
+      if (pIdx !== -1) {
+        const pName = pcData[pIdx][COL.PC.NAME];
+        const pLoc = pcData[pIdx][COL.PC.LOC];
+        sheets.log.appendRow([new Date(), pcId, `人：${pName} ｜ 事：${narrationText.replace(/<br\s*\/?>/g, " ").slice(0, 150)}`, pLoc]);
+        trimRowsByOwner(sheets.log, pcId, 60, 1);
+      }
+    }
+
+    return JSON.stringify({ success: true, text: narrationText });
   } catch (e) {
     return JSON.stringify({ success: true, text: "（此處因果已定，天機微微一閃。）" });
   }
