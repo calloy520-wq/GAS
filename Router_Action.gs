@@ -906,8 +906,14 @@ function actionGetAllCategorizedMaps(userData, pcId, sheets) {
 
     if (!mapTree[cat]) mapTree[cat] = {};
     if (parent === "") {
-      // 🔴 這裡把 coord 塞進去
-      if (!mapTree[cat][name]) mapTree[cat][name] = { desc: desc, subs: [], count: locCount[name] || 0, coord: coord };
+      // 🔴 這裡把 coord 塞進去（若子分支已先建立佔位節點，補上真正的座標與描述）
+      const existing = mapTree[cat][name];
+      if (existing) {
+        existing.desc = desc;
+        existing.coord = coord;
+      } else {
+        mapTree[cat][name] = { desc: desc, subs: [], count: locCount[name] || 0, coord: coord };
+      }
     } else {
       if (!mapTree[cat][parent]) mapTree[cat][parent] = { desc: "區域中心", subs: [], count: locCount[parent] || 0, coord: "0,0" };
       mapTree[cat][parent].subs.push({
