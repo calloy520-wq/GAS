@@ -14,7 +14,8 @@ const COL = {
     ID: 0, NAME: 1, SEX: 2, BACK: 3, STATUS: 4, MONEY: 5, TRAIT: 6, LOC: 7, PREF: 8,
     HP: 9, MP: 10, STR: 11, CON: 12, AGI: 13, INT: 14, LUK: 15, MAX_HP: 16, MAX_MP: 17,
     WEP: 18, ARM: 19, ACC1: 20, ACC2: 21, REALM: 22, MEMORY: 23, INTENT: 24,
-    FACTION: 25, RANK: 26, CONTRIB: 27, ALIGN: 28, PHYSICAL: 29, MARTIAL: 30
+    FACTION: 25, RANK: 26, CONTRIB: 27, ALIGN: 28, PHYSICAL: 29, MARTIAL: 30,
+    LIFESKILL: 31
   },
   ITEM: { NAME: 0, TYPE: 1, DESC: 2, PRICE: 3, OWNER: 4, STR: 5, CON: 6, AGI: 7, INT: 8, LUK: 9, ID: 10, LOC2: 11 },
   REL: { PC: 0, NPC: 1, FAV: 2, TAG: 3, IS_PARTY: 4, MEMORY: 5, MAJOR_EVENT: 6 },
@@ -272,6 +273,7 @@ function buildPlayerStatusString(selfRow, totals, itemData, relMem = "", isNsfwM
   const maskedPhysical = maskPhysicalStatus(selfRow[COL.PC.PHYSICAL] || "{}", isNsfwMode);
   const safePhysical = String(maskedPhysical).replace(/§/g, '###');
   const visibleStatusStr = buildVisibleStatusString(selfRow[COL.PC.STATUS]);
+  const safeLifeskill = String(selfRow[COL.PC.LIFESKILL] || "{}").replace(/§/g, '###');
 
   return [
     visibleStatusStr, selfRow[COL.PC.MONEY], selfRow[COL.PC.TRAIT], selfRow[COL.PC.LOC], selfRow[COL.PC.PREF],
@@ -279,7 +281,7 @@ function buildPlayerStatusString(selfRow, totals, itemData, relMem = "", isNsfwM
     totals ? totals.AGI : selfRow[COL.PC.AGI], totals ? totals.INT : selfRow[COL.PC.INT], totals ? totals.LUK : selfRow[COL.PC.LUK],
     wName, aName, ac1Name, ac2Name, selfRow[COL.PC.REALM], safeMemory, safeRelMem, selfRow[COL.PC.FACTION],
     selfRow[COL.PC.RANK], selfRow[COL.PC.ALIGN], selfRow[COL.PC.CONTRIB], selfRow[COL.PC.BACK], safePhysical,
-    selfRow[COL.PC.INTENT], selfRow[COL.PC.MARTIAL]
+    selfRow[COL.PC.INTENT], selfRow[COL.PC.MARTIAL], safeLifeskill
   ].join('§');
 }
 

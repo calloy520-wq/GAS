@@ -68,7 +68,8 @@ const ActionRouter = {
   "use_item_self": actionUseItemSelf,
   "craft_item": actionCraftItem,
   "steal_npc_item": actionStealNpcItem,
-  "buy_intel": actionBuyIntel
+  "buy_intel": actionBuyIntel,
+  "lifeskill_gather": actionLifeskillGather
 
 };
 
@@ -673,6 +674,10 @@ function actionPlayDice(userData, pcId, sheets) {
 function actionPlayHorseRace(userData, pcId, sheets) {
   // 假設 Casino.gs 中存在 playHorseRaceGame 函數
   return playHorseRaceGame(pcId, userData.horseId, userData.betAmount, sheets, COL);
+}
+
+function actionLifeskillGather(userData, pcId, sheets) {
+  return playLifeskillGather(pcId, userData.skill, userData.rollCount, sheets, COL);
 }
 
 function actionDismissParty(userData, pcId, sheets) {

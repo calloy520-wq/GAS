@@ -38,6 +38,7 @@
       <div style="display: flex; gap: 10px; align-items: center;">
         <button id="notice-btn" class="btn" onclick="lockBtn(event, openNoticePanel)" style="padding: 4px 8px; font-size: 12px; border-color: #b8860b; color: #b8860b; background: rgba(184,134,11,0.1); position: relative;">📜信件 <span id="notice-badge" style="display:none; position:absolute; top:-4px; right:-4px; background:#ff4d4d; color:#fff; border-radius:50%; width:14px; height:14px; font-size:10px; line-height:14px; text-align:center;"></span></button>
         <button id="rest-btn" class="btn" style="padding: 4px 8px; font-size: 12px; border-color: #2e8b57; color: #2e8b57; background: rgba(46,139,87,0.1);" onclick="lockBtn(event, restAndHeal)">🌿 休養</button>
+        <button id="lifeskill-btn" class="btn" style="padding: 4px 8px; font-size: 12px; border-color: #8b5a2b; color: #8b5a2b; background: rgba(139,90,43,0.1);" onclick="openLifeskillMenu()">🌾 生活</button>
         <div class="player-badge">
           <span id="header-loc">感應中...</span>
         </div>
@@ -134,6 +135,30 @@
       </div>
 
       <button class="btn" style="width:100%; background:#e91e63; color:#fff; font-size:16px; border:none; padding:12px; border-radius:4px; font-weight:bold;" onclick="lockBtn(event, executeCraft)">開爐煉製</button>
+    </div>
+  </div>
+
+  <div id="lifeskill-overlay" class="modal-overlay" onclick="closeSystemModal('lifeskill-overlay')">
+    <div class="modal-scroll" onclick="event.stopPropagation()" style="max-width: 360px;">
+      <span class="modal-close-btn" onclick="closeSystemModal('lifeskill-overlay')">&times;</span>
+      <h2 style="text-align:center; color:#8b5a2b; border-bottom:2px solid #8b5a2b; padding-bottom:10px; margin-top:0;">
+        🌾 生活營生</h2>
+
+      <div style="margin-bottom: 10px; font-size: 13px; color: #888;">選擇要進行的生活技能：</div>
+
+      <div id="lifeskill-list" style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;"></div>
+
+      <div id="lifeskill-roll-panel" style="display:none; margin-top: 10px; border-top: 1px dashed rgba(139,90,43,0.4); padding-top: 12px;">
+        <div style="text-align:center; font-size:14px; color:#8b5a2b; font-weight:bold; margin-bottom: 8px;">
+          當前項目：<span id="lifeskill-selected-name"></span>（Lv<span id="lifeskill-selected-level">0</span>）
+        </div>
+        <div style="display:flex; gap: 8px; justify-content: center; margin-bottom: 12px;">
+          <button class="btn" style="border-color:#8b5a2b; color:#8b5a2b; padding: 10px 14px;" onclick="executeLifeskillGather(1)">骰1次<br><span style="font-size:11px;">(10真氣)</span></button>
+          <button class="btn" style="border-color:#8b5a2b; color:#8b5a2b; padding: 10px 14px;" onclick="executeLifeskillGather(3)">骰3次<br><span style="font-size:11px;">(30真氣)</span></button>
+          <button class="btn" style="border-color:#8b5a2b; color:#8b5a2b; padding: 10px 14px;" onclick="executeLifeskillGather(5)">骰5次<br><span style="font-size:11px;">(50真氣)</span></button>
+        </div>
+        <div id="lifeskill-result-msg" style="font-size: 14px; line-height: 1.6; color: #f0f0f0; min-height: 30px; text-align:center;"></div>
+      </div>
     </div>
   </div>
 
@@ -507,6 +532,11 @@
         <div style="display: flex; gap: 5px; font-size: 13px; justify-content: center; color:#332211;">
           <b id="ui-faction">無門派</b> / <b id="ui-rank">散人</b> (<b id="ui-align">絕對中立</b>)
         </div>
+      </div>
+
+      <div class="trait-box" style="margin-top:8px; background: rgba(139,90,43,0.05); border: 1px solid #8b5a2b;">
+        <span style="color: #8b5a2b;">—— 生活本事 ——</span>
+        <div id="ui-lifeskill" style="font-size: 12px; line-height: 1.8; text-align:center; color:#332211; margin-top:4px;">--</div>
       </div>
 
       <button id="secret-toggle-btn" class="btn" style="width:100%; margin-top: 5px; border-color: #e91e63; color: #e91e63; background: rgba(233, 30, 99, 0.05); font-weight:bold; letter-spacing: 2px;" onclick="toggleSecretPanel()">🌸 窺視神髓</button>
