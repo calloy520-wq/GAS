@@ -784,7 +784,9 @@ function buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, instructionStr) {
   const relRow = relData.find(r => r[COL.REL.PC] === pName && r[COL.REL.NPC] === npcName);
   const prefArr = String(npcRow[COL.PC.PREF] || "").split('、');
   const traitArr = String(npcRow[COL.PC.TRAIT] || "").split('、');
-  const npcCardStr = `【${npcName}】境界:${npcRow[COL.PC.REALM] || "凡人"} | 性格:[表象]${prefArr[0] || "無"} [內裡]${prefArr[1] || "無"} | 特徵:${traitArr[1] || "無"} | 與玩家關係:${relRow ? relRow[COL.REL.TAG] : "萍水相逢"}(好感:${relRow ? relRow[COL.REL.FAV] : 0})`;
+  const nickMatch = relRow ? String(relRow[COL.REL.MEMORY] || "").match(/\[專屬稱呼\](.*?)(?=\| \[|$)/) : null;
+  const nickStr = (nickMatch && nickMatch[1].trim()) ? ` | 稱呼玩家:${nickMatch[1].trim()}` : "";
+  const npcCardStr = `【${npcName}】境界:${npcRow[COL.PC.REALM] || "凡人"} | 性格:[表象]${prefArr[0] || "無"} [內裡]${prefArr[1] || "無"} | 特徵:${traitArr[1] || "無"} | 與玩家關係:${relRow ? relRow[COL.REL.TAG] : "萍水相逢"}(好感:${relRow ? relRow[COL.REL.FAV] : 0})${nickStr}`;
 
   const allLogs = sheets.log ? sheets.log.getDataRange().getValues() : [];
   const recentLogStr = allLogs.filter(r => String(r[2]).includes(pName) || String(r[2]).includes(npcName)).slice(-5).map(r => `${r[2]}`).join("\n") || "（尚無相關因果記錄）";
