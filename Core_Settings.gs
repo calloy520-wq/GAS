@@ -40,6 +40,11 @@ const REALM_LIMITS = {
 const MAX_BAG_SIZE = 20;
 const MAX_WAREHOUSE_SIZE = 200;
 
+// 🟢 共用 D20 骰子：1=大失敗、20=大成功
+function rollD20() {
+  return Math.floor(Math.random() * 20) + 1;
+}
+
 // 🟢 物品稀有度十階對照表（唯一真實來源：AI 輸出階名，GAS 查此表給屬性點）
 const RARITY_TABLE = {
   "凡品": { gear: 1, pill: 1 },

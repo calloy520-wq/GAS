@@ -79,3 +79,131 @@ function playDiceGame(pcId, betType, betAmount, sheets, COL) {
     return JSON.stringify({ success: false, message: "賭坊運作異常：" + e.toString() });
   }
 }
+
+// ---------------------------------------------------------
+// 🐎 長樂坊：天馬競速核心邏輯 (獨立模組，賠率/勝率全寫死，AI僅敘述)
+// ---------------------------------------------------------
+const HORSE_CONFIG = [
+  { id: 1, name: "特別周", tier: "強馬", payout: 1.8 },
+  { id: 2, name: "無聲鈴鹿", tier: "強馬", payout: 1.8 },
+  { id: 3, name: "東海帝王", tier: "中馬", payout: 3.5 },
+  { id: 4, name: "大和赤驥", tier: "中馬", payout: 3.5 },
+  { id: 5, name: "黃金船", tier: "黑馬", payout: 9 },
+  { id: 6, name: "米浴", tier: "黑馬", payout: 9 }
+];
+const HORSE_RACE_GOAL = 30;
+const HORSE_RACE_MAX_TURNS = 60;
+
+function rollHorseTier(tier) {
+  if (tier === "強馬") return Math.floor(Math.random() * 3) + 3; // 3,4,5
+  if (tier === "中馬") return Math.floor(Math.random() * 3) + 2; // 2,3,4
+  const darkPool = [1, 2, 6];
+  return darkPool[Math.floor(Math.random() * darkPool.length)]; // 黑馬：1,2,6
+}
+
+function simulateHorseRace() {
+  const positions = HORSE_CONFIG.map(() => 0);
+  const log = [positions.slice()];
+  let winnerIdx = -1;
+  let turn = 0;
+
+  while (winnerIdx === -1 && turn < HORSE_RACE_MAX_TURNS) {
+    turn++;
+    for (let i = 0; i < HORSE_CONFIG.length; i++) {
+      positions[i] += rollHorseTier(HORSE_CONFIG[i].tier);
+    }
+    log.push(positions.slice());
+
+    const maxPos = Math.max(...positions);
+    if (maxPos >= HORSE_RACE_GOAL) {
+      const leaders = positions.reduce((arr, p, idx) => p === maxPos ? arr.concat(idx) : arr, []);
+      winnerIdx = leaders.length === 1 ? leaders[0] : leaders[Math.floor(Math.random() * leaders.length)];
+    }
+  }
+  if (winnerIdx === -1) {
+    const maxPos = Math.max(...positions);
+    winnerIdx = positions.indexOf(maxPos);
+  }
+
+  const ranking = HORSE_CONFIG
+    .map((h, idx) => ({ id: h.id, name: h.name, position: positions[idx] }))
+    .sort((a, b) => b.position - a.position);
+
+  return { log, winnerIdx, ranking };
+}
+
+function playHorseRaceGame(pcId, horseId, betAmount, sheets, COL) {
+  try {
+    const pcData = sheets.pc.getDataRange().getValues();
+    const pIdx = pcData.findIndex(r => r[COL.PC.ID] == pcId);
+    if (pIdx === -1) return JSON.stringify({ success: false, message: "天道異常：找不到玩家本體。" });
+
+    let playerMoney = parseInt(pcData[pIdx][COL.PC.MONEY]) || 0;
+
+    if (betAmount < 100 || betAmount > 10000) {
+      return JSON.stringify({ success: false, message: "下注金額必須在 100 至 10,000 兩之間。" });
+    }
+    if (playerMoney < betAmount) {
+      return JSON.stringify({ success: false, message: "囊中羞澀！大俠，妳的銀兩不夠啊。" });
+    }
+
+    const betHorse = HORSE_CONFIG.find(h => h.id == horseId);
+    if (!betHorse) return JSON.stringify({ success: false, message: "天道異常：未知的賽馬編號。" });
+
+    const { log, winnerIdx, ranking } = simulateHorseRace();
+    const winnerHorse = HORSE_CONFIG[winnerIdx];
+    const isWin = winnerHorse.id === betHorse.id;
+
+    let winnings = 0;
+    let newMoney = playerMoney;
+    if (isWin) {
+      winnings = Math.round(betAmount * betHorse.payout);
+      newMoney += (winnings - betAmount);
+    } else {
+      newMoney -= betAmount;
+    }
+
+    sheets.pc.getRange(pIdx + 1, COL.PC.MONEY + 1).setValue(newMoney);
+
+    const r = pcData[pIdx];
+    r[COL.PC.MONEY] = newMoney;
+    const freshItemData = sheets.item ? sheets.item.getDataRange().getValues() : [];
+    const statusString = buildPlayerStatusString(r, getCharacterTotalStats(pcId, sheets, pcData), freshItemData);
+
+    const rankingText = ranking.map((h, i) => `${i + 1}. ${h.name}(${h.position}步)`).join("、");
+    const raceSystem = `你是九州「天馬競速」場的賭場說書人。一場賽馬剛剛結束，最終名次：${rankingText}。冠軍是「${winnerHorse.name}」(${winnerHorse.tier})。
+玩家押注的是「${betHorse.name}」(${betHorse.tier})，結果${isWin ? `中獎，贏得 ${winnings - betAmount} 兩` : `落敗，輸了 ${betAmount} 兩`}。
+請用 80~150 字生動描寫這場賽馬的激烈過程與終點衝線畫面(narration)，並自然帶出名次結果，不要重複列出數字步數。
+只輸出 JSON：{"narration":"..."}，禁止其他欄位、禁止 Markdown。`;
+
+    const raw = callGeminiAPI(`賽馬結果播報：冠軍${winnerHorse.name}`, raceSystem, {
+      temperature: 0.9, ignoreLaw: true, max_tokens: 400, model: "google/gemini-3.1-flash-lite"
+    });
+
+    let data;
+    try {
+      const start = raw.indexOf('{');
+      const end = raw.lastIndexOf('}');
+      data = JSON.parse(raw.substring(start, end + 1));
+    } catch (e) { data = {}; }
+
+    const narration = (data.narration && String(data.narration).trim()) ||
+      `「${winnerHorse.name}」率先衝過終點，拔得頭籌！`;
+
+    return JSON.stringify({
+      success: true,
+      log: log,
+      ranking: ranking,
+      winnerId: winnerHorse.id,
+      winnerName: winnerHorse.name,
+      betHorseId: betHorse.id,
+      isWin: isWin,
+      winnings: winnings,
+      narration: narration,
+      statusString: statusString
+    });
+
+  } catch (e) {
+    return JSON.stringify({ success: false, message: "賭坊運作異常：" + e.toString() });
+  }
+}

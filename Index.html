@@ -150,8 +150,7 @@
       <div style="display: flex; flex-direction: column; gap: 12px;">
         <button class="btn" style="border-color:#ffd700; color:#ffd700; font-size:16px; padding: 12px;" onclick="closeSystemModal('casino-hub-overlay'); openCasinoMenu();">🎲 靈紋骰局</button>
 
-        <button class="btn" style="border-color:#555; color:#555; font-size:16px; padding: 12px;" onclick="alert('天道演算中，賽馬場擴建工程敬請期待！')">🐎 天馬競速 (擴建中)</button>
-        <button class="btn" style="border-color:#555; color:#555; font-size:16px; padding: 12px;" onclick="alert('鬥獸場正在清理血跡，敬請期待！')">🐉 鬥靈獸 (擴建中)</button>
+        <button class="btn" style="border-color:#32cd32; color:#32cd32; font-size:16px; padding: 12px;" onclick="closeSystemModal('casino-hub-overlay'); openRaceModal();">🐎 天馬競速</button>
       </div>
     </div>
   </div>
@@ -218,6 +217,32 @@
 
         <div id="dice-result-msg" style="margin-top: 15px; color: #ffd700; min-height: 40px; font-size: 14px;">請下注，買定離手！
         </div>
+      </div>
+    </div>
+  </div>
+
+
+
+
+  <div id="horse-race-overlay" class="modal-overlay" onclick="closeSystemModal('horse-race-overlay')">
+    <div class="modal-scroll" onclick="event.stopPropagation()" style="max-width: 460px;">
+      <span class="modal-close-btn" onclick="closeSystemModal('horse-race-overlay')">&times;</span>
+      <h2 style="text-align:center; color:#32cd32; border-bottom:2px solid #32cd32; padding-bottom:10px; margin-top:0;">
+        🐎 天馬競速</h2>
+
+      <div style="margin-bottom: 10px; font-size:14px; color:#aaa; text-align:center;">
+        當前盤纏：<span id="race-current-money" style="font-weight:bold; font-size:18px; color:#ffd700;">0</span> 兩
+      </div>
+
+      <div id="race-track" style="display:flex; flex-direction:column; gap:6px; margin:15px 0;"></div>
+
+      <div style="text-align:center; margin-top: 10px;">
+        <input type="number" id="race-bet-amount" value="1000" min="100" max="10000" class="std-in" style="width: 100px; text-align: center; padding: 8px;"> 兩
+        <br><br>
+        <div id="race-horse-buttons" style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;"></div>
+      </div>
+
+      <div id="race-result-msg" style="margin-top: 15px; color: #32cd32; min-height: 40px; font-size: 14px;">請選定戰馬下注，賽事即將開始！
       </div>
     </div>
   </div>

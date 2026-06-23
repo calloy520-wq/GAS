@@ -403,16 +403,34 @@ function renderRecentLocs(recents = null) {
      }
   }
 
-  // 🔴 修正：接收 itemId 並打包進 combatData
-  function attemptSteal(itemId, itemName, npcName) {
+  // 🟢 妙手空空：輕量直連，GAS 裁定D20成敗，AI只負責補一段敘事
+  async function attemptSteal(itemId, itemName, npcName) {
      closeSystemModal('npc-inventory-overlay');
-     const combatData = { 
-         targetName: npcName, 
-         type: "speed", 
-         stealItemId: itemId,    // 絕對精準的 ID
-         stealItemName: itemName // 留著給 AI 寫劇情用的名字
-     };
-     send(`【系統動作：玩家暗中將手伸向「${npcName}」，企圖偷走其身上的「${itemName}」。】`, true, combatData);
+     try {
+       const res = await gasRun({ action: "steal_npc_item", pcId: pc.id, targetName: npcName, stealItemId: itemId, stealItemName: itemName });
+       if (res.success) { narrate(res.aiPrompt); syncData(true); }
+       else alert(res.message || "下手失敗。");
+     } catch (e) { alert("連線失敗，無法下手。"); }
+  }
+
+  // 🟢 索要：開口跟 NPC 要東西，成功即轉入行囊
+  async function handleRequestItem(itemId, itemName, npcName) {
+    closeSystemModal('npc-inventory-overlay');
+    try {
+      const res = await gasRun({ action: "request_item_from_npc", pcId: pc.id, targetName: npcName, itemId: itemId });
+      if (res.success) narrate(res.aiPrompt);
+      else alert(res.message || "對方拒絕了。");
+    } catch (e) { alert("連線失敗，無法索要。"); }
+  }
+
+  // 🟢 要求丟棄：需好感100且已傾心，物品直接消失
+  async function handleRequestDiscard(itemId, itemName, npcName) {
+    closeSystemModal('npc-inventory-overlay');
+    try {
+      const res = await gasRun({ action: "request_discard_npc_item", pcId: pc.id, targetName: npcName, itemId: itemId });
+      if (res.success) narrate(res.aiPrompt);
+      else alert(res.message || "對方拒絕了。");
+    } catch (e) { alert("連線失敗，無法要求丟棄。"); }
   }
 
   // 🟢 索要：開口跟 NPC 要東西，成功即轉入行囊
@@ -486,7 +504,7 @@ function renderRecentLocs(recents = null) {
       document.getElementById('pavilion-intent').value = ""; 
   }
 
-  function requestPavilionQuest() {
+  async function requestPavilionQuest() {
     const typeSelect = document.getElementById('pavilion-reward-type');
     const typeValue = typeSelect.value;
     const intent = document.getElementById('pavilion-intent').value.trim();
@@ -501,25 +519,41 @@ function renderRecentLocs(recents = null) {
     }
 
     document.getElementById('pavilion-overlay').style.display = 'none';
-
-    let actionText = "";
-    let combatData = null;
     const intentStr = intent ? `(玩家個人傾向：${intent})` : '';
+    const story = document.getElementById('story');
 
     if (!isIntel) {
-        actionText = `【系統動作：玩家踏入情報集散地『聽風閣』，表示最近手頭緊，想接取一份「賺取銀兩」的懸賞委託${intentStr}。請天道化身情報販子發布任務，並將目標寫入 quests 中。】`;
-    } else {
-        // 🔴 不再提錢，純描述意圖，扣款交給 GAS 結構化處理
-        actionText = `【系統動作：玩家踏入『聽風閣』，指名打聽關於「${typeValue}」的精確情報${intentStr}。請天道根據天下奇珍情報或生成新奇遇，給出明確線索（東西在哪、在誰手上），同時將此線索登錄於 quests 中作為追蹤。】`;
-        combatData = { type: "buy_intel", intelType: typeValue };
+        // 接懸賞委託：仍走完整 play，因為任務內容需 AI 真正創作
+        const actionText = `【系統動作：玩家踏入情報集散地『聽風閣』，表示最近手頭緊，想接取一份「賺取銀兩」的懸賞委託${intentStr}。請天道化身情報販子發布任務，並將目標寫入 quests 中。】`;
+        story.innerHTML += `<div class="msg-player" style="border-color:#1e90ff; color:#1e90ff;"><b>【聽風閣】：</b>向閣主詢問是否有【賺取銀兩】的差事...</div>`;
+        story.scrollTop = story.scrollHeight;
+        send(actionText, true);
+        return;
     }
 
-    const story = document.getElementById('story');
-    const logMsg = isIntel ? `花費 50 兩銀子，向閣主打聽【${typeValue}】的下落...` : `向閣主詢問是否有【賺取銀兩】的差事...`;
-    story.innerHTML += `<div class="msg-player" style="border-color:#1e90ff; color:#1e90ff;"><b>【聽風閣】：</b>${logMsg}</div>`;
+    // 🟢 買情報：輕量直連，GAS 結構化扣款，AI 只負責想線索與敘事
+    story.innerHTML += `<div class="msg-player" style="border-color:#1e90ff; color:#1e90ff;"><b>【聽風閣】：</b>花費 50 兩銀子，向閣主打聽【${typeValue}】的下落...</div>`;
+    story.scrollTop = story.scrollHeight;
+    const loadId = "L" + Date.now();
+    story.insertAdjacentHTML('beforeend', `<div id="${loadId}" class="loading-text">天道演化中...</div>`);
     story.scrollTop = story.scrollHeight;
 
-    send(actionText, true, combatData);
+    try {
+        const res = await gasRun({ action: "buy_intel", pcId: pc.id, intelType: typeValue, intent: intent });
+        document.getElementById(loadId)?.remove();
+        if (res.success) {
+            let t = (res.text || "").replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n');
+            t = t.replace(/\n{2,}/g, "<br><br>").replace(/\n/g, "<br><br>");
+            story.insertAdjacentHTML('beforeend', `<div class="msg-ai" style="border-left:4px solid #1e90ff;"><b>【聽風閣・密報】</b>${t}</div>`);
+            story.scrollTop = story.scrollHeight;
+            syncData(true);
+        } else {
+            alert(res.message || "打探情報失敗。");
+        }
+    } catch (e) {
+        document.getElementById(loadId)?.remove();
+        alert("天道阻礙，打探情報失敗。");
+    }
 }
 
 
@@ -585,13 +619,13 @@ function renderRecentLocs(recents = null) {
       }
   }
 
-  function executeCraft() {
+  async function executeCraft() {
       const checkedBoxes = document.querySelectorAll('#craft-materials-list input[type="checkbox"]:checked');
       if (checkedBoxes.length === 0) {
           alert("必須至少投入一樣素材，否則無法開爐！");
           return;
       }
-      
+
       const method = document.getElementById('craft-method').value;
       const intent = document.getElementById('craft-intent').value.trim();
       if (!intent) {
@@ -606,17 +640,30 @@ function renderRecentLocs(recents = null) {
 
       document.getElementById('craft-overlay').style.display = 'none';
 
-      const payload = {
-          type: 'craft',
-          method: method,
-          intent: intent,
-          materials: materials
-      };
-      
       const matNames = materials.map(m => m.name).join('、');
-      const actionText = `【系統動作：玩家啟動了「${method}」陣法，將行囊中的「${matNames}」投入爐火之中。心中的意圖：「${intent}」。】`;
-      
-      send(actionText, true, payload);
+      const story = document.getElementById('story');
+      story.insertAdjacentHTML('beforeend', `<div class="msg-player"><b>【系統】：</b>啟動了「${method}」陣法，將行囊中的「${matNames}」投入爐火之中。心中的意圖：「${intent}」。</div>`);
+      story.scrollTop = story.scrollHeight;
+      const loadId = "L" + Date.now();
+      story.insertAdjacentHTML('beforeend', `<div id="${loadId}" class="loading-text">天道演化中...</div>`);
+      story.scrollTop = story.scrollHeight;
+
+      try {
+          const res = await gasRun({ action: "craft_item", pcId: pc.id, method: method, intent: intent, materials: materials });
+          document.getElementById(loadId)?.remove();
+          if (res.success) {
+              let t = (res.text || "").replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n');
+              t = t.replace(/\n{2,}/g, "<br><br>").replace(/\n/g, "<br><br>");
+              story.insertAdjacentHTML('beforeend', `<div class="msg-ai" style="border-left:4px solid #e91e63;"><b>【煉成・${res.rarity || ""}】</b>${t}<br><span style="color:#e91e63;">✨ 獲得「${res.itemName}」！</span></div>`);
+              story.scrollTop = story.scrollHeight;
+              syncData(true);
+          } else {
+              alert(res.message || "煉成失敗。");
+          }
+      } catch (e) {
+          document.getElementById(loadId)?.remove();
+          alert("天道阻礙，煉成失敗。");
+      }
   }
 
 
@@ -1564,12 +1611,13 @@ async function handleItemAction(action, itemId, itemName, itemType) {
       consumeItemViaGAS(itemId);
     }
     else {
-      // 2. 其他雜物/符咒/暗器：交給 GAS 刪除，並讓 AI 負責寫特效
+      // 2. 其他雜物/符咒/暗器：輕量直連，GAS 直接扣除，AI 只負責寫特效
       closeSystemModal('inventory-overlay');
-      const promptMsg = `【系統動作：玩家將「${itemName}」(類型:${itemType}) 消耗/施放了！系統底層已將物品扣除。請生動描寫使用的效果與周圍的反應！若是強行食用不可食之物，請描寫滑稽場面！★嚴禁輸出 items_used 或 items_lost！】`;
-      
-      // 🔴 帶上 combatData，讓後端 Router_Action.gs 的 case "use_item" 執行絕對刪除！
-      send(promptMsg, true, { type: "use_item", actionItemId: itemId, itemName: itemName });
+      try {
+        const res = await gasRun({ action: "use_item_self", pcId: pc.id, itemId: itemId, itemName: itemName });
+        if (res.success) { narrate(res.aiPrompt); syncData(true); }
+        else alert(res.message || "使用失敗。");
+      } catch (e) { alert("連線失敗，使用失敗。"); }
     }
   }
 }
@@ -1623,33 +1671,43 @@ async function handleItemAction(action, itemId, itemName, itemType) {
     })
     .catch(() => alert("天道阻礙，重新定義羈絆失敗。"));
 }
- function handleGiftAction(itemId, itemName, itemType) {
+ // 🟢 贈禮：輕量直連，GAS 裁定好感門檻與轉移，AI只負責補一段敘事
+ async function handleGiftAction(itemId, itemName, itemType) {
     if (!giftTargetNPC) return;
     const targetNpc = giftTargetNPC;
-    giftTargetNPC = null; 
+    giftTargetNPC = null;
     closeSystemModal('inventory-overlay');
-    
+
     const story = document.getElementById('story');
     story.innerHTML += `<div class="msg-player"><b>【系統】：</b>從行囊中取出「${itemName}」，雙手呈遞給「${targetNpc}」...</div>`;
     story.scrollTop = story.scrollHeight;
 
     let confession = "";
-    let newRelName = ""; // 🔴 新增：用來記錄妳賦予的專屬羈絆名稱
-    
+    let newRelName = ""; // 🔴 用來記錄妳賦予的專屬羈絆名稱
+
     if (itemType === "定情信物") {
       confession = prompt(`這可是「${itemName}」，你想對「${targetNpc}」訴說什麼深情告白？`);
       // 🔴 賦予命名權：送出信物後，強行改寫基礎關係！
-      newRelName = prompt(`信物送出後，你希望你們的關係轉變為何？\n(例如：道侶、愛妻、紅顏知己、劍侍)`) || "生死相許"; 
+      newRelName = prompt(`信物送出後，你希望你們的關係轉變為何？\n(例如：道侶、愛妻、紅顏知己、劍侍)`) || "生死相許";
     }
-    
-    let promptMsg = `【系統動作：玩家將「${itemName}」(類型:${itemType}) 贈予「${targetNpc}」。】`;
-    
-    if (itemType === "定情信物") {
-        promptMsg += `\n★【玩家深情告白】：${confession || "（凝視著對方，眼中有說不盡的柔情）"}`;
-    }
-    
-    // 🔴 將 newRelName 一併打包傳遞給後端的 combatData
-    send(promptMsg, true, { giftItemId: itemId, type: "gift", targetName: targetNpc, newRelName: newRelName });
+
+    try {
+      const res = await gasRun({ action: "gift_item", pcId: pc.id, targetName: targetNpc, giftItemId: itemId, newRelName: newRelName });
+      if (res.success) {
+        let promptMsg = res.aiPrompt;
+        if (itemType === "定情信物") {
+          promptMsg += `\n★【玩家深情告白】：${confession || "（凝視著對方，眼中有說不盡的柔情）"}`;
+        }
+        await narrate(promptMsg);
+        if (res.soulBound && res.soulBoundEventMsg) {
+          story.insertAdjacentHTML('beforeend', `<div class="msg-ai" style="border-left:4px solid #ffb6c1;">${res.soulBoundEventMsg}</div>`);
+          story.scrollTop = story.scrollHeight;
+        }
+        syncData(true);
+      } else {
+        alert(res.message || "贈禮失敗。");
+      }
+    } catch (e) { alert("連線失敗，贈禮失敗。"); }
   }
   
   async function submitBond() {
@@ -2080,7 +2138,6 @@ let plainTextContext = cleanText;
             </select>
           </div>`;
           html += `<button class="btn" style="border-color:#a52a2a; color:#a52a2a; font-weight:bold;" onclick="insertActionTag('攻擊', '${npcName}')">⚔️ 動手</button>`;
-          html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="executeInteract('speed')">🖐️ 偷竊</button>`;
           html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="insertActionTag('下毒', '${npcName}')">🧪 下毒</button>`;
           html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="insertActionTag('媚藥', '${npcName}')">🌸 媚藥</button>`;
       }
@@ -2091,27 +2148,6 @@ let plainTextContext = cleanText;
 
   function closeInteractMenu() {
       document.getElementById('interact-modal').style.display = 'none';
-  }
-
-  // 🔴 終極瘦身：因為只剩下偷竊不需要開道具欄，這個函數變得超簡短！
-  function executeInteract(type) {
-      closeInteractMenu();
-      let payloadCombatData = null;
-      let actionText = "";
-
-      // 只有偷竊 (speed) 還是靠這裡觸發
-      if (type === 'speed') {
-          payloadCombatData = { 
-              targetName: interactTarget, 
-              type: "speed",
-              stealItem: "財物" // 預設偷錢
-          };
-          actionText = `【系統動作：玩家暗中對「${interactTarget}」伸出第三隻手，企圖順手牽羊！】`;
-      } 
-
-      if (actionText) {
-          send(actionText, true, payloadCombatData);
-      }
   }
 
 // 🔮 遠端人物互動 (打聽 / 移動 / 飛書)
@@ -2146,12 +2182,13 @@ html += `<button class="btn" style="border-color:#9C27B0; color:#9C27B0; font-we
 
 
 
-function confirmExecute(npcName, cardId) {
+async function confirmExecute(npcName, cardId) {
   document.getElementById(cardId)?.remove();
-  send(`【系統動作：玩家對昏迷的「${npcName}」補刀處決。】`, true, {
-    targetName: npcName,
-    type: "execute"
-  });
+  try {
+    const res = await gasRun({ action: "execute_npc", pcId: pc.id, targetName: npcName });
+    if (res.success) { narrate(res.aiPrompt); syncData(true); }
+    else alert(res.message || "補刀失敗。");
+  } catch (e) { alert("連線失敗，補刀失敗。"); }
 }
 
 function spareNpc(npcName, cardId) {
@@ -3033,7 +3070,123 @@ document.getElementById('cultivate-count-text').innerHTML =
       setTimeout(() => {
           const formattedMsg = data.message.replace(/\n/g, '<br>');
           document.getElementById('dice-result-msg').innerHTML = formattedMsg;
-      }, 800); 
+      }, 800);
+  }
+
+  // ==========================================
+  // 🐎 天馬競速 (賠率/勝率寫死在GAS，僅敘述用AI)
+  // ==========================================
+  const HORSE_CONFIG = [
+    { id: 1, name: "特別周", tier: "強馬", payout: 1.8, color: "#ff4500" },
+    { id: 2, name: "無聲鈴鹿", tier: "強馬", payout: 1.8, color: "#ff8c00" },
+    { id: 3, name: "東海帝王", tier: "中馬", payout: 3.5, color: "#1e90ff" },
+    { id: 4, name: "大和赤驥", tier: "中馬", payout: 3.5, color: "#00bfff" },
+    { id: 5, name: "黃金船", tier: "黑馬", payout: 9, color: "#ffd700" },
+    { id: 6, name: "米浴", tier: "黑馬", payout: 9, color: "#9370db" }
+  ];
+  const HORSE_RACE_GOAL = 30;
+
+  function openRaceModal() {
+      toggleActionDrawer();
+      document.getElementById('horse-race-overlay').style.display = 'flex';
+      document.getElementById('race-result-msg').innerHTML = "請選定戰馬下注，賽事即將開始！<br><span style='font-size:12px; color:#888;'>單注限額：100 ~ 10,000 兩白銀</span>";
+
+      const currentMoney = document.getElementById('ui-money').innerText || "0";
+      document.getElementById('race-current-money').innerText = currentMoney;
+
+      renderRaceTrack();
+      renderRaceHorseButtons();
+  }
+
+  function renderRaceTrack() {
+      const track = document.getElementById('race-track');
+      track.innerHTML = HORSE_CONFIG.map(h => `
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:70px; font-size:12px; color:${h.color}; text-align:right;">${h.name}</div>
+          <div style="flex:1; background:#222; border:1px solid #444; border-radius:4px; height:16px; position:relative; overflow:hidden;">
+            <div id="race-bar-${h.id}" style="height:100%; width:0%; background:${h.color}; transition: width 0.25s linear;"></div>
+          </div>
+        </div>
+      `).join('');
+  }
+
+  function renderRaceHorseButtons() {
+      const container = document.getElementById('race-horse-buttons');
+      container.innerHTML = HORSE_CONFIG.map(h => `
+        <button class="btn" onclick="lockBtn(event, () => placeRaceBet(${h.id}))" style="border-color:${h.color}; color:${h.color}; flex: 1 0 45%;">${h.name} (${h.tier} 1賠${h.payout})</button>
+      `).join('');
+  }
+
+  function placeRaceBet(horseId) {
+      const raceBtns = document.querySelectorAll('#race-horse-buttons .btn');
+      raceBtns.forEach(b => b.disabled = true);
+
+      const betInput = document.getElementById('race-bet-amount').value;
+      const betAmount = parseInt(betInput);
+
+      if (isNaN(betAmount) || betAmount < 100 || betAmount > 10000) {
+          raceBtns.forEach(b => b.disabled = false);
+          alert("大俠，天馬競速的規矩是：單次下注必須在「100 兩」至「10,000 兩」之間！");
+          return;
+      }
+
+      const currentMoney = parseInt(document.getElementById('ui-money').innerText) || 0;
+      if (currentMoney < betAmount) {
+          raceBtns.forEach(b => b.disabled = false);
+          alert("囊中羞澀！大俠，你身上的銀兩不夠啊，請先去賺點盤纏再來吧。");
+          return;
+      }
+
+      renderRaceTrack();
+      const betHorse = HORSE_CONFIG.find(h => h.id === horseId);
+      document.getElementById('race-result-msg').innerHTML = `戰馬奔騰中... 你押了 <span style="color:#fff;">${betAmount}</span> 兩於【<span style="color:${betHorse.color};">${betHorse.name}</span>】`;
+
+      gasRun({ action: "play_horse_race", pcId: pc.id, horseId: horseId, betAmount: betAmount })
+        .then(res => {
+            if (!res.success) {
+                raceBtns.forEach(b => b.disabled = false);
+                alert(res.message);
+                document.getElementById('race-result-msg').innerText = "天道異常，賭局作廢！";
+                return;
+            }
+            animateRaceLog(res.log, () => {
+                raceBtns.forEach(b => b.disabled = false);
+                const resultColor = res.isWin ? '#32cd32' : '#ff4500';
+                const resultLine = res.isWin
+                  ? `🎉 「${res.winnerName}」率先衝線！恭喜中獎，贏得 ${res.winnings - betAmount} 兩白銀！`
+                  : `💀 「${res.winnerName}」率先衝線。你的愛馬未能奪冠，輸了 ${betAmount} 兩。`;
+                document.getElementById('race-result-msg').innerHTML =
+                  `<span style="color:${resultColor};">${resultLine}</span><br><br>${res.narration}`;
+
+                if (res.statusString) {
+                    localStorage.setItem('kyushu_last_status', res.statusString);
+                    updateUI(res.statusString.split('§'));
+                    document.getElementById('race-current-money').innerText = res.statusString.split('§')[1];
+                }
+            });
+        })
+        .catch(err => {
+            raceBtns.forEach(b => b.disabled = false);
+            alert("天道阻礙，賭局無效！請檢查連線。");
+            document.getElementById('race-result-msg').innerText = "連線中斷，賭局未成立。";
+        });
+  }
+
+  function animateRaceLog(log, onDone) {
+      let step = 0;
+      const interval = setInterval(() => {
+          const positions = log[step];
+          HORSE_CONFIG.forEach((h, idx) => {
+              const pct = Math.min(100, (positions[idx] / HORSE_RACE_GOAL) * 100);
+              const bar = document.getElementById(`race-bar-${h.id}`);
+              if (bar) bar.style.width = pct + "%";
+          });
+          step++;
+          if (step >= log.length) {
+              clearInterval(interval);
+              if (onDone) onDone();
+          }
+      }, 220);
   }
 
  // ==========================================
