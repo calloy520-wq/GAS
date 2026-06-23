@@ -991,9 +991,12 @@ function actionRest(userData, pcId, sheets) {
   pcData[pIdx][COL.PC.MONEY] = currentMoney - 100;
   const normalStatus = JSON.stringify({ "衣服": "穿戴整齊", "姿勢": "平躺歇息", "負面": "無", "顏面": "氣息平穩" });
   const pcName = pcData[pIdx][COL.PC.NAME];
+  const pcLoc = String(pcData[pIdx][COL.PC.LOC] || "").trim();
   let healedNames = [pcName];
 
   const pMax = calculateMaxStats(pcData[pIdx][COL.PC.REALM], pcData[pIdx][COL.PC.CON], pcData[pIdx][COL.PC.INT]);
+  const prevHp = parseInt(pcData[pIdx][COL.PC.HP]) || 0;
+  const wasInjured = prevHp < pMax.hp; // 🔴 記錄修練前是否真有掛彩，避免AI硬掰「傷勢痊癒」
   pcData[pIdx][COL.PC.MAX_HP] = pMax.hp; pcData[pIdx][COL.PC.MAX_MP] = pMax.mp;
   pcData[pIdx][COL.PC.HP] = pMax.hp; pcData[pIdx][COL.PC.MP] = pMax.mp;
   pcData[pIdx][COL.PC.STATUS] = normalStatus;
@@ -1010,9 +1013,19 @@ function actionRest(userData, pcId, sheets) {
       }
     });
   }
+
+  // 🔴 同地但非同行的「圍觀者」也要告知AI，避免敘事憑空冒人或無視現場真實人物
+  const bystanderNames = pcData
+    .filter(r => r[COL.PC.ID] != pcId && !String(r[COL.PC.ID]).startsWith("DEAD_") &&
+      String(r[COL.PC.LOC]).trim() === pcLoc && !healedNames.includes(r[COL.PC.NAME]))
+    .map(r => r[COL.PC.NAME]);
+
   sheets.pc.getRange(1, 1, pcData.length, pcData[0].length).setValues(pcData);
   sheets.log.appendRow([new Date(), pcId, `【系統】花費了 100 銀兩，${healedNames.join("與")} 就地休養，狀態回歸平穩。`, pcData[pIdx][COL.PC.LOC]]);
-  return JSON.stringify({ success: true, statusString: getFreshStatusString(pcId, pIdx, sheets), healedNames: healedNames });
+  return JSON.stringify({
+    success: true, statusString: getFreshStatusString(pcId, pIdx, sheets), healedNames: healedNames,
+    loc: pcLoc, wasInjured: wasInjured, bystanderNames: bystanderNames
+  });
 }
 
 function actionGetRumors(userData, pcId, sheets) {

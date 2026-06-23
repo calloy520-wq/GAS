@@ -2371,12 +2371,18 @@ document.getElementById('cultivate-count-text').innerHTML =
     if (data.success && data.statusString) {
       localStorage.setItem('kyushu_last_status', data.statusString); 
       updateUI(data.statusString.split('§'));
-      let promptMsg = "";
+      const locStr = data.loc ? `在『${data.loc}』` : "就地";
+      let coreMsg = "";
       if (data.healedNames && data.healedNames.length > 1) {
-        promptMsg = `【純敘事】我與隊友『${data.healedNames.join("、")}』就地休養，氣血已然補滿。請生動描繪我們互相護法、吐納調息的溫馨畫面。`;
+        coreMsg = `我與隊友『${data.healedNames.join("、")}』${locStr}盤膝休養，氣血已然補滿`;
       } else {
-        promptMsg = "【純敘事】我就地盤膝休養，氣血已然補滿。請生動描繪我吐納天地靈氣、傷勢痊癒的畫面。";
+        coreMsg = `我${locStr}盤膝休養，氣血已然補滿`;
       }
+      let injuryHint = data.wasInjured ? "，先前的傷勢也已大致痊癒" : "（先前並無重傷，純粹是調息養氣，請勿描寫成大難痊癒）";
+      let bystanderHint = (data.bystanderNames && data.bystanderNames.length > 0)
+        ? `現場還有『${data.bystanderNames.join("、")}』在旁，他們並未一同休養，敘事請合理帶到他們的存在或反應，不要視而不見。`
+        : "現場除了休養者外沒有其他人物，請勿憑空捏造路人或對話對象。";
+      const promptMsg = `【純敘事】${coreMsg}${injuryHint}。${bystanderHint}請生動描繪吐納調息的畫面，地點與在場人物務必與上述設定一致。`;
       narrate(promptMsg);
     } else {
       alert(data.message || "休養失敗。");
