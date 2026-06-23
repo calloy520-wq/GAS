@@ -385,9 +385,15 @@ function renderRecentLocs(recents = null) {
             <div class="npc-card" style="border-left: 3px solid #4682b4; padding-left: 10px; margin-bottom:12px;">
               <b style="color: #4682b4;">${item.name}</b> <span style="font-size:11px; color:#666;">(${item.type})</span><br>
               <small style="color: #553311; display:block; margin-bottom:8px;">描述：${item.desc}</small>
-              <!-- 🔴 修正：把 item.id 傳入 attemptSteal -->
-              <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#800080; color:#800080;" 
-                onclick="attemptSteal('${item.id}', '${item.name}', '${npcName}')">✋ 妙手空空 (偷竊)</button>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <!-- 🔴 修正：把 item.id 傳入 attemptSteal -->
+                <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#800080; color:#800080;"
+                  onclick="attemptSteal('${item.id}', '${item.name}', '${npcName}')">✋ 妙手空空 (偷竊)</button>
+                <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#2e8b57; color:#2e8b57;"
+                  onclick="lockBtn(event, () => handleRequestItem('${item.id}', '${item.name.replace(/'/g, "\\'")}', '${npcName}'))">📥 索要</button>
+                <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#a52a2a; color:#a52a2a;"
+                  onclick="lockBtn(event, () => handleRequestDiscard('${item.id}', '${item.name.replace(/'/g, "\\'")}', '${npcName}'))">🗑️ 要求丟棄</button>
+              </div>
             </div>
           `).join("");
        } else {
@@ -407,6 +413,26 @@ function renderRecentLocs(recents = null) {
          stealItemName: itemName // 留著給 AI 寫劇情用的名字
      };
      send(`【系統動作：玩家暗中將手伸向「${npcName}」，企圖偷走其身上的「${itemName}」。】`, true, combatData);
+  }
+
+  // 🟢 索要：開口跟 NPC 要東西，成功即轉入行囊
+  async function handleRequestItem(itemId, itemName, npcName) {
+    closeSystemModal('npc-inventory-overlay');
+    try {
+      const res = await gasRun({ action: "request_item_from_npc", pcId: pc.id, targetName: npcName, itemId: itemId });
+      if (res.success) narrate(res.aiPrompt);
+      else alert(res.message || "對方拒絕了。");
+    } catch (e) { alert("連線失敗，無法索要。"); }
+  }
+
+  // 🟢 要求丟棄：需好感100且已傾心，物品直接消失
+  async function handleRequestDiscard(itemId, itemName, npcName) {
+    closeSystemModal('npc-inventory-overlay');
+    try {
+      const res = await gasRun({ action: "request_discard_npc_item", pcId: pc.id, targetName: npcName, itemId: itemId });
+      if (res.success) narrate(res.aiPrompt);
+      else alert(res.message || "對方拒絕了。");
+    } catch (e) { alert("連線失敗，無法要求丟棄。"); }
   }
 
   function closeSystemModal(modalId) {

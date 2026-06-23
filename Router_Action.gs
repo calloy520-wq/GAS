@@ -28,6 +28,8 @@ const ActionRouter = {
   "dismiss_party": actionDismissParty,
   "join_party": actionJoinParty,
   "inspect_npc": actionInspectNpc,
+  "request_item_from_npc": actionRequestItemFromNpc,
+  "request_discard_npc_item": actionRequestDiscardNpcItem,
   "get_available_gear": actionGetAvailableGear,
   "equip_gear": actionEquipGear,
   "get_full_status": actionGetFullStatus,
@@ -701,6 +703,95 @@ function actionInspectNpc(userData, pcId, sheets) {
   // 🔴 窺探直接成功：偵查動作，風險留給真正動手偷
   const itemData = sheets.item ? sheets.item.getDataRange().getValues() : [];
   return JSON.stringify({ success: true, data: itemData.slice(1).filter(r => r[COL.ITEM.OWNER] === npcRow[COL.PC.ID]).map(r => ({ id: r[COL.ITEM.ID], name: r[COL.ITEM.NAME], type: r[COL.ITEM.TYPE], desc: r[COL.ITEM.DESC] })) });
+}
+
+// 🟢 索要：開口向 NPC 要求一件物品，直接轉入玩家行囊(受玩家背包上限限制)
+function actionRequestItemFromNpc(userData, pcId, sheets) {
+  const { targetName, itemId } = userData;
+  let pcData = sheets.pc.getDataRange().getValues();
+  const pIdx = pcData.findIndex(r => r[COL.PC.ID] == pcId);
+  if (pIdx === -1) return JSON.stringify({ success: false, message: "查無此人命格。" });
+  const pName = pcData[pIdx][COL.PC.NAME];
+  const pLoc = String(pcData[pIdx][COL.PC.LOC]).trim();
+
+  const nIdx = pcData.findIndex(r => r[COL.PC.ID] != pcId && !String(r[COL.PC.ID]).startsWith("DEAD_") &&
+    String(r[COL.PC.LOC]).trim() === pLoc && String(r[COL.PC.NAME]).includes(targetName));
+  if (nIdx === -1) return JSON.stringify({ success: false, message: "對方已不在場。" });
+  const npcRow = pcData[nIdx];
+  const npcName = npcRow[COL.PC.NAME];
+
+  let itemData = sheets.item.getDataRange().getValues();
+  const iIdx = itemData.findIndex(r => r[COL.ITEM.ID] === itemId && String(r[COL.ITEM.OWNER]) === String(npcRow[COL.PC.ID]));
+  if (iIdx === -1) return JSON.stringify({ success: false, message: "對方身上找不到此物。" });
+  const itemName = itemData[iIdx][COL.ITEM.NAME];
+
+  const equipped = [npcRow[COL.PC.WEP], npcRow[COL.PC.ARM], npcRow[COL.PC.ACC1], npcRow[COL.PC.ACC2]].map(x => String(x || "").trim());
+  if (equipped.includes(String(itemId).trim())) {
+    return JSON.stringify({ success: false, message: `「${itemName}」正裝備在「${npcName}」身上，無法索要。` });
+  }
+
+  const bagCount = itemData.filter(r => String(r[COL.ITEM.OWNER]) === String(pcId) && String(r[COL.ITEM.LOC2]).trim() !== "倉庫").length;
+  if (bagCount >= MAX_BAG_SIZE) return JSON.stringify({ success: false, message: `行囊已滿（${MAX_BAG_SIZE}/${MAX_BAG_SIZE}），請先清理包包！` });
+
+  sheets.item.getRange(iIdx + 1, COL.ITEM.OWNER + 1).setValue(pcId);
+
+  const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家開口向「${npcName}」索要「${itemName}」，對方已答應交出此物（結果已定，禁止改變）。請描寫玩家開口的話術與「${npcName}」交出物品時的反應，語氣務必貼合對方性格與雙方關係。`);
+  return JSON.stringify({ success: true, aiPrompt: aiPrompt, itemName: itemName, npcName: npcName });
+}
+
+// 🟢 要求丟棄：需與該 NPC 好感100且已傾心，方可要求對方丟棄一件物品(物品直接消失，不轉入玩家)
+function actionRequestDiscardNpcItem(userData, pcId, sheets) {
+  const { targetName, itemId } = userData;
+  let pcData = sheets.pc.getDataRange().getValues();
+  const pIdx = pcData.findIndex(r => r[COL.PC.ID] == pcId);
+  if (pIdx === -1) return JSON.stringify({ success: false, message: "查無此人命格。" });
+  const pName = pcData[pIdx][COL.PC.NAME];
+  const pLoc = String(pcData[pIdx][COL.PC.LOC]).trim();
+
+  const nIdx = pcData.findIndex(r => r[COL.PC.ID] != pcId && !String(r[COL.PC.ID]).startsWith("DEAD_") &&
+    String(r[COL.PC.LOC]).trim() === pLoc && String(r[COL.PC.NAME]).includes(targetName));
+  if (nIdx === -1) return JSON.stringify({ success: false, message: "對方已不在場。" });
+  const npcRow = pcData[nIdx];
+  const npcName = npcRow[COL.PC.NAME];
+
+  const relData = sheets.rel ? sheets.rel.getDataRange().getValues() : [];
+  const rIdx = relData.findIndex(r => r[COL.REL.PC] === pName && r[COL.REL.NPC] === npcName);
+  const relRow = rIdx !== -1 ? relData[rIdx] : null;
+  if ((relRow ? parseInt(relRow[COL.REL.FAV]) || 0 : 0) < 100 || !(relRow ? String(relRow[COL.REL.TAG]) : "").includes("(已傾心)")) {
+    return JSON.stringify({ success: false, message: `「${npcName}」對妳尚未全心託付（需好感 100 且已傾心），不肯讓妳做主丟棄她的東西。` });
+  }
+
+  let itemData = sheets.item.getDataRange().getValues();
+  const iIdx = itemData.findIndex(r => r[COL.ITEM.ID] === itemId && String(r[COL.ITEM.OWNER]) === String(npcRow[COL.PC.ID]));
+  if (iIdx === -1) return JSON.stringify({ success: false, message: "對方身上找不到此物。" });
+  const itemName = itemData[iIdx][COL.ITEM.NAME];
+
+  const equipped = [npcRow[COL.PC.WEP], npcRow[COL.PC.ARM], npcRow[COL.PC.ACC1], npcRow[COL.PC.ACC2]].map(x => String(x || "").trim());
+  if (equipped.includes(String(itemId).trim())) {
+    return JSON.stringify({ success: false, message: `「${itemName}」正裝備在「${npcName}」身上，無法丟棄。` });
+  }
+
+  sheets.item.deleteRow(iIdx + 1);
+
+  const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家要求「${npcName}」丟棄「${itemName}」，對方因對玩家已是全心傾心，依言照辦、親手丟棄了此物（結果已定，禁止改變）。請描寫玩家開口的話術與「${npcName}」依言丟棄物品時的反應，語氣務必貼合對方性格與雙方深厚關係。`);
+  return JSON.stringify({ success: true, aiPrompt: aiPrompt, itemName: itemName, npcName: npcName });
+}
+
+// 🔹 共用：組裝含地點/性格/關係/近期因果的提示詞，避免索要/丟棄敘事出戲
+function buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, instructionStr) {
+  const npcName = npcRow[COL.PC.NAME];
+  const relData = sheets.rel ? sheets.rel.getDataRange().getValues() : [];
+  const relRow = relData.find(r => r[COL.REL.PC] === pName && r[COL.REL.NPC] === npcName);
+  const prefArr = String(npcRow[COL.PC.PREF] || "").split('、');
+  const traitArr = String(npcRow[COL.PC.TRAIT] || "").split('、');
+  const npcCardStr = `【${npcName}】境界:${npcRow[COL.PC.REALM] || "凡人"} | 性格:[表象]${prefArr[0] || "無"} [內裡]${prefArr[1] || "無"} | 特徵:${traitArr[1] || "無"} | 與玩家關係:${relRow ? relRow[COL.REL.TAG] : "萍水相逢"}(好感:${relRow ? relRow[COL.REL.FAV] : 0})`;
+
+  const allLogs = sheets.log ? sheets.log.getDataRange().getValues() : [];
+  const recentLogStr = allLogs.filter(r => String(r[2]).includes(pName) || String(r[2]).includes(npcName)).slice(-5).map(r => `${r[2]}`).join("\n") || "（尚無相關因果記錄）";
+
+  return `【場景】玩家『${pName}』目前位於『${pLoc}』。\n【近期因果】\n${recentLogStr}\n【對象資料】\n${npcCardStr}\n\n` +
+    `【系統事件·已裁定，嚴禁更改任何結果】${instructionStr}\n` +
+    `★【鐵律】嚴禁輸出任何 items_gained、items_transferred、money_transferred 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！`;
 }
 
 function actionGetAvailableGear(userData, pcId, sheets) {
