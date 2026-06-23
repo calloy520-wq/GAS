@@ -2137,9 +2137,9 @@ let plainTextContext = cleanText;
               <option value="10">x10</option>
             </select>
           </div>`;
-          html += `<button class="btn" style="border-color:#a52a2a; color:#a52a2a; font-weight:bold;" onclick="insertActionTag('攻擊', '${npcName}')">⚔️ 動手</button>`;
-          html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="insertActionTag('下毒', '${npcName}')">🧪 下毒</button>`;
-          html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="insertActionTag('媚藥', '${npcName}')">🌸 媚藥</button>`;
+          html += `<button class="btn" style="border-color:#a52a2a; color:#a52a2a; font-weight:bold;" onclick="closeInteractMenu(); insertActionTag('攻擊', '${npcName}')">⚔️ 動手</button>`;
+          html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="closeInteractMenu(); insertActionTag('下毒', '${npcName}')">🧪 下毒</button>`;
+          html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="closeInteractMenu(); insertActionTag('媚藥', '${npcName}')">🌸 媚藥</button>`;
       }
 
       document.getElementById('interact-dynamic-buttons').innerHTML = html;
