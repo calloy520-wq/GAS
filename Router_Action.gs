@@ -3126,11 +3126,11 @@ function actionMultiAttack(userData, pcId, sheets) {
     const nRoll = Math.floor(Math.random() * 20) + 1;
     const pMod = Math.round(((pTotal.STR || 0) + (pTotal.AGI || 0)) / 6);
 
-    // 🔴 中毒/媚惑狀態懲罰：各自獨立、各 -5，兩者皆中則 -10
+    // 🔴 中毒/媚惑狀態懲罰：各自獨立、各 -3，兩者皆中則 -6
     const nDebuffRaw = String(parseVisibleStatus(pcData[nIdx][COL.PC.STATUS])["負面"] || "");
     const nHasPoison = nDebuffRaw.includes("中毒");
     const nHasCharm = nDebuffRaw.includes("媚惑");
-    const nDebuffPenalty = (nHasPoison ? 5 : 0) + (nHasCharm ? 5 : 0);
+    const nDebuffPenalty = (nHasPoison ? 3 : 0) + (nHasCharm ? 3 : 0);
     const nMod = Math.round(((nTotal.CON || 0) + (nTotal.AGI || 0)) / 6) - nDebuffPenalty;
 
     let pScore = pRoll + pMod;
