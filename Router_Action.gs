@@ -19,6 +19,9 @@ const ActionRouter = {
   "inventory": actionInventory,
   "discard_item": actionDiscardItem,
   "sell_item": actionSellItem,
+  "warehouse_get": actionWarehouseGet,
+  "warehouse_store": actionWarehouseStore,
+  "warehouse_retrieve": actionWarehouseRetrieve,
   "estate_get": actionEstateGet,
   "estate_harvest_all": actionEstateHarvestAll,
   "play_dice": actionPlayDice,
@@ -469,7 +472,7 @@ function actionInventory(userData, pcId, sheets) {
   if (!sheets.item) return JSON.stringify({ success: false, message: "琳琅表不存在" });
   const data = sheets.item.getDataRange().getValues();
   return JSON.stringify({
-    success: true, data: data.slice(1).filter(r => r[COL.ITEM.OWNER] == pcId).map(r => {
+    success: true, data: data.slice(1).filter(r => r[COL.ITEM.OWNER] == pcId && String(r[COL.ITEM.LOC2]).trim() !== "倉庫").map(r => {
       let attrArr = [];
       if (parseInt(r[COL.ITEM.STR])) attrArr.push(`臂力+${r[COL.ITEM.STR]}`);
       if (parseInt(r[COL.ITEM.CON])) attrArr.push(`根骨+${r[COL.ITEM.CON]}`);
@@ -479,6 +482,67 @@ function actionInventory(userData, pcId, sheets) {
       return { id: r[COL.ITEM.ID] || r[COL.ITEM.NAME], name: r[COL.ITEM.NAME], type: r[COL.ITEM.TYPE], desc: r[COL.ITEM.DESC], stats: attrArr.join("、") };
     }), max: MAX_BAG_SIZE
   });
+}
+
+// 🟢 仙府倉庫：取出倉庫清單(只在開啟時讀取，不影響背包格數)
+function actionWarehouseGet(userData, pcId, sheets) {
+  if (!sheets.item) return JSON.stringify({ success: false, message: "琳琅表不存在" });
+  const data = sheets.item.getDataRange().getValues();
+  return JSON.stringify({
+    success: true, data: data.slice(1).filter(r => r[COL.ITEM.OWNER] == pcId && String(r[COL.ITEM.LOC2]).trim() === "倉庫").map(r => {
+      let attrArr = [];
+      if (parseInt(r[COL.ITEM.STR])) attrArr.push(`臂力+${r[COL.ITEM.STR]}`);
+      if (parseInt(r[COL.ITEM.CON])) attrArr.push(`根骨+${r[COL.ITEM.CON]}`);
+      if (parseInt(r[COL.ITEM.AGI])) attrArr.push(`身法+${r[COL.ITEM.AGI]}`);
+      if (parseInt(r[COL.ITEM.INT])) attrArr.push(`神識+${r[COL.ITEM.INT]}`);
+      if (parseInt(r[COL.ITEM.LUK])) attrArr.push(`福緣+${r[COL.ITEM.LUK]}`);
+      return { id: r[COL.ITEM.ID] || r[COL.ITEM.NAME], name: r[COL.ITEM.NAME], type: r[COL.ITEM.TYPE], desc: r[COL.ITEM.DESC], stats: attrArr.join("、") };
+    }), max: MAX_WAREHOUSE_SIZE
+  });
+}
+
+// 🟢 仙府倉庫：把背包道具存入倉庫(裝備中的道具禁止存入)
+function actionWarehouseStore(userData, pcId, sheets) {
+  const { itemId } = userData;
+  if (!sheets.item) return JSON.stringify({ success: false, message: "琳琅表不存在" });
+
+  let pcData = sheets.pc.getDataRange().getValues();
+  const pIdx = pcData.findIndex(r => r[COL.PC.ID] == pcId);
+  if (pIdx === -1) return JSON.stringify({ success: false, message: "查無此人命格。" });
+
+  const pcRow = pcData[pIdx];
+  const equipped = [pcRow[COL.PC.WEP], pcRow[COL.PC.ARM], pcRow[COL.PC.ACC1], pcRow[COL.PC.ACC2]]
+    .map(x => String(x || "").trim());
+
+  let itemData = sheets.item.getDataRange().getValues();
+  const iIdx = itemData.findIndex(r => r[COL.ITEM.ID] === itemId && String(r[COL.ITEM.OWNER]) === String(pcId));
+  if (iIdx === -1) return JSON.stringify({ success: false, message: "行囊中找不到此物。" });
+
+  const itemName = String(itemData[iIdx][COL.ITEM.NAME]).trim();
+  if (equipped.includes(String(itemId).trim())) return JSON.stringify({ success: false, message: "裝備中的道具無法存入倉庫，請先卸下！" });
+
+  const warehouseCount = itemData.filter(r => String(r[COL.ITEM.OWNER]) === String(pcId) && String(r[COL.ITEM.LOC2]).trim() === "倉庫").length;
+  if (warehouseCount >= MAX_WAREHOUSE_SIZE) return JSON.stringify({ success: false, message: "倉庫已滿，無法再存入！" });
+
+  sheets.item.getRange(iIdx + 1, COL.ITEM.LOC2 + 1).setValue("倉庫");
+  return JSON.stringify({ success: true, message: `已將「${itemName}」存入仙府倉庫。` });
+}
+
+// 🟢 仙府倉庫：取出道具回背包(受背包格數上限限制)
+function actionWarehouseRetrieve(userData, pcId, sheets) {
+  const { itemId } = userData;
+  if (!sheets.item) return JSON.stringify({ success: false, message: "琳琅表不存在" });
+
+  let itemData = sheets.item.getDataRange().getValues();
+  const iIdx = itemData.findIndex(r => r[COL.ITEM.ID] === itemId && String(r[COL.ITEM.OWNER]) === String(pcId) && String(r[COL.ITEM.LOC2]).trim() === "倉庫");
+  if (iIdx === -1) return JSON.stringify({ success: false, message: "倉庫中找不到此物。" });
+
+  const bagCount = itemData.filter(r => String(r[COL.ITEM.OWNER]) === String(pcId) && String(r[COL.ITEM.LOC2]).trim() !== "倉庫").length;
+  if (bagCount >= MAX_BAG_SIZE) return JSON.stringify({ success: false, message: `行囊已滿（${MAX_BAG_SIZE}/${MAX_BAG_SIZE}），請先清理包包！` });
+
+  const itemName = itemData[iIdx][COL.ITEM.NAME];
+  sheets.item.getRange(iIdx + 1, COL.ITEM.LOC2 + 1).setValue("");
+  return JSON.stringify({ success: true, message: `已將「${itemName}」取出至行囊。` });
 }
 
 function actionDiscardItem(userData, pcId, sheets) {
@@ -1267,7 +1331,7 @@ function actionClaimMailItem(userData, pcId, sheets) {
   if (iIdx === -1) return JSON.stringify({ success: false, message: "物品已遺失在虛空之中。" });
 
   // 檢查包包有沒有滿
-  const currentBagCount = itemData.filter(r => String(r[COL.ITEM.OWNER]) === String(pcId)).length;
+  const currentBagCount = itemData.filter(r => String(r[COL.ITEM.OWNER]) === String(pcId) && String(r[COL.ITEM.LOC2]).trim() !== "倉庫").length;
   if (currentBagCount >= MAX_BAG_SIZE) return JSON.stringify({ success: false, message: "行囊已滿，無法領取！" });
 
   // 將物品所有權轉交給玩家
@@ -1967,7 +2031,7 @@ ${d20Context}
 
 
 
-    let bagCounts = {}; itemData.forEach(it => { bagCounts[it[COL.ITEM.OWNER]] = (bagCounts[it[COL.ITEM.OWNER]] || 0) + 1; });
+    let bagCounts = {}; itemData.forEach(it => { if (String(it[COL.ITEM.LOC2]).trim() === "倉庫") return; bagCounts[it[COL.ITEM.OWNER]] = (bagCounts[it[COL.ITEM.OWNER]] || 0) + 1; });
     let overLimitWarnings = [];
     let grantedNamesThisTurn = {}; // 🔴 同回合內也要防重複：key = ownerId|name
     if (aiData.items_gained && Array.isArray(aiData.items_gained)) {
@@ -3022,13 +3086,17 @@ function actionMultiAttack(userData, pcId, sheets) {
       if (success) {
         let vs = parseVisibleStatus(pcData[nIdx][COL.PC.STATUS]);
         const debuffName = isPoison ? "中毒" : "媚惑";
-        // 🔴 同類藥效可疊加層數(上限3層)，每層戰鬥骰 -2，異類則覆蓋重新計層
-        const curMatch = String(vs["負面"] || "").match(/^(中毒|媚惑)\((\d)\)$/);
-        const tier = (curMatch && curMatch[1] === debuffName) ? Math.min(parseInt(curMatch[2], 10) + 1, 3) : 1;
-        vs["負面"] = `${debuffName}(${tier})`;
+        // 🔴 中毒/媚惑各自獨立、不分層，命中即生效(重複下藥不加成，純粹維持/覆蓋)
+        const curRaw = String(vs["負面"] || "");
+        const alreadyHas = curRaw.includes(debuffName);
+        const otherHas = curRaw.includes(isPoison ? "媚惑" : "中毒");
+        const hasPoisonNow = isPoison ? true : otherHas;
+        const hasCharmNow = isPoison ? otherHas : true;
+        vs["負面"] = (hasPoisonNow ? "中毒" : "") + (hasCharmNow ? "媚惑" : "");
         pcData[nIdx][COL.PC.STATUS] = JSON.stringify(vs);
-        const tierFlavor = ["輕度", "中度", "重度"][tier - 1];
-        resultMsg = `「${usedItemName}」奏效，「${npcName}」${tierFlavor}${debuffName}加深！`;
+        if (alreadyHas) resultMsg = `「${usedItemName}」再次奏效，「${npcName}」的「${debuffName}」效力持續壓制！`;
+        else if (otherHas) resultMsg = `「${usedItemName}」奏效，「${npcName}」如今「中毒」與「媚惑」雙重纏身！`;
+        else resultMsg = `「${usedItemName}」奏效，「${npcName}」中了「${debuffName}」！`;
       } else {
         resultMsg = `「${npcName}」識破了這一手，「${usedItemName}」未能奏效！`;
       }
@@ -3058,12 +3126,12 @@ function actionMultiAttack(userData, pcId, sheets) {
     const nRoll = Math.floor(Math.random() * 20) + 1;
     const pMod = Math.round(((pTotal.STR || 0) + (pTotal.AGI || 0)) / 6);
 
-    // 🔴 中毒/媚惑狀態懲罰：層數越高扣越多(每層 -2，上限3層 = -6)
-    const nDebuffRaw = parseVisibleStatus(pcData[nIdx][COL.PC.STATUS])["負面"];
-    const nDebuffMatch = String(nDebuffRaw || "").match(/^(中毒|媚惑)\((\d)\)$/);
-    const nDebuffName = nDebuffMatch ? nDebuffMatch[1] : "";
-    const nDebuffTier = nDebuffMatch ? parseInt(nDebuffMatch[2], 10) : 0;
-    const nMod = Math.round(((nTotal.CON || 0) + (nTotal.AGI || 0)) / 6) - nDebuffTier * 2;
+    // 🔴 中毒/媚惑狀態懲罰：各自獨立、各 -5，兩者皆中則 -10
+    const nDebuffRaw = String(parseVisibleStatus(pcData[nIdx][COL.PC.STATUS])["負面"] || "");
+    const nHasPoison = nDebuffRaw.includes("中毒");
+    const nHasCharm = nDebuffRaw.includes("媚惑");
+    const nDebuffPenalty = (nHasPoison ? 5 : 0) + (nHasCharm ? 5 : 0);
+    const nMod = Math.round(((nTotal.CON || 0) + (nTotal.AGI || 0)) / 6) - nDebuffPenalty;
 
     let pScore = pRoll + pMod;
     let nScore = nRoll + nMod;
@@ -3118,9 +3186,14 @@ function actionMultiAttack(userData, pcId, sheets) {
     else if (critFlavor === "player_fumble") critText = "玩家骰出【大失敗】，招式露出致命破綻，被對方狠狠教訓！";
     else if (critFlavor === "npc_fumble") critText = `「${npcName}」骰出【大失敗】，露出天大破綻，被玩家打得毫無還手之力！`;
 
+    let debuffHint = "";
+    if (nHasPoison && nHasCharm) debuffHint = `（「${npcName}」身上中毒與媚惑雙重纏身，反應遲滯，可在敘述中帶到這點）\n`;
+    else if (nHasPoison) debuffHint = `（「${npcName}」身上中毒尚未消退，反應遲滯，可在敘述中帶到這點）\n`;
+    else if (nHasCharm) debuffHint = `（「${npcName}」身上媚惑尚未消退，意亂神迷，可在敘述中帶到這點）\n`;
+
     aiPromptParts.push(
       `【對戰：玩家 vs 「${npcName}」】玩家原話：「${seg.flavor || "（未多說，直接出手）"}」\n` +
-      (nDebuffTier > 0 ? `（「${npcName}」身上${["輕度", "中度", "重度"][nDebuffTier - 1]}「${nDebuffName}」尚未消退，反應遲滯，可在敘述中帶到這點）\n` : "") +
+      debuffHint +
       `擲骰：玩家 ${pRoll}+${pMod}=${pScore}，「${npcName}」 ${nRoll}+${nMod}=${nScore}。${critText}\n` +
       `結果：${resultMsg}`
     );
@@ -3146,21 +3219,27 @@ function actionMultiAttack(userData, pcId, sheets) {
   }
 
   sheets.pc.getRange(pIdx + 1, 1, 1, pcData[pIdx].length).setValues([pcData[pIdx]]);
-  // 🔴 連擊結束：未在本次被重新下藥的中毒/媚惑對象，狀態自動退一層(回合制衰退)
-  const redosedNames = new Set();
+  // 🔴 連擊結束：未在本次被重新下藥的中毒/媚惑對象，效力直接清除(無分層，靠資源消耗維持壓制)
+  const redosedPoison = new Set(), redosedCharm = new Set();
   results.forEach(r => {
-    if ((r.actionType === "下毒" || r.actionType === "媚藥") && r.playerWins) redosedNames.add(r.targetName);
+    if (!r.playerWins) return;
+    if (r.actionType === "下毒") redosedPoison.add(r.targetName);
+    if (r.actionType === "媚藥") redosedCharm.add(r.targetName);
   });
   const decayedNames = new Set();
   pcData.forEach((row, idx) => {
     if (idx === pIdx) return;
     if (String(row[COL.PC.LOC]).trim() !== pLoc) return;
-    if (redosedNames.has(row[COL.PC.NAME])) return;
     const vs = parseVisibleStatus(row[COL.PC.STATUS]);
-    const m = String(vs["負面"] || "").match(/^(中毒|媚惑)\((\d)\)$/);
-    if (!m) return;
-    const newTier = parseInt(m[2], 10) - 1;
-    vs["負面"] = newTier > 0 ? `${m[1]}(${newTier})` : "無";
+    const raw = String(vs["負面"] || "");
+    let hasPoison = raw.includes("中毒");
+    let hasCharm = raw.includes("媚惑");
+    if (!hasPoison && !hasCharm) return;
+    let changed = false;
+    if (hasPoison && !redosedPoison.has(row[COL.PC.NAME])) { hasPoison = false; changed = true; }
+    if (hasCharm && !redosedCharm.has(row[COL.PC.NAME])) { hasCharm = false; changed = true; }
+    if (!changed) return;
+    vs["負面"] = (hasPoison ? "中毒" : "") + (hasCharm ? "媚惑" : "") || "無";
     row[COL.PC.STATUS] = JSON.stringify(vs);
     decayedNames.add(row[COL.PC.NAME]);
   });

@@ -329,6 +329,7 @@ function renderRecentLocs(recents = null) {
                    actionButtonsHtml = `
                    <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#4682b4; color:#4682b4;" onclick="lockBtn(event, () => handleItemAction('inspect', '${item.id}', '${item.name}', '${item.type}'))">🔍 端詳</button>
                    <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#e91e63; color:#e91e63;" onclick="lockBtn(event, () => handleItemAction('consume', '${item.id}', '${item.name}', '${item.type}'))">💥 使用</button>
+                   <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#b8860b; color:#b8860b;" onclick="lockBtn(event, () => handleStoreToWarehouse('${item.id}', '${item.name}'))">📦 存入倉庫</button>
                    <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#800; color:#800;" onclick="lockBtn(event, () => handleItemAction('discard', '${item.id}', '${item.name}', '${item.type}'))">丟棄</button>`;
                  }
             }
@@ -2608,7 +2609,8 @@ document.getElementById('cultivate-count-text').innerHTML =
     const tabs = {
       resource: ['tab-home-resource', 'panel-home-resource'],
       dwelling: ['tab-home-dwelling', 'panel-home-dwelling'],
-      decor: ['tab-home-decor', 'panel-home-decor']
+      decor: ['tab-home-decor', 'panel-home-decor'],
+      warehouse: ['tab-home-warehouse', 'panel-home-warehouse']
     };
     // 重置所有
     Object.values(tabs).forEach(([btnId, panelId]) => {
@@ -2625,7 +2627,48 @@ document.getElementById('cultivate-count-text').innerHTML =
     if (panel) panel.style.display = 'block';
 
     if (tab === 'resource') loadHomeResource();
+    else if (tab === 'warehouse') loadHomeWarehouse();
     else loadHomeDwellingAndDecor(tab);
+  }
+
+  // ---------- 倉庫頁 ----------
+  async function loadHomeWarehouse() {
+    const container = document.getElementById('home-warehouse-content');
+    container.innerHTML = '<p style="text-align:center; color:#888;">正在感應倉庫氣息...</p>';
+    try {
+      const res = await gasRun({ action: "warehouse_get", pcId: pc.id });
+      if (!res.success) { container.innerHTML = `<p style="text-align:center; color:red;">${res.message}</p>`; return; }
+      if (!res.data || res.data.length === 0) {
+        container.innerHTML = `<p style="text-align:center; color:#999; padding:20px;">倉庫空空如也。(0/${res.max})</p>`;
+        return;
+      }
+      container.innerHTML = `<p style="text-align:center; color:#888; font-size:12px; margin-bottom:10px;">(${res.data.length}/${res.max})</p>` +
+        res.data.map(item => `
+          <div class="npc-card" style="border-left: 3px solid #b8860b; padding-left: 10px; margin-bottom:12px;">
+            <b style="color: #b8860b;">${item.name}</b> <span style="font-size:11px; color:#666;">(${item.type})</span><br>
+            <small style="color: #553311; display:block; margin-bottom:8px;">描述：${item.desc}</small>
+            ${item.stats ? `<small style="color: #d4af37; display:block; margin-bottom:8px; font-weight:bold;">✨ ${item.stats}</small>` : ''}
+            <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#2e8b57; color:#2e8b57;" onclick="lockBtn(event, () => handleWarehouseRetrieve('${item.id}', '${item.name.replace(/'/g, "\\'")}'))">📤 取出至行囊</button>
+          </div>`).join("");
+    } catch (e) {
+      container.innerHTML = `<p style="text-align:center; color:red;">天道連線中斷。</p>`;
+    }
+  }
+
+  async function handleWarehouseRetrieve(itemId, itemName) {
+    try {
+      const res = await gasRun({ action: "warehouse_retrieve", pcId: pc.id, itemId: itemId });
+      if (res.success) loadHomeWarehouse();
+      else alert(res.message);
+    } catch (e) { alert("連線失敗，無法取出。"); }
+  }
+
+  async function handleStoreToWarehouse(itemId, itemName) {
+    try {
+      const res = await gasRun({ action: "warehouse_store", pcId: pc.id, itemId: itemId });
+      if (res.success) openSystemModal('inventory-overlay');
+      else alert(res.message);
+    } catch (e) { alert("連線失敗，無法存入倉庫。"); }
   }
 
   // ---------- 資源頁(原仙府) ----------
