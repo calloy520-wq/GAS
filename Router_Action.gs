@@ -705,7 +705,7 @@ function actionInspectNpc(userData, pcId, sheets) {
   return JSON.stringify({ success: true, data: itemData.slice(1).filter(r => r[COL.ITEM.OWNER] === npcRow[COL.PC.ID]).map(r => ({ id: r[COL.ITEM.ID], name: r[COL.ITEM.NAME], type: r[COL.ITEM.TYPE], desc: r[COL.ITEM.DESC] })) });
 }
 
-// 🟢 索要：開口向 NPC 要求一件物品，直接轉入玩家行囊(受玩家背包上限限制)
+// 🟢 索要：需與該 NPC 好感100且已傾心，方可開口要求一件物品，成功直接轉入玩家行囊(受背包上限限制)
 function actionRequestItemFromNpc(userData, pcId, sheets) {
   const { targetName, itemId } = userData;
   let pcData = sheets.pc.getDataRange().getValues();
@@ -719,6 +719,13 @@ function actionRequestItemFromNpc(userData, pcId, sheets) {
   if (nIdx === -1) return JSON.stringify({ success: false, message: "對方已不在場。" });
   const npcRow = pcData[nIdx];
   const npcName = npcRow[COL.PC.NAME];
+
+  const relData = sheets.rel ? sheets.rel.getDataRange().getValues() : [];
+  const rIdx = relData.findIndex(r => r[COL.REL.PC] === pName && r[COL.REL.NPC] === npcName);
+  const relRow = rIdx !== -1 ? relData[rIdx] : null;
+  if ((relRow ? parseInt(relRow[COL.REL.FAV]) || 0 : 0) < 100 || !(relRow ? String(relRow[COL.REL.TAG]) : "").includes("(已傾心)")) {
+    return JSON.stringify({ success: false, message: `「${npcName}」對妳尚未全心託付（需好感 100 且已傾心），不肯把東西交給妳。` });
+  }
 
   let itemData = sheets.item.getDataRange().getValues();
   const iIdx = itemData.findIndex(r => r[COL.ITEM.ID] === itemId && String(r[COL.ITEM.OWNER]) === String(npcRow[COL.PC.ID]));
