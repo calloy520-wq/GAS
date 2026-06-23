@@ -433,6 +433,26 @@ function renderRecentLocs(recents = null) {
     } catch (e) { alert("連線失敗，無法要求丟棄。"); }
   }
 
+  // 🟢 索要：開口跟 NPC 要東西，成功即轉入行囊
+  async function handleRequestItem(itemId, itemName, npcName) {
+    closeSystemModal('npc-inventory-overlay');
+    try {
+      const res = await gasRun({ action: "request_item_from_npc", pcId: pc.id, targetName: npcName, itemId: itemId });
+      if (res.success) narrate(res.aiPrompt);
+      else alert(res.message || "對方拒絕了。");
+    } catch (e) { alert("連線失敗，無法索要。"); }
+  }
+
+  // 🟢 要求丟棄：需好感100且已傾心，物品直接消失
+  async function handleRequestDiscard(itemId, itemName, npcName) {
+    closeSystemModal('npc-inventory-overlay');
+    try {
+      const res = await gasRun({ action: "request_discard_npc_item", pcId: pc.id, targetName: npcName, itemId: itemId });
+      if (res.success) narrate(res.aiPrompt);
+      else alert(res.message || "對方拒絕了。");
+    } catch (e) { alert("連線失敗，無法要求丟棄。"); }
+  }
+
   function closeSystemModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.style.display = 'none';
