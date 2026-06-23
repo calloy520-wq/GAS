@@ -1561,7 +1561,10 @@ function actionPlay(userData, pcId, sheets) {
             break;
           case "execute":
             const execTarget = pcData.find(r => r[COL.PC.NAME] === rawTargetName && !String(r[COL.PC.ID]).startsWith("DEAD_"));
-            if (execTarget) {
+            // 🔴 後端強制驗證：對方必須處於昏迷狀態(HP<=5)才能補刀，禁止對清醒/滿血對象直接處決
+            if (execTarget && (parseInt(execTarget[COL.PC.HP]) || 0) > 5) {
+              d20Context = `\n★【系統介入】：「${rawTargetName}」根本未昏迷倒地，談何補刀處決！請描寫對方依然清醒戒備、嚴正以待的反應，絕對禁止輸出任何 stat_changes、items 或銀兩相關欄位！`;
+            } else if (execTarget) {
               const execIdx = pcData.indexOf(execTarget);
               if (sheets.epic) sheets.epic.appendRow([pcId, `【因果終結】${execTarget[COL.PC.NAME]} 被玩家補刀隕落。`, new Date()]);
 
@@ -2801,7 +2804,7 @@ function actionAttackNpc(userData, pcId, sheets) {
   // 傷害 = 差距 ×7；大成功保底破防 +30；大失敗 ×1.5
   let diff = Math.abs(pScore - nScore);
   let damage = Math.max(1, diff * 7);
-  if ((playerWins && nCrit === false && pCrit) || (!playerWins && nCrit)) damage += 30; // 大成功保底
+  if ((playerWins && pCrit && !nCrit) || (!playerWins && nCrit && !pCrit)) damage += 30; // 大成功保底（雙方同時大成功時不疊加，回歸純分差判定）
   damage = Math.round(damage * dmgMultiplier);
 
   let resultMsg = "";
