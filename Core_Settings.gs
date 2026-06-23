@@ -16,7 +16,7 @@ const COL = {
     WEP: 18, ARM: 19, ACC1: 20, ACC2: 21, REALM: 22, MEMORY: 23, INTENT: 24,
     FACTION: 25, RANK: 26, CONTRIB: 27, ALIGN: 28, PHYSICAL: 29, MARTIAL: 30
   },
-  ITEM: { NAME: 0, TYPE: 1, DESC: 2, PRICE: 3, OWNER: 4, STR: 5, CON: 6, AGI: 7, INT: 8, LUK: 9, ID: 10 },
+  ITEM: { NAME: 0, TYPE: 1, DESC: 2, PRICE: 3, OWNER: 4, STR: 5, CON: 6, AGI: 7, INT: 8, LUK: 9, ID: 10, LOC2: 11 },
   REL: { PC: 0, NPC: 1, FAV: 2, TAG: 3, IS_PARTY: 4, MEMORY: 5, MAJOR_EVENT: 6 },
   QUEST: { PC: 0, NAME: 1, TARGET: 2, STATUS: 3, MONEY: 4, ITEM: 5 },
   MAP: { REGION: 0, NAME: 1, TYPE: 2, COORD: 3, DESC: 4, PARENT: 5 },
@@ -37,7 +37,13 @@ const REALM_LIMITS = {
   "意動": 65, "心象": 80,
   "登峰": 120, "返璞": 160, "天人": 200
 };
-const MAX_BAG_SIZE = 50;
+const MAX_BAG_SIZE = 20;
+const MAX_WAREHOUSE_SIZE = 200;
+
+// 🟢 共用 D20 骰子：1=大失敗、20=大成功
+function rollD20() {
+  return Math.floor(Math.random() * 20) + 1;
+}
 
 // 🟢 物品稀有度十階對照表（唯一真實來源：AI 輸出階名，GAS 查此表給屬性點）
 const RARITY_TABLE = {
