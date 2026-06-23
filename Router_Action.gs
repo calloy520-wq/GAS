@@ -54,7 +54,8 @@ const ActionRouter = {
   "give_money": actionGiveMoney,
   "attack_npc": actionAttackNpc,
   "multi_attack": actionMultiAttack,
-  "narrate_only": actionNarrateOnly
+  "narrate_only": actionNarrateOnly,
+  "multi_attack_narrate": actionMultiAttackNarrate
 
 };
 
@@ -3083,9 +3084,26 @@ function actionMultiAttack(userData, pcId, sheets) {
     }
   });
 
-  const aiPrompt = `【系統戰報·已裁定，嚴禁更改任何勝負、傷害或藥效判定】玩家『${pName}』展開連續動作：\n\n` +
+  // 🔴 補充前因後果：地點 + 參戰者性格卡 + 近期因果，避免敘事出戲(無視同地人物/角色性格跑掉)
+  let npcCardsArr = [];
+  const relDataForCards = sheets.rel ? sheets.rel.getDataRange().getValues() : [];
+  touchedNames.forEach(name => {
+    const r = pcData.find(row => String(row[COL.PC.NAME]).trim() === name);
+    if (!r) return;
+    const relRow = relDataForCards.find(rr => rr[COL.REL.PC] === pName && rr[COL.REL.NPC] === name);
+    const prefArr = String(r[COL.PC.PREF] || "").split('、');
+    const traitArr = String(r[COL.PC.TRAIT] || "").split('、');
+    npcCardsArr.push(`【${name}】境界:${r[COL.PC.REALM] || "凡人"} | 性格:[表象]${prefArr[0] || "無"} [內裡]${prefArr[1] || "無"} | 特徵:${traitArr[1] || "無"} | 與玩家關係:${relRow ? relRow[COL.REL.TAG] : "萍水相逢"}(好感:${relRow ? relRow[COL.REL.FAV] : 0})`);
+  });
+  const npcCardsStr = npcCardsArr.length > 0 ? `\n【參戰者資料】\n${npcCardsArr.join("\n")}` : "";
+
+  const allLogs = sheets.log ? sheets.log.getDataRange().getValues() : [];
+  const recentLogStr = allLogs.filter(r => String(r[2]).includes(pName)).slice(-5).map(r => `${r[2]}`).join("\n") || "（尚無相關因果記錄）";
+
+  const aiPrompt = `【場景】玩家『${pName}』目前位於『${pLoc}』。\n【近期因果】\n${recentLogStr}${npcCardsStr}\n\n` +
+    `【系統戰報·已裁定，嚴禁更改任何勝負、傷害或藥效判定】玩家『${pName}』展開連續動作：\n\n` +
     aiPromptParts.join("\n\n") + `\n\n` +
-    `★請依此結果，將以上每一段交手依序串接成一段流暢生動的描寫，可參考玩家自己描述的招式、語氣與下藥手法。\n` +
+    `★請依此結果，並參照上方地點、近期因果與參戰者性格資料，將以上每一段交手依序串接成一段流暢生動的描寫，可參考玩家自己描述的招式、語氣與下藥手法。\n` +
     `★【鐵律】任何被擊倒者最多只是重傷昏迷倒地，【絕對禁止】描寫死亡、斷氣、隕落或屍體！生死由玩家後續定奪。\n` +
     `★【鐵律】嚴禁輸出任何 stat_changes 的生命變化或負面狀態變化，已結算完畢，重複輸出會導致天道崩塌！\n` +
     `★【鐵律】此為單純切磋／下藥交鋒，嚴禁輸出 items_gained、items_transferred 或 money_transferred！` +
@@ -3135,7 +3153,55 @@ function actionNarrateOnly(userData, pcId, sheets) {
   }
 }
 
+// ==========================================
+// 🟢 連擊戰報專用輕量路由：同樣不讀規矩表，但帶 2 筆歷史以維持語氣連貫，
+// 並要求 AI 補回 4 個行動選項(options)，取代 actionMultiAttack 原本走的完整 play 管線
+// ==========================================
+function actionMultiAttackNarrate(userData, pcId, sheets) {
+  const { promptText, isNsfw } = userData;
 
+  const miniSystem = `你是九州說書人。用日系武俠輕小說筆觸、第一人稱「我」、強制台灣繁體中文，依指令生動描寫一段交鋒過程（150~250字）。
+【鐵律】
+1. 旁白第一人稱「我」，禁用「你」與上帝視角。
+2. 對話用全形「」，格式：角色名：「(動作)台詞」。
+3. 強制分段：每2~3句插入 <br><br>，整段至少3個 <br><br>，禁止整坨。換行一律用 <br><br>，禁止真實換行，禁止輸出任何 HTML 標籤。
+4. ★這是純敘事補完，系統底層已結算完所有勝負、傷害與藥效數值，你只負責寫過程的字，禁止更改任何結果。
+5. 敘事務必與提供的【場景】地點、【近期因果】與【參戰者資料】(性格/特徵/關係)一致，禁止憑空換地點或讓角色性格走偏。
+6. 結尾必須給出4個行動選項，固定格式且順序不可變：[主動]強勢掌握、[被動]委婉試探、[接續]延續互動、[反差]跳脫氛圍，每項20字內，且須貼合交鋒剛結束的情境。
+7. 只輸出 JSON：{"narration":"你的敘述，內含<br><br>分段","options":["1. [主動]...","2. [被動]...","3. [接續]...","4. [反差]..."]}，禁止任何其他欄位、禁止 Markdown。`;
+
+  let aiConfig = {
+    temperature: 0.85,
+    ignoreLaw: true,           // 不疊規矩表(節慶/天時)
+    max_tokens: 900,           // 比 actionPlay 的 2000 省一大半，但比 narrate_only 多留點空間給 options
+    model: "google/gemini-3.1-flash-lite",
+    isNsfwMode: !!isNsfw
+  };
+
+  // 🔴 只帶最近 2 筆歷史，維持語氣連貫但不像完整 play 帶 10 筆那麼重
+  const recentHistoryRaw = getGameHistoryBatchRaw(pcId, 2);
+  if (recentHistoryRaw && recentHistoryRaw.length > 0) {
+    aiConfig.chatHistory = recentHistoryRaw.map(msg => ({
+      role: msg.speaker === "player" ? "user" : "assistant",
+      content: String(msg.content)
+    }));
+  }
+
+  const raw = callGeminiAPI(promptText, miniSystem, aiConfig);
+
+  try {
+    const start = raw.indexOf('{');
+    const end = raw.lastIndexOf('}');
+    const data = JSON.parse(raw.substring(start, end + 1));
+    return JSON.stringify({
+      success: true,
+      text: data.narration || "天地靜默，一片祥和。",
+      options: Array.isArray(data.options) ? data.options : []
+    });
+  } catch (e) {
+    return JSON.stringify({ success: true, text: "（此處因果已定，天機微微一閃。）", options: [] });
+  }
+}
 
 function actionUpdateRelTag(userData, pcId, sheets) {
   const { targetName, newTagText } = userData;
