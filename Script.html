@@ -3050,7 +3050,123 @@ document.getElementById('cultivate-count-text').innerHTML =
       setTimeout(() => {
           const formattedMsg = data.message.replace(/\n/g, '<br>');
           document.getElementById('dice-result-msg').innerHTML = formattedMsg;
-      }, 800); 
+      }, 800);
+  }
+
+  // ==========================================
+  // 🐎 天馬競速 (賠率/勝率寫死在GAS，僅敘述用AI)
+  // ==========================================
+  const HORSE_CONFIG = [
+    { id: 1, name: "特別周", tier: "強馬", payout: 1.8, color: "#ff4500" },
+    { id: 2, name: "無聲鈴鹿", tier: "強馬", payout: 1.8, color: "#ff8c00" },
+    { id: 3, name: "東海帝王", tier: "中馬", payout: 3.5, color: "#1e90ff" },
+    { id: 4, name: "大和赤驥", tier: "中馬", payout: 3.5, color: "#00bfff" },
+    { id: 5, name: "黃金船", tier: "黑馬", payout: 9, color: "#ffd700" },
+    { id: 6, name: "米浴", tier: "黑馬", payout: 9, color: "#9370db" }
+  ];
+  const HORSE_RACE_GOAL = 30;
+
+  function openRaceModal() {
+      toggleActionDrawer();
+      document.getElementById('horse-race-overlay').style.display = 'flex';
+      document.getElementById('race-result-msg').innerHTML = "請選定戰馬下注，賽事即將開始！<br><span style='font-size:12px; color:#888;'>單注限額：100 ~ 10,000 兩白銀</span>";
+
+      const currentMoney = document.getElementById('ui-money').innerText || "0";
+      document.getElementById('race-current-money').innerText = currentMoney;
+
+      renderRaceTrack();
+      renderRaceHorseButtons();
+  }
+
+  function renderRaceTrack() {
+      const track = document.getElementById('race-track');
+      track.innerHTML = HORSE_CONFIG.map(h => `
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:70px; font-size:12px; color:${h.color}; text-align:right;">${h.name}</div>
+          <div style="flex:1; background:#222; border:1px solid #444; border-radius:4px; height:16px; position:relative; overflow:hidden;">
+            <div id="race-bar-${h.id}" style="height:100%; width:0%; background:${h.color}; transition: width 0.25s linear;"></div>
+          </div>
+        </div>
+      `).join('');
+  }
+
+  function renderRaceHorseButtons() {
+      const container = document.getElementById('race-horse-buttons');
+      container.innerHTML = HORSE_CONFIG.map(h => `
+        <button class="btn" onclick="lockBtn(event, () => placeRaceBet(${h.id}))" style="border-color:${h.color}; color:${h.color}; flex: 1 0 45%;">${h.name} (${h.tier} 1賠${h.payout})</button>
+      `).join('');
+  }
+
+  function placeRaceBet(horseId) {
+      const raceBtns = document.querySelectorAll('#race-horse-buttons .btn');
+      raceBtns.forEach(b => b.disabled = true);
+
+      const betInput = document.getElementById('race-bet-amount').value;
+      const betAmount = parseInt(betInput);
+
+      if (isNaN(betAmount) || betAmount < 100 || betAmount > 10000) {
+          raceBtns.forEach(b => b.disabled = false);
+          alert("大俠，天馬競速的規矩是：單次下注必須在「100 兩」至「10,000 兩」之間！");
+          return;
+      }
+
+      const currentMoney = parseInt(document.getElementById('ui-money').innerText) || 0;
+      if (currentMoney < betAmount) {
+          raceBtns.forEach(b => b.disabled = false);
+          alert("囊中羞澀！大俠，你身上的銀兩不夠啊，請先去賺點盤纏再來吧。");
+          return;
+      }
+
+      renderRaceTrack();
+      const betHorse = HORSE_CONFIG.find(h => h.id === horseId);
+      document.getElementById('race-result-msg').innerHTML = `戰馬奔騰中... 你押了 <span style="color:#fff;">${betAmount}</span> 兩於【<span style="color:${betHorse.color};">${betHorse.name}</span>】`;
+
+      gasRun({ action: "play_horse_race", pcId: pc.id, horseId: horseId, betAmount: betAmount })
+        .then(res => {
+            if (!res.success) {
+                raceBtns.forEach(b => b.disabled = false);
+                alert(res.message);
+                document.getElementById('race-result-msg').innerText = "天道異常，賭局作廢！";
+                return;
+            }
+            animateRaceLog(res.log, () => {
+                raceBtns.forEach(b => b.disabled = false);
+                const resultColor = res.isWin ? '#32cd32' : '#ff4500';
+                const resultLine = res.isWin
+                  ? `🎉 「${res.winnerName}」率先衝線！恭喜中獎，贏得 ${res.winnings - betAmount} 兩白銀！`
+                  : `💀 「${res.winnerName}」率先衝線。你的愛馬未能奪冠，輸了 ${betAmount} 兩。`;
+                document.getElementById('race-result-msg').innerHTML =
+                  `<span style="color:${resultColor};">${resultLine}</span><br><br>${res.narration}`;
+
+                if (res.statusString) {
+                    localStorage.setItem('kyushu_last_status', res.statusString);
+                    updateUI(res.statusString.split('§'));
+                    document.getElementById('race-current-money').innerText = res.statusString.split('§')[1];
+                }
+            });
+        })
+        .catch(err => {
+            raceBtns.forEach(b => b.disabled = false);
+            alert("天道阻礙，賭局無效！請檢查連線。");
+            document.getElementById('race-result-msg').innerText = "連線中斷，賭局未成立。";
+        });
+  }
+
+  function animateRaceLog(log, onDone) {
+      let step = 0;
+      const interval = setInterval(() => {
+          const positions = log[step];
+          HORSE_CONFIG.forEach((h, idx) => {
+              const pct = Math.min(100, (positions[idx] / HORSE_RACE_GOAL) * 100);
+              const bar = document.getElementById(`race-bar-${h.id}`);
+              if (bar) bar.style.width = pct + "%";
+          });
+          step++;
+          if (step >= log.length) {
+              clearInterval(interval);
+              if (onDone) onDone();
+          }
+      }, 220);
   }
 
  // ==========================================

@@ -25,6 +25,7 @@ const ActionRouter = {
   "estate_get": actionEstateGet,
   "estate_harvest_all": actionEstateHarvestAll,
   "play_dice": actionPlayDice,
+  "play_horse_race": actionPlayHorseRace,
   "dismiss_party": actionDismissParty,
   "join_party": actionJoinParty,
   "inspect_npc": actionInspectNpc,
@@ -667,6 +668,11 @@ function actionEstateHarvestAll(userData, pcId, sheets) {
 function actionPlayDice(userData, pcId, sheets) {
   // 假設 Casino.gs 中存在 playDiceGame 函數
   return playDiceGame(pcId, userData.betType, userData.betAmount, sheets, COL);
+}
+
+function actionPlayHorseRace(userData, pcId, sheets) {
+  // 假設 Casino.gs 中存在 playHorseRaceGame 函數
+  return playHorseRaceGame(pcId, userData.horseId, userData.betAmount, sheets, COL);
 }
 
 function actionDismissParty(userData, pcId, sheets) {
