@@ -84,21 +84,26 @@ function playDiceGame(pcId, betType, betAmount, sheets, COL) {
 // 🐎 長樂坊：天馬競速核心邏輯 (獨立模組，賠率/勝率全寫死，AI僅敘述)
 // ---------------------------------------------------------
 const HORSE_CONFIG = [
-  { id: 1, name: "特別周", tier: "強馬", payout: 1.8 },
-  { id: 2, name: "無聲鈴鹿", tier: "強馬", payout: 1.8 },
-  { id: 3, name: "東海帝王", tier: "中馬", payout: 3.5 },
-  { id: 4, name: "大和赤驥", tier: "中馬", payout: 3.5 },
-  { id: 5, name: "黃金船", tier: "黑馬", payout: 9 },
-  { id: 6, name: "米浴", tier: "黑馬", payout: 9 }
+  { id: 1, name: "閃電週", tier: "強馬", payout: 3.5 },
+  { id: 2, name: "孤影鈴", tier: "強馬", payout: 3.5 },
+  { id: 3, name: "東海霸", tier: "中馬", payout: 5 },
+  { id: 4, name: "赤驥俠", tier: "中馬", payout: 5 },
+  { id: 5, name: "瘋帆船", tier: "黑馬", payout: 7.5 },
+  { id: 6, name: "米霸天", tier: "黑馬", payout: 7.5 }
 ];
 const HORSE_RACE_GOAL = 30;
 const HORSE_RACE_MAX_TURNS = 60;
 
+// 各檔骰池經模擬驗證：強馬個體勝率約22%、中馬約15%、黑馬約13%（黑馬靠稀有大暴衝拉勝率，非穩定領先）
+const HORSE_DICE_POOL = {
+  "強馬": [4, 5, 6],
+  "中馬": [3, 4, 5, 6, 6],
+  "黑馬": [1, 1, 1, 1, 1, 1, 1, 1, 18]
+};
+
 function rollHorseTier(tier) {
-  if (tier === "強馬") return Math.floor(Math.random() * 3) + 3; // 3,4,5
-  if (tier === "中馬") return Math.floor(Math.random() * 3) + 2; // 2,3,4
-  const darkPool = [1, 2, 6];
-  return darkPool[Math.floor(Math.random() * darkPool.length)]; // 黑馬：1,2,6
+  const pool = HORSE_DICE_POOL[tier];
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function simulateHorseRace() {

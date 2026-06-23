@@ -3077,19 +3077,19 @@ document.getElementById('cultivate-count-text').innerHTML =
   // 🐎 天馬競速 (賠率/勝率寫死在GAS，僅敘述用AI)
   // ==========================================
   const HORSE_CONFIG = [
-    { id: 1, name: "特別周", tier: "強馬", payout: 1.8, color: "#ff4500" },
-    { id: 2, name: "無聲鈴鹿", tier: "強馬", payout: 1.8, color: "#ff8c00" },
-    { id: 3, name: "東海帝王", tier: "中馬", payout: 3.5, color: "#1e90ff" },
-    { id: 4, name: "大和赤驥", tier: "中馬", payout: 3.5, color: "#00bfff" },
-    { id: 5, name: "黃金船", tier: "黑馬", payout: 9, color: "#ffd700" },
-    { id: 6, name: "米浴", tier: "黑馬", payout: 9, color: "#9370db" }
+    { id: 1, name: "閃電週", tier: "強馬", payout: 3.5, color: "#ff6347" },
+    { id: 2, name: "孤影鈴", tier: "強馬", payout: 3.5, color: "#4da6ff" },
+    { id: 3, name: "東海霸", tier: "中馬", payout: 5, color: "#3cd070" },
+    { id: 4, name: "赤驥俠", tier: "中馬", payout: 5, color: "#ff7fc4" },
+    { id: 5, name: "瘋帆船", tier: "黑馬", payout: 7.5, color: "#ffb347" },
+    { id: 6, name: "米霸天", tier: "黑馬", payout: 7.5, color: "#b388ff" }
   ];
   const HORSE_RACE_GOAL = 30;
 
   function openRaceModal() {
       toggleActionDrawer();
       document.getElementById('horse-race-overlay').style.display = 'flex';
-      document.getElementById('race-result-msg').innerHTML = "請選定戰馬下注，賽事即將開始！<br><span style='font-size:12px; color:#888;'>單注限額：100 ~ 10,000 兩白銀</span>";
+      document.getElementById('race-result-msg').innerHTML = "<span style='font-size:16px;'>請選定戰馬下注，賽事即將開始！</span><br><span style='font-size:12px; color:#aaa;'>單注限額：100 ~ 10,000 兩白銀</span>";
 
       const currentMoney = document.getElementById('ui-money').innerText || "0";
       document.getElementById('race-current-money').innerText = currentMoney;
@@ -3102,8 +3102,8 @@ document.getElementById('cultivate-count-text').innerHTML =
       const track = document.getElementById('race-track');
       track.innerHTML = HORSE_CONFIG.map(h => `
         <div style="display:flex; align-items:center; gap:8px;">
-          <div style="width:70px; font-size:12px; color:${h.color}; text-align:right;">${h.name}</div>
-          <div style="flex:1; background:#222; border:1px solid #444; border-radius:4px; height:16px; position:relative; overflow:hidden;">
+          <div style="width:64px; font-size:14px; font-weight:700; color:#f5f5f5; text-shadow: 0 0 3px #000, 0 0 3px #000; text-align:right;">${h.name}</div>
+          <div style="flex:1; background:#1a1a1a; border:1px solid #555; border-radius:4px; height:18px; position:relative; overflow:hidden;">
             <div id="race-bar-${h.id}" style="height:100%; width:0%; background:${h.color}; transition: width 0.25s linear;"></div>
           </div>
         </div>
@@ -3113,7 +3113,7 @@ document.getElementById('cultivate-count-text').innerHTML =
   function renderRaceHorseButtons() {
       const container = document.getElementById('race-horse-buttons');
       container.innerHTML = HORSE_CONFIG.map(h => `
-        <button class="btn" onclick="lockBtn(event, () => placeRaceBet(${h.id}))" style="border-color:${h.color}; color:${h.color}; flex: 1 0 45%;">${h.name} (${h.tier} 1賠${h.payout})</button>
+        <button class="btn" onclick="lockBtn(event, () => placeRaceBet(${h.id}))" style="border-color:${h.color}; border-width:2px; color:#fff; text-shadow:0 0 3px #000; background:rgba(255,255,255,0.04); font-size:14px; font-weight:600; flex: 1 0 45%;">${h.name}<br><span style="font-size:11px; color:${h.color};">${h.tier} 1賠${h.payout}</span></button>
       `).join('');
   }
 
@@ -3139,7 +3139,7 @@ document.getElementById('cultivate-count-text').innerHTML =
 
       renderRaceTrack();
       const betHorse = HORSE_CONFIG.find(h => h.id === horseId);
-      document.getElementById('race-result-msg').innerHTML = `戰馬奔騰中... 你押了 <span style="color:#fff;">${betAmount}</span> 兩於【<span style="color:${betHorse.color};">${betHorse.name}</span>】`;
+      document.getElementById('race-result-msg').innerHTML = `<span style="font-size:16px;">戰馬奔騰中... 你押了 <span style="color:#fff; font-weight:700;">${betAmount}</span> 兩於【<span style="color:${betHorse.color}; font-weight:700; text-shadow:0 0 3px #000;">${betHorse.name}</span>】</span>`;
 
       gasRun({ action: "play_horse_race", pcId: pc.id, horseId: horseId, betAmount: betAmount })
         .then(res => {
@@ -3151,12 +3151,12 @@ document.getElementById('cultivate-count-text').innerHTML =
             }
             animateRaceLog(res.log, () => {
                 raceBtns.forEach(b => b.disabled = false);
-                const resultColor = res.isWin ? '#32cd32' : '#ff4500';
+                const resultColor = res.isWin ? '#32cd32' : '#ff6347';
                 const resultLine = res.isWin
                   ? `🎉 「${res.winnerName}」率先衝線！恭喜中獎，贏得 ${res.winnings - betAmount} 兩白銀！`
                   : `💀 「${res.winnerName}」率先衝線。你的愛馬未能奪冠，輸了 ${betAmount} 兩。`;
                 document.getElementById('race-result-msg').innerHTML =
-                  `<span style="color:${resultColor};">${resultLine}</span><br><br>${res.narration}`;
+                  `<span style="font-size:18px; font-weight:700; color:${resultColor}; text-shadow:0 0 3px #000;">${resultLine}</span><br><br><span style="font-size:16px; line-height:1.6; color:#f0f0f0;">${res.narration}</span>`;
 
                 if (res.statusString) {
                     localStorage.setItem('kyushu_last_status', res.statusString);
