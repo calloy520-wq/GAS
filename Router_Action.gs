@@ -1899,6 +1899,7 @@ ${d20Context}
 
     let bagCounts = {}; itemData.forEach(it => { bagCounts[it[COL.ITEM.OWNER]] = (bagCounts[it[COL.ITEM.OWNER]] || 0) + 1; });
     let overLimitWarnings = [];
+    let grantedNamesThisTurn = {}; // 🔴 同回合內也要防重複：key = ownerId|name
     if (aiData.items_gained && Array.isArray(aiData.items_gained)) {
       let allowedGains = [];
       aiData.items_gained.forEach(it => {
@@ -1908,6 +1909,16 @@ ${d20Context}
         let oName = craftOwnerLock ? "自己" : String(it.owner || "自己").trim();   // 🔴 煉成時強制歸玩家
         let targetPcMatch = pcData.find(r => String(r[COL.PC.NAME]).trim() === oName);
         let finalId = (oName === "自己" || oName === String(pcName).trim()) ? pcId : (targetPcMatch ? targetPcMatch[COL.PC.ID] : (newNpcMap[oName] || oName));
+        const trimmedName = String(it.name).trim();
+
+        // 🔴 重複賜予硬鎖：非丹藥/貨幣類，若該角色已持有或本回合已給過同名物品，直接捨棄這筆，防止AI記憶錯亂重複塞道具
+        if (it.type !== "丹藥" && it.type !== "貨幣") {
+          const dedupeKey = finalId + "|" + trimmedName;
+          const alreadyOwned = itemData.some(row => row[COL.ITEM.OWNER] == finalId && String(row[COL.ITEM.NAME]).trim() === trimmedName);
+          if (alreadyOwned || grantedNamesThisTurn[dedupeKey]) return;
+          grantedNamesThisTurn[dedupeKey] = true;
+        }
+
         if ((bagCounts[finalId] || 0) < MAX_BAG_SIZE) { allowedGains.push(it); bagCounts[finalId] = (bagCounts[finalId] || 0) + 1; }
         else if (finalId === pcId) overLimitWarnings.push(`無法獲取「${it.name}」`);
       });
