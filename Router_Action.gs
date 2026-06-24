@@ -3491,6 +3491,11 @@ function actionMultiAttack(userData, pcId, sheets) {
     if (!isStalemate && ((playerWins && pCrit && !nCrit) || (!playerWins && nCrit && !pCrit))) damage += 30;
     damage = Math.round(damage * dmgMultiplier);
 
+    // 🔴 武器/防具的「痛感」加成：跟骰子命中脫鉤，神兵打中就是比較痛、防具擋下就是比較不痛，不然空手跟拿神兵傷害感覺一樣很怪
+    const atkWepBonus = isStalemate ? 0 : (playerWins ? (pTotal.wepSTR || 0) : (nTotal.wepSTR || 0));
+    const defArmBonus = isStalemate ? 0 : (playerWins ? (nTotal.armCON || 0) : (pTotal.armCON || 0));
+    if (!isStalemate) damage = Math.max(1, damage + atkWepBonus * 3 - defArmBonus * 2);
+
     let resultMsg = "";
     let isDodge = false;
     if (isStalemate) {
@@ -3538,9 +3543,14 @@ function actionMultiAttack(userData, pcId, sheets) {
     else if (nHasPoison) debuffHint = `（「${npcName}」身上中毒尚未消退，反應遲滯，可在敘述中帶到這點）\n`;
     else if (nHasCharm) debuffHint = `（「${npcName}」身上媚惑尚未消退，意亂神迷，可在敘述中帶到這點）\n`;
 
+    // 🔴 武器/防具達一定品階才提示AI帶到，避免凡品雜物也硬寫一句神兵防身
+    let gearHint = "";
+    if (atkWepBonus >= 4) gearHint += `（${playerWins ? "玩家" : `「${npcName}」`}手中兵刃材質不凡，這一擊格外沉重）\n`;
+    if (defArmBonus >= 4) gearHint += `（${playerWins ? `「${npcName}」` : "玩家"}身披精良防具，硬生生卸去不少力道）\n`;
+
     aiPromptParts.push(
       `【對戰：玩家 vs 「${npcName}」】玩家原話：「${seg.flavor || "（未多說，直接出手）"}」\n` +
-      debuffHint +
+      debuffHint + gearHint +
       `擲骰：玩家 ${pRoll}+${pMod}=${pScore}，「${npcName}」 ${nRoll}+${nMod}=${nScore}。${critText}\n` +
       `結果：${resultMsg}`
     );
