@@ -322,15 +322,15 @@ function renderRecentLocs(recents = null) {
                    actionButtonsHtml = `<button class="btn" style="padding:2px 10px; font-size:11px; border-color:#daa520; color:#daa520;" onclick="handleSellAction('${item.id}', '${item.name.replace(/'/g, "\\'")}')">💰 賣出</button>`;
                  }
                } else if (isGiftMode) {
-                 actionButtonsHtml = `<button class="btn" style="padding:2px 10px; font-size:11px; border-color:#daa520; color:#daa520;" onclick="handleGiftAction('${item.id}', '${item.name}', '${item.type}')">贈送給 ${giftTargetNPC}</button>`;
+                 actionButtonsHtml = `<button class="btn" style="padding:2px 10px; font-size:11px; border-color:#daa520; color:#daa520;" onclick="handleGiftAction('${item.id}', '${item.name.replace(/'/g, "\\'")}', '${item.type}')">贈送給 ${giftTargetNPC}</button>`;
                } else if (isUseOnNpcMode) {
-                 actionButtonsHtml = `<button class="btn" style="padding:2px 10px; font-size:11px; border-color:#e91e63; color:#e91e63;" onclick="lockBtn(event, () => handleUseItemOnNpcAction('${item.id}', '${item.name}'))">💊 用在 ${useItemTargetNPC}</button>`;
+                 actionButtonsHtml = `<button class="btn" style="padding:2px 10px; font-size:11px; border-color:#e91e63; color:#e91e63;" onclick="lockBtn(event, () => handleUseItemOnNpcAction('${item.id}', '${item.name.replace(/'/g, "\\'")}'))">💊 用在 ${useItemTargetNPC}</button>`;
                } else {
                    actionButtonsHtml = `
-                   <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#4682b4; color:#4682b4;" onclick="lockBtn(event, () => handleItemAction('inspect', '${item.id}', '${item.name}', '${item.type}'))">🔍 端詳</button>
-                   <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#e91e63; color:#e91e63;" onclick="lockBtn(event, () => handleItemAction('consume', '${item.id}', '${item.name}', '${item.type}'))">💥 使用</button>
-                   <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#b8860b; color:#b8860b;" onclick="lockBtn(event, () => handleStoreToWarehouse('${item.id}', '${item.name}'))">📦 存入倉庫</button>
-                   <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#800; color:#800;" onclick="lockBtn(event, () => handleItemAction('discard', '${item.id}', '${item.name}', '${item.type}'))">丟棄</button>`;
+                   <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#4682b4; color:#4682b4;" onclick="lockBtn(event, () => handleItemAction('inspect', '${item.id}', '${item.name.replace(/'/g, "\\'")}', '${item.type}'))">🔍 端詳</button>
+                   <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#e91e63; color:#e91e63;" onclick="lockBtn(event, () => handleItemAction('consume', '${item.id}', '${item.name.replace(/'/g, "\\'")}', '${item.type}'))">💥 使用</button>
+                   <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#b8860b; color:#b8860b;" onclick="lockBtn(event, () => handleStoreToWarehouse('${item.id}', '${item.name.replace(/'/g, "\\'")}'))">📦 存入倉庫</button>
+                   <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#800; color:#800;" onclick="lockBtn(event, () => handleItemAction('discard', '${item.id}', '${item.name.replace(/'/g, "\\'")}', '${item.type}'))">丟棄</button>`;
                  }
             }
 
@@ -388,7 +388,7 @@ function renderRecentLocs(recents = null) {
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <!-- 🔴 修正：把 item.id 傳入 attemptSteal -->
                 <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#800080; color:#800080;"
-                  onclick="attemptSteal('${item.id}', '${item.name}', '${npcName}')">✋ 妙手空空 (偷竊)</button>
+                  onclick="attemptSteal('${item.id}', '${item.name.replace(/'/g, "\\'")}', '${npcName}')">✋ 妙手空空 (偷竊)</button>
                 <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#2e8b57; color:#2e8b57;"
                   onclick="lockBtn(event, () => handleRequestItem('${item.id}', '${item.name.replace(/'/g, "\\'")}', '${npcName}'))">📥 索要</button>
                 <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#a52a2a; color:#a52a2a;"

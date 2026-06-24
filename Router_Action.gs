@@ -3358,7 +3358,7 @@ function actionMultiAttack(userData, pcId, sheets) {
     if (seg.actionType === "下毒" || seg.actionType === "媚藥") {
       const isPoison = seg.actionType === "下毒";
       const itIdx = itemData.findIndex(r => r[COL.ITEM.OWNER] == pcId &&
-        String(r[COL.ITEM.NAME]).includes(isPoison ? "毒" : "春") && !String(r[COL.ITEM.NAME]).includes("解"));
+        (String(r[COL.ITEM.TYPE]) === (isPoison ? "毒藥" : "媚藥") || (String(r[COL.ITEM.NAME]).includes(isPoison ? "毒" : "春") && !String(r[COL.ITEM.NAME]).includes("解"))));
       if (itIdx === -1) {
         results.push({ actionType: seg.actionType, targetName: npcName, skipped: true, reason: "no_item" });
         aiPromptParts.push(`【系統】玩家想對「${npcName}」${seg.actionType}，但翻遍行囊找不到合適的藥材，此招落空，未能對其下藥。玩家原話：「${seg.flavor || "（未多說）"}」`);
