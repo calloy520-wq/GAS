@@ -2292,6 +2292,13 @@ ${locOwnershipNote}
             if (colIdx === COL.PC.PREF || colIdx === COL.PC.TRAIT) return;
             if (colIdx === COL.PC.LOC) {
               let newLoc = valStr.replace(/九州-/g, "").replace(/\[|\]/g, "").trim();
+              // 🔴 防呆：「行蹤不明」只是AI在劇情沒交代去向時的占位語意，不是真地名，禁止落地存檔或被坤圖自動建檔成假地點，否則NPC會從此完全失聯
+              if (newLoc === "行蹤不明" || newLoc === "") {
+                const oldRootLoc = String(pcData[targetIdx][COL.PC.LOC] || "").split('-')[0].trim() || "青丘城";
+                Logger.log(`【位置防呆】AI 將「${tName}」位置設為「${valStr}」，已退回母地圖「${oldRootLoc}」`);
+                pcData[targetIdx][COL.PC.LOC] = oldRootLoc; if (targetIdx === pcIndex) curL = oldRootLoc;
+                return;
+              }
               pcData[targetIdx][COL.PC.LOC] = newLoc; if (targetIdx === pcIndex) curL = newLoc;
               let rootLoc = newLoc.split('-')[0].trim();
               if (sheets.map && rootLoc && typeof memoryMapData !== 'undefined' && !memoryMapData.some(r => String(r[COL.MAP.NAME] || "").trim() === rootLoc)) {
