@@ -1872,6 +1872,15 @@ function actionPlay(userData, pcId, sheets) {
   const curLRoot = String(curL).split('-')[0].trim();
   const locOwnershipNote = String(curL).includes('-') ? `\n★【地點歸屬鐵律】：玩家當前位置「${curL}」只是「${curLRoot}」境內由玩家自建的一處私人據點（店鋪/居所/領地等），玩家僅擁有這一處據點本身！「${curLRoot}」依然是廣闊的公共城鎮/地區，住滿其他百姓、商家與往來人物，絕非玩家的地盤或私產！嚴禁將整座「${curLRoot}」敘述成只屬於玩家、唯玩家獨尊，或讓無關路人因此對玩家卑躬屈膝、俯首稱臣！` : '';
 
+  let shopInfoStr = "";
+  if (sheets.shop && String(curL).includes('-')) {
+    const shopRow = sheets.shop.getDataRange().getValues().find(r => String(r[COL.SHOP.LOC] || "").trim() === String(curL).trim());
+    if (shopRow) {
+      const isOwnShop = String(shopRow[COL.SHOP.OWNER]) === String(pcId);
+      shopInfoStr = `\n★【在地店鋪資訊】：眼前這處據點是「${shopRow[COL.SHOP.NAME]}」，類型：${shopRow[COL.SHOP.CATEGORY]}，經營內容：${shopRow[COL.SHOP.DESC]}。${isOwnShop ? "（此店為玩家本人所有）" : "（此店並非玩家所有，玩家僅是訪客）"}`;
+    }
+  }
+
 
   let isItemChanged = false;
   let soulGiftProtectedIds = []; // 傾心信物已在記憶體轉移，須保護不被遺失過濾器誤刪
@@ -2113,6 +2122,7 @@ ${PROMPT_PARTY_SYSTEM}
 ${PROMPT_ENV}
 ${PROMPT_GEAR}
 ${homeDecorPrompt}
+${shopInfoStr}
 
 【前塵因果】：(此為歷史輪廓，僅供背景參考，請勿當作新事件重複描寫！其中提到的人物，若不在下方【當前同地人物】名單內，純屬「回憶」，本回合絕對禁止讓其現身、開口或互動！)
 ${history}
