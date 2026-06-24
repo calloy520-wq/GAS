@@ -2172,8 +2172,8 @@ ${locOwnershipNote}
     let aiConfig = isNsfwMode ? { temperature: 1.0, top_p: 0.95, retries: 2, model: "google/gemini-3.1-flash-lite", isNsfwMode: true } : {};
     aiConfig.backLocked = userData.backLocked || false;
 
-    // 🔴【新增】抓取近 10 筆原始歷史，轉換為 API 格式
-    const recentHistoryRaw = getGameHistoryBatchRaw(pcId, 10);
+    // 🔴【新增】抓取近 6 筆原始歷史(3輪)，轉換為 API 格式
+    const recentHistoryRaw = getGameHistoryBatchRaw(pcId, 6);
     if (recentHistoryRaw && recentHistoryRaw.length > 0) {
       aiConfig.chatHistory = recentHistoryRaw.map(msg => ({
         role: msg.speaker === "player" ? "user" : "assistant",
