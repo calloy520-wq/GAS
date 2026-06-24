@@ -419,13 +419,14 @@ function getNearbyLocations(currentLoc, mapData) {
   const rootLoc = String(currentLoc).split('-')[0].trim();
   const parentInfo = mapData.find(m => String(m[COL.MAP.NAME]).trim() === rootLoc);
   let pCoord = parentInfo && parentInfo[COL.MAP.COORD] ? String(parentInfo[COL.MAP.COORD]).split(',').map(Number) : [0, 0];
-  if (isNaN(pCoord[0])) pCoord = [0, 0];
+  if (isNaN(pCoord[0]) || isNaN(pCoord[1])) pCoord = [0, 0];
 
   let nearbyLocs = [];
   for (let i = 1; i < mapData.length; i++) {
     const mName = String(mapData[i][COL.MAP.NAME]).trim();
     if (!mName || mName === rootLoc || mName.startsWith(rootLoc + "-")) continue;
-    const coords = mapData[i][COL.MAP.COORD] ? String(mapData[i][COL.MAP.COORD]).split(',').map(Number) : [0, 0];
+    let coords = mapData[i][COL.MAP.COORD] ? String(mapData[i][COL.MAP.COORD]).split(',').map(Number) : [0, 0];
+    if (isNaN(coords[0]) || isNaN(coords[1])) coords = [0, 0];
     nearbyLocs.push({ name: mName, type: mapData[i][COL.MAP.TYPE] || "荒野", desc: mapData[i][COL.MAP.DESC] || "一處未知的地帶。", dist: Math.abs(coords[0] - pCoord[0]) + Math.abs(coords[1] - pCoord[1]) });
   }
   return nearbyLocs.sort((a, b) => a.dist - b.dist).slice(0, 5);
