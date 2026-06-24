@@ -2062,9 +2062,6 @@ function actionPlay(userData, pcId, sheets) {
     PROMPT_REL = `【當前同地人物】\n${localSceneStr}${thirdPartyStr}`;
   }
 
-  let d20Context = "";
-  let craftOwnerLock = false;   // 🔴 煉成歸屬鎖：true 時 items_gained 強制歸玩家(已無呼叫端會設置，保留旗標供下方 items_gained 邏輯相容)
-
   // 🏡 在家才餵裝潢給 AI（在外面完全不撈，零負擔）
   let homeDecorPrompt = "";
   try {
@@ -2160,21 +2157,16 @@ ${remoteNpcStr}
 ${locOwnershipNote}
 
 ★【系統底層防呆】：
-1. 【位置同步強制】：玩家明確要移動「前往/去/走向/進入/離開」任何地點，stat_changes 且敘事已抵達才更新 attr:「位置」！
-2. 煉化物品需遵循 items_lost/gained 規則。
-3. 【戰鬥雙向裁決】：發生衝突時，綜合比對【雙方境界、五圍、所在環境、戰術、當下狀態】公平裁決，禁止僅憑境界高低就單方面秒殺玩家：
+1. 【戰鬥雙向裁決】：發生衝突時，綜合比對【雙方境界、五圍、所在環境、戰術、當下狀態】公平裁決，禁止僅憑境界高低就單方面秒殺玩家：
    - 傷害一律以【相對扣血】呈現（依雙方差距合理增減），允許玩家受傷、纏鬥、撤退、求饒，也允許玩家憑地形/奇謀/拼死反撲/道具/偷襲逆境反擊或全身而退。
    - 境界高者佔優但非無敵；玩家落敗時保留掙扎、逃跑與後續報復空間，禁止無條件抹殺。
    - 僅當玩家明顯不敵、傷重且無路可退時，生命才可能歸零並由系統送藥鋪救治。NPC的下手輕重須符合其性格與陣營。
-${d20Context}
 
 現在演化玩家動作：『${finalUserMsg}』${npcDialoguePrompt}
 
 🚨【天道終極警告】：
-1. 玩家的所有行動，必須在【本次回覆】中給出 NPC 的具體回答與最終結果！
-2. ❌絕對禁止寫出「靜候回應」、「正要開口」等懸念句！NPC 知道就立刻回答！
-3. 敘事必須在給出結果後，停在「我」的心境，將下一步交還玩家選擇！
-4.【名字提取鐵律】：在輸出 stat_changes 或 rel_changes 等任何 JSON 數據時，'target' 或 'npc' 欄位【絕對只能】填寫角色的「真實姓名」（例如：「沈清霜」）或「自己」。❌嚴禁填入台詞、對話、地名、動作描述或任何標點符號！若名字抓取錯誤將導致天道崩塌！`;
+1. 敘事必須在給出結果後，停在「我」的心境，將下一步交還玩家選擇！
+2.【名字提取鐵律】：在輸出 stat_changes 或 rel_changes 等任何 JSON 數據時，'target' 或 'npc' 欄位【絕對只能】填寫角色的「真實姓名」（例如：「沈清霜」）或「自己」。❌嚴禁填入台詞、對話、地名、動作描述或任何標點符號！若名字抓取錯誤將導致天道崩塌！`;
 
   try {
     let aiConfig = isNsfwMode ? { temperature: 1.0, top_p: 0.95, retries: 2, model: "google/gemini-3.1-flash-lite", isNsfwMode: true } : {};
@@ -2369,7 +2361,7 @@ ${d20Context}
         // 🔴 最源頭防呆：無名物品直接跳過，不佔背包計數
         if (!it.name || String(it.name).trim() === "") return;
 
-        let oName = craftOwnerLock ? "自己" : String(it.owner || "自己").trim();   // 🔴 煉成時強制歸玩家
+        let oName = String(it.owner || "自己").trim();
         let targetPcMatch = pcData.find(r => String(r[COL.PC.NAME]).trim() === oName);
         let finalId = (oName === "自己" || oName === String(pcName).trim()) ? pcId : (targetPcMatch ? targetPcMatch[COL.PC.ID] : (newNpcMap[oName] || oName));
         const trimmedName = String(it.name).trim();
@@ -2398,7 +2390,7 @@ ${d20Context}
         if (!it.name || String(it.name).trim() === "") return;
 
         // 1. 重新定義 targetPcMatch (修復原本會報錯的問題)
-        let oName = craftOwnerLock ? "自己" : String(it.owner || "自己").trim();   // 🔴 煉成時強制歸玩家，無視 AI 亂填的 owner
+        let oName = String(it.owner || "自己").trim();
         let targetPcMatch = pcData.find(r => String(r[COL.PC.NAME]).trim() === oName);
         let finalId = (oName === "自己" || oName === String(pcName).trim()) ? pcId : (targetPcMatch ? targetPcMatch[COL.PC.ID] : (newNpcMap[oName] || oName));
 
@@ -2438,7 +2430,6 @@ ${d20Context}
     let protectedItemIds = soulGiftProtectedIds.slice(); // 併入傾心信物保護
     if (aiData.items_transferred && Array.isArray(aiData.items_transferred) && sheets.item) {
       aiData.items_transferred.forEach(transfer => {
-        if (craftOwnerLock) return; // 🔴 煉成回合：嚴禁本回合任何物品轉移，避免成品被當場送人
         // 解析新擁有者 ID
         let newOwnerName = String(transfer.new_owner || "").trim();
         let targetPcMatch = pcData.find(r => String(r[COL.PC.NAME]).trim() === newOwnerName);
