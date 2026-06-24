@@ -50,33 +50,45 @@ function buildDefaultSystemPrompt(isNsfwMode, backLocked) {
   const _visibleStateRef = { "衣服": "同上", "姿勢": "同上", "負面": "同上", "顏面": "同上" };
   const _physicalStateRef = { "蜜穴": "同上", "肉棒": "同上", "菊穴": "同上", "右手": "同上", "左手": "同上" };
 
+  // 🔴 NSFW模式：只專注情慾本身，江湖雜務(物品/銀兩/陣營/任務/招募/地圖/戰鬥數值)本回合完全不追蹤、
+  // 不出現在輸出範本內，大幅縮減 JSON 範本字數；SFW(純淨模式)的 baseJson 維持完整不動。
+  let finalJson;
   if (isNsfwMode) {
-    baseJson.intimacy_feedback = {
-      "_note": "★以上四肢/五處皆角色「自身」當下肉體狀態，純肢體與感官、禁內心戲，第三人稱填寫，省略=維持原樣，無對應器官/動作填無，絕對禁寫'自己'。npcs每位與player共用此格式，依其實際狀態填寫對應欄位。",
-      "player": {
-        "visible_state": _visibleState,
-        "physical_state": _physicalState,
-        "dynamic_skills": "雙修技巧名(2~5字，無填無)",
-        "erogenous_zones": "無"
+    finalJson = {
+      "narration": baseJson.narration,
+      "options": baseJson.options,
+      "intimacy_feedback": {
+        "_note": "★以上四肢/五處皆角色「自身」當下肉體狀態，純肢體與感官、禁內心戲，第三人稱填寫，省略=維持原樣，無對應器官/動作填無，絕對禁寫'自己'。npcs每位與player共用此格式，依其實際狀態填寫對應欄位。",
+        "player": {
+          "visible_state": _visibleState,
+          "physical_state": _physicalState,
+          "dynamic_skills": "雙修技巧名(2~5字，無填無)",
+          "erogenous_zones": "無"
+        },
+        "npcs": [{
+          "name": "NPC實際名字",
+          "visible_state": _visibleStateRef,
+          "physical_state": _physicalStateRef,
+          "dynamic_skills": "雙修技巧名(2~5字，無填無)",
+          "erogenous_zones": "無",
+          "mutual_nicknames": "無"
+        }]
       },
-      "npcs": [{
-        "name": "NPC實際名字",
-        "visible_state": _visibleStateRef,
-        "physical_state": _physicalStateRef,
-        "dynamic_skills": "雙修技巧名(2~5字，無填無)",
-        "erogenous_zones": "無",
-        "mutual_nicknames": "無"
-      }]
+      "rel_changes": baseJson.rel_changes,
+      "mentioned_names": baseJson.mentioned_names,
+      "log_summary": baseJson.log_summary
     };
   } else {
     baseJson.intimacy_feedback = { "npcs": [{ "name": "NPC名", "mutual_nicknames": "無" }] };
     baseJson.new_maps = [
       { "name": "母區域-新分支名稱（母區域必須已存在於地圖中）", "type": "場所類型（茶館/密室/廢墟等）", "desc": "氛圍描述限30字" }
     ];
+    finalJson = baseJson;
   }
 
   // 3. 組合共通鐵律 Prompt (極致超壓縮版)
-  const baseRules = `你是九州天道演化核心，以日系武俠輕小說筆觸推演因果，強制台灣繁體中文。第一人稱「我」，禁上帝視角。以下為不可違背之天道鐵律：
+  // 🔴 SFW(純淨模式)維持完整鐵律不動，是江湖玩法最完整的模式。
+  const sfwBaseRules = `你是九州天道演化核心，以日系武俠輕小說筆觸推演因果，強制台灣繁體中文。第一人稱「我」，禁上帝視角。以下為不可違背之天道鐵律：
 
 【敘事與對話】
 1. 絕對響應：開頭必以第一人稱完整重現玩家最新動作與台詞，優先承接反轉、否定與突發，禁順預設劇情硬寫。NPC當回合給完整態度，禁懸念。
@@ -111,6 +123,25 @@ ${backLocked
 【JSON格式】
 1. 嚴格輸出：只輸出合法JSON。options固定4個且順序不可變：[主動]強勢掌握、[被動]委婉試探、[接續]延續互動、[反差]跳脫氛圍，每項20字，禁無中生有資產。new_maps僅純淨模式進入全新場所用。`;
 
+  // 🔴 NSFW(慾海模式)：本回合只專注情慾本身，江湖雜務(物品/銀兩/陣營/任務/招募/地圖/戰鬥數值/境界/身世)
+  // 完全不追蹤、不輸出，鐵律文字大幅精簡，盡量交給AI自行判斷。
+  const nsfwBaseRules = `你是九州天道演化核心，以日系武俠輕小說筆觸推演因果，強制台灣繁體中文。第一人稱「我」，禁上帝視角。以下為不可違背之天道鐵律：
+
+【敘事與對話】
+1. 絕對響應：開頭必以第一人稱完整重現玩家最新動作與台詞，優先承接反轉、否定與突發，禁順預設劇情硬寫。NPC當回合給完整態度，禁懸念。
+2. 格式分段：每2~3句必插入 <br><br> 換段。女體用柔嫩/雪白等柔美詞，❌絕對禁止強壯/鋼鐵/肌肉/薄繭/堅硬/厚實等冷硬粗暴詞。
+3. 對話格式：NPC說話格式為 角色名：「台詞」(動作寫在引號內開頭)。名字只標一次、引號只用一層「」，嚴禁重複名字或巢狀引號。開頭禁代名詞(他/她)，必指名道姓。
+
+【世界與NPC自主】
+1. 意圖攔截：玩家輸入的動作皆僅為「意圖」，若遇 NPC 阻攔、閃避或玩家實力不濟，天道必須【打斷/中止】，嚴禁玩家言出法隨！背景龍套不收錄至 mentioned_names，該欄僅收真實姓名(無則填[])。
+2. 慢熱與傾心：NPC依[個性][氣質][陣營]真實反應。好感未滿80者嚴禁言行表現傾心倒貼，禁用傾心/道侶等極親密詞。rel_changes 的 tag 填【關係定位】四字詞(萍水相逢/點頭之交/漸生情愫/紅顏知己等)，須對應好感高低，禁填當下情緒。
+
+【狀態與輸出】
+1. 本回合只專注情慾本身：肢體/感官/姿勢等狀態一律填入 intimacy_feedback，嚴禁另輸出 stat_changes；位置、戰鬥、物品、銀兩、陣營、任務等江湖事務本回合不追蹤、不輸出。
+2. 只輸出合法JSON，options固定4個且順序不可變：[主動]強勢掌握、[被動]委婉試探、[接續]延續互動、[反差]跳脫氛圍，每項20字。`;
+
+  const baseRules = isNsfwMode ? nsfwBaseRules : sfwBaseRules;
+
   // 4. 模式專屬律令 (極致超壓縮版)
   const specificRules = isNsfwMode ? `
 【五、慾海律令】
@@ -127,7 +158,7 @@ ${backLocked
 2. 邊界守護：複數NPC同場時各自依個性獨立判斷，禁擅自無腦聯手圍攻。
 3. 因果結算：買情報寫 quests。★【禁止搜屍】：系統並未記錄屍體/戰敗對象身上的實際物品，【絕對禁止】因玩家描述「搜屍/翻找屍體」而憑空輸出 items_transferred 或 items_gained，僅可描寫「搜尋無獲」或對方早已被人捲走財物。懸賞銀兩由底層發放，禁在此輸出銀兩 stat_changes。`;
 
-  return baseRules + "\n" + specificRules + "\n\n★【輸出範本】\n" + JSON.stringify(baseJson, null, 2);
+  return baseRules + "\n" + specificRules + "\n\n★【輸出範本】\n" + JSON.stringify(finalJson, null, 2);
 }
 
 function callGeminiAPI(prompt, systemOverride = null, config = {}) {
