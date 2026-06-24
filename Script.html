@@ -138,11 +138,18 @@ const REALM_LIMITS = _RC.REALM_LIMITS || {"凡人":20, "引氣":25, "凝罡":30,
     }
   }
   
+  function setBackLockBtnUI(locked) {
+    const btn = document.getElementById('back-lock-btn');
+    if (!btn) return;
+    btn.innerText = locked ? '🔒 已鎖' : '🔓';
+    btn.style.background = locked ? '#660000' : '#1a1a1a';
+    btn.style.borderColor = locked ? '#ff4444' : '#555';
+    btn.style.color = locked ? '#ff6666' : '#555';
+  }
   function toggleBackLock() {
   const locked = localStorage.getItem('kyushu_back_locked') === 'true';
   localStorage.setItem('kyushu_back_locked', String(!locked));
-  const btn = document.getElementById('back-lock-btn');
-  if (btn) btn.innerText = !locked ? '🔒' : '🔓';
+  setBackLockBtnUI(!locked);
   }
   function toggleActionDrawer() {
     const drawer = document.getElementById('action-drawer');
@@ -718,8 +725,7 @@ function renderRecentLocs(recents = null) {
     currentStatusTargetId = targetId || pc.id;
     currentStatusTargetName = targetName || pc.name;
     const isLocked = localStorage.getItem('kyushu_back_locked') === 'true';
-    const lockBtn = document.getElementById('back-lock-btn');
-    if (lockBtn) lockBtn.innerText = isLocked ? '🔒' : '🔓';
+    setBackLockBtnUI(isLocked);
 
     if (currentStatusTargetId === pc.id) {
       const lastS = localStorage.getItem('kyushu_last_status');
