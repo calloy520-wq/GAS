@@ -263,12 +263,14 @@ function actionUseItemOnNpc(userData, pcId, sheets) {
   let pcData = sheets.pc.getDataRange().getValues();
   const pIdx = pcData.findIndex(r => r[COL.PC.ID] == pcId);
   if (pIdx === -1) return JSON.stringify({ success: false, message: "查無此人命格。" });
+  const pName = pcData[pIdx][COL.PC.NAME];
   const pLoc = String(pcData[pIdx][COL.PC.LOC]).trim();
 
   const nIdx = pcData.findIndex(r => r[COL.PC.ID] != pcId && !String(r[COL.PC.ID]).startsWith("DEAD_") &&
     String(r[COL.PC.LOC]).trim() === pLoc && String(r[COL.PC.NAME]).includes(targetName));
   if (nIdx === -1) return JSON.stringify({ success: false, message: "對方已不在場，無法施藥。" });
-  const npcName = pcData[nIdx][COL.PC.NAME];
+  const npcRow = pcData[nIdx];
+  const npcName = npcRow[COL.PC.NAME];
 
   let itemData = sheets.item.getDataRange().getValues();
   const iIdx = itemData.findIndex(r => r[COL.ITEM.OWNER] == pcId && r[COL.ITEM.ID] === itemId);
@@ -291,17 +293,20 @@ function actionUseItemOnNpc(userData, pcId, sheets) {
   const isCureItem = itemName.includes("解");
 
   let effectStr = "";
+  let instructionStr = "";
   if (isHealItem) {
     const maxStats = calculateMaxStats(pcData[nIdx][COL.PC.REALM], pcData[nIdx][COL.PC.CON], pcData[nIdx][COL.PC.INT]);
     pcData[nIdx][COL.PC.HP] = maxStats.hp;
     pcData[nIdx][COL.PC.MP] = maxStats.mp;
     pcData[nIdx][COL.PC.STATUS] = JSON.stringify({ "衣服": "穿戴整齊", "姿勢": "站立", "負面": "無", "顏面": "氣息平穩" });
     effectStr = `「${npcName}」氣血與真氣全面回滿，所有負面狀態一掃而空！`;
+    instructionStr = `玩家將「${itemName}」施用於「${npcName}」身上，對方氣血與真氣已全面回滿、所有負面狀態一掃而空（結果已定，禁止改變）。請生動描寫施藥的過程與「${npcName}」的反應，語氣務必貼合對方性格。`;
   } else if (isCureItem) {
     let vs = parseVisibleStatus(pcData[nIdx][COL.PC.STATUS]);
     vs["負面"] = "無";
     pcData[nIdx][COL.PC.STATUS] = JSON.stringify(vs);
     effectStr = `「${npcName}」體內的異樣藥力被解去，神色恢復如常。`;
+    instructionStr = `玩家將「${itemName}」施用於「${npcName}」身上，對方體內異樣藥力已被解去、神色恢復如常（結果已定，禁止改變）。請生動描寫施藥的過程與「${npcName}」的反應，語氣務必貼合對方性格。`;
   } else {
     return JSON.stringify({ success: false, message: `「${itemName}」不是能施用於他人身上的丹藥。` });
   }
@@ -309,7 +314,8 @@ function actionUseItemOnNpc(userData, pcId, sheets) {
   sheets.item.deleteRow(iIdx + 1);
   sheets.pc.getRange(nIdx + 1, 1, 1, pcData[nIdx].length).setValues([pcData[nIdx]]);
 
-  return JSON.stringify({ success: true, itemName: itemName, targetName: npcName, effectStr: effectStr });
+  const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, instructionStr);
+  return JSON.stringify({ success: true, itemName: itemName, targetName: npcName, effectStr: effectStr, aiPrompt: aiPrompt });
 }
 
 function actionBreakthrough(userData, pcId, sheets) {
@@ -944,7 +950,18 @@ function actionUseItemSelf(userData, pcId, sheets) {
   const actualName = itemData[iIdx][COL.ITEM.NAME] || itemName;
   sheets.item.deleteRow(iIdx + 1);
 
-  const aiPrompt = `【系統事件·已裁定，嚴禁更改任何結果】玩家將「${actualName}」消耗/施放了，系統底層已將物品扣除完畢。請生動描寫使用的效果與周圍的反應；若是強行食用不可食之物，請描寫滑稽場面。\n★【鐵律】嚴禁輸出任何 items_used、items_lost、items_gained 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！`;
+  // 🔴 補上地點 + 在場旁人，避免AI寫出與當前場景不符或憑空捏造的反應
+  const pcData = sheets.pc.getDataRange().getValues();
+  const pIdx = pcData.findIndex(r => r[COL.PC.ID] == pcId);
+  const pLoc = pIdx !== -1 ? String(pcData[pIdx][COL.PC.LOC]).trim() : "";
+  const bystanderNames = pcData
+    .filter(r => r[COL.PC.ID] != pcId && !String(r[COL.PC.ID]).startsWith("DEAD_") && String(r[COL.PC.LOC]).trim() === pLoc)
+    .map(r => r[COL.PC.NAME]);
+  const sceneStr = pLoc
+    ? `【場景】玩家目前位於『${pLoc}』。${bystanderNames.length > 0 ? `在場還有：${bystanderNames.join("、")}，請合理帶到他們的存在或反應，不要視而不見。` : "現場再無旁人，請勿憑空捏造路人或對話對象。"}\n`
+    : "";
+
+  const aiPrompt = `${sceneStr}【系統事件·已裁定，嚴禁更改任何結果】玩家將「${actualName}」消耗/施放了，系統底層已將物品扣除完畢。請生動描寫使用的效果與周圍的反應；若是強行食用不可食之物，請描寫滑稽場面。\n★【鐵律】嚴禁輸出任何 items_used、items_lost、items_gained 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！`;
   return JSON.stringify({ success: true, aiPrompt, itemName: actualName });
 }
 

@@ -1018,8 +1018,7 @@ function renderRecentLocs(recents = null) {
     try {
       const res = await gasRun({ action: "use_item_on_npc", pcId: pc.id, itemId: itemId, targetName: targetNpc });
       if (res.success) {
-        const promptMsg = `【純敘事】玩家取出「${itemName}」，施用於「${targetNpc}」身上。結果：${res.effectStr}請生動描寫施藥的過程與對方的反應，地點與在場人物務必與當前場景一致。`;
-        narrate(promptMsg);
+        narrate(res.aiPrompt);
       } else {
         alert(res.message || "施藥失敗。");
       }
