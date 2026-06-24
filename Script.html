@@ -3427,7 +3427,7 @@ document.getElementById('cultivate-count-text').innerHTML =
       if (!lifeskillSelected) return;
       const btns = document.querySelectorAll('#lifeskill-roll-panel .btn');
       btns.forEach(b => b.disabled = true);
-      document.getElementById('lifeskill-result-msg').innerHTML = `<span style="color:#aaa;">天道演化中...</span>`;
+      document.getElementById('lifeskill-result-msg').innerHTML = `<span style="color:#816e54;">天道演化中...</span>`;
 
       try {
           const res = await gasRun({ action: "lifeskill_gather", pcId: pc.id, skill: lifeskillSelected, rollCount: rollCount });
@@ -3449,7 +3449,7 @@ document.getElementById('cultivate-count-text').innerHTML =
           if (res.itemsGained && res.itemsGained.length > 0) {
               html += `<div style="margin-top:8px; color:#ffd700; font-weight:bold;">獲得：${res.itemsGained.map(it => `${it.name}(${it.tier})`).join('、')}</div>`;
           } else {
-              html += `<div style="margin-top:8px; color:#aaa;">這趟一無所獲。</div>`;
+              html += `<div style="margin-top:8px; color:#816e54;">這趟一無所獲。</div>`;
           }
           document.getElementById('lifeskill-result-msg').innerHTML = html;
           renderLifeskillList();
