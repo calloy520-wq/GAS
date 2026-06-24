@@ -69,7 +69,17 @@ const ActionRouter = {
   "craft_item": actionCraftItem,
   "steal_npc_item": actionStealNpcItem,
   "buy_intel": actionBuyIntel,
-  "lifeskill_gather": actionLifeskillGather
+  "lifeskill_gather": actionLifeskillGather,
+  "shop_get": actionShopGet,
+  "shop_create": actionShopCreate,
+  "shop_invite_guest": actionShopInviteGuest,
+  "shop_dismiss_guest": actionShopDismissGuest,
+  "shop_business": actionShopBusiness,
+  "shop_settle": actionShopSettle,
+  "shop_vault_deposit": actionShopVaultDeposit,
+  "shop_vault_withdraw": actionShopVaultWithdraw,
+  "shop_close": actionShopClose,
+  "home_invite_guest": actionHomeInviteGuest
 
 };
 
@@ -94,7 +104,8 @@ function handleGameAction(userData) {
     quest: ss.getSheetByName("天命"), task: ss.getSheetByName("TASK"),
     faction: ss.getSheetByName("勢力"),
     rumor: ss.getSheetByName("傳聞"),
-    mail: ss.getSheetByName("飛書")
+    mail: ss.getSheetByName("飛書"),
+    shop: ss.getSheetByName("店鋪")
   };
 
   const handler = ActionRouter[action];

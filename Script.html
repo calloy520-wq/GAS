@@ -2825,13 +2825,26 @@ document.getElementById('cultivate-count-text').innerHTML =
     target.innerHTML = '<p style="text-align:center; color:#888;">正在感應歸處...</p>';
 
     try {
-      const res = await gasRun({ action: "home_get", pcId: pc.id });
+      const [res] = await Promise.all([
+        gasRun({ action: "home_get", pcId: pc.id }),
+        syncData(true)
+      ]);
       currentHomeData = res;
       renderHomeDwelling(res);
       renderHomeDecor(res);
     } catch (e) {
       target.innerHTML = '<p style="text-align:center; color:red;">天道感應失敗。</p>';
     }
+  }
+
+  // 🟢 共用：找出對玩家已傾心、且目前不在 excludeLoc 的 NPC 候選清單(招待/邀請用)
+  function getSoulboundCandidates(excludeLoc) {
+    return (localNPCs || []).filter(n =>
+      !n.isPC &&
+      (n.relVal || 0) >= 100 &&
+      String(n.relTag || '').includes('(已傾心)') &&
+      String(n.loc || '').trim() !== String(excludeLoc || '').trim()
+    );
   }
 
   function renderHomeDwelling(res) {
@@ -2871,6 +2884,20 @@ document.getElementById('cultivate-count-text').innerHTML =
       residentsHtml = `<p style="text-align:center; color:#999; font-size:13px; padding:10px 0;">空蕩蕩的，無人在家。<br><span style="font-size:11px; color:#aaa;">(帶同行夥伴回家，或取消同行讓她暫居此處)</span></p>`;
     }
 
+    const candidates = getSoulboundCandidates(res.homeLoc);
+    let inviteHtml = "";
+    if (candidates.length > 0) {
+      inviteHtml = `
+        <div style="margin-top:10px;">
+          <select id="home-invite-select" class="std-select" style="width:100%; box-sizing:border-box;">
+            ${candidates.map(c => `<option value="${c.name}">${c.name}（目前：${c.loc || '行蹤不明'}）</option>`).join("")}
+          </select>
+          <button class="btn" style="width:100%; margin-top:8px; border-color:#e91e63; color:#e91e63; font-weight:bold; padding:8px 0;" onclick="lockBtn(event, submitHomeInviteGuest)">💌 邀來家裡坐</button>
+        </div>`;
+    } else {
+      inviteHtml = `<p style="text-align:center; color:#999; font-size:12px; margin-top:10px;">尚無已傾心之人可邀。</p>`;
+    }
+
     el.innerHTML = `
       <div style="text-align:center; background:rgba(200,132,60,0.05); border:1px solid rgba(200,132,60,0.3); border-radius:8px; padding:15px; margin-bottom:15px;">
         <div style="font-size:22px; color:#c8843c; font-weight:bold; letter-spacing:2px;">「${homeShort}」</div>
@@ -2884,6 +2911,7 @@ document.getElementById('cultivate-count-text').innerHTML =
       <div>
         <div style="color:#800; font-size:13px; font-weight:bold; margin-bottom:8px; border-bottom:1px dashed rgba(128,0,0,0.3); padding-bottom:4px;">🏠 家中之人</div>
         ${residentsHtml}
+        ${inviteHtml}
       </div>`;
   }
 
@@ -2944,6 +2972,18 @@ document.getElementById('cultivate-count-text').innerHTML =
     } catch (e) { alert("天道阻礙，搬家失敗。"); }
   }
 
+  async function submitHomeInviteGuest() {
+    const sel = document.getElementById('home-invite-select');
+    if (!sel || !sel.value) { alert("尚無可邀請的對象。"); return; }
+    const npcName = sel.value;
+    try {
+      const res = await gasRun({ action: "home_invite_guest", pcId: pc.id, npcName: npcName });
+      if (res.success) {
+        loadHomeDwellingAndDecor('dwelling');
+      } else { alert(res.message); }
+    } catch (e) { alert("天道阻礙，邀請失敗。"); }
+  }
+
   async function saveHomeDecor() {
     const desc = document.getElementById('home-decor-input').value.trim();
     try {
@@ -2962,6 +3002,279 @@ document.getElementById('cultivate-count-text').innerHTML =
     travelTo(homeLoc, 0);
   }
 
+  // ==========================================
+  // 🏪 我的店
+  // ==========================================
+  let currentShopData = null;
+
+  function openShopMenu() {
+    toggleActionDrawer();
+    document.getElementById('shop-overlay').style.display = 'flex';
+    loadShop();
+  }
+
+  async function loadShop() {
+    const el = document.getElementById('shop-content');
+    el.innerHTML = '<p style="text-align:center; color:#888;">正在感應鋪面氣息...</p>';
+    try {
+      const [res] = await Promise.all([
+        gasRun({ action: "shop_get", pcId: pc.id }),
+        syncData(true)
+      ]);
+      currentShopData = res;
+      if (!res.success) { el.innerHTML = `<p style="text-align:center; color:red;">${res.message || '感應失敗'}</p>`; return; }
+      if (!res.hasShop) renderShopCreateForm();
+      else renderShopMain(res);
+    } catch (e) {
+      el.innerHTML = '<p style="text-align:center; color:red;">天道感應失敗。</p>';
+    }
+  }
+
+  function renderShopCreateForm() {
+    const el = document.getElementById('shop-content');
+    const curLoc = (document.getElementById('ui-loc').innerText || "").split('-')[0];
+    el.innerHTML = `
+      <div style="text-align:center; padding:10px 0 20px; color:#888;">
+        <div style="font-size:40px; margin-bottom:10px;">🏮</div>
+        <div style="font-size:15px; color:#666;">你尚未開店，江湖路上少了一份營生。</div>
+        <div style="font-size:12px; color:#555; margin-top:8px;">將在當前所在地「${curLoc}」開店。</div>
+      </div>
+      <div style="background:rgba(200,132,60,0.05); border:1px solid rgba(200,132,60,0.3); border-radius:8px; padding:15px;">
+        <label style="color:#c8843c; font-weight:bold; font-size:13px; display:block; margin-bottom:6px;">店名</label>
+        <input id="new-shop-name" class="std-in" maxlength="8" placeholder="例如：醉仙樓、悅來客棧" style="width:100%; box-sizing:border-box; padding:8px; margin-bottom:10px;">
+        <label style="color:#c8843c; font-weight:bold; font-size:13px; display:block; margin-bottom:6px;">類別</label>
+        <input id="new-shop-category" class="std-in" maxlength="10" placeholder="例如：酒樓、藥鋪、鏢局" style="width:100%; box-sizing:border-box; padding:8px; margin-bottom:10px;">
+        <label style="color:#c8843c; font-weight:bold; font-size:13px; display:block; margin-bottom:6px;">服務內容</label>
+        <textarea id="new-shop-desc" class="std-in" maxlength="150" placeholder="這間店是做什麼生意的？" style="width:100%; box-sizing:border-box; height:80px; resize:none; padding:8px; font-family:inherit;"></textarea>
+        <button class="btn" style="width:100%; margin-top:12px; background:#c8843c; color:#fff; border:none; font-weight:bold; padding:10px;" onclick="lockBtn(event, submitCreateShop)">🏪 開店立業 (2000 兩)</button>
+      </div>`;
+  }
+
+  async function submitCreateShop() {
+    const shopName = document.getElementById('new-shop-name').value.trim();
+    const category = document.getElementById('new-shop-category').value.trim();
+    const desc = document.getElementById('new-shop-desc').value.trim();
+    if (!shopName || !category || !desc) { alert("店名、類別、服務內容皆不可空白！"); return; }
+    const money = parseInt(document.getElementById('ui-money').innerText) || 0;
+    if (money < 2000) { alert("囊中羞澀！開店至少需要 2000 兩白銀。"); return; }
+    try {
+      const res = await gasRun({ action: "shop_create", pcId: pc.id, shopName: shopName, category: category, desc: desc });
+      if (res.success) {
+        if (res.statusString) { localStorage.setItem('kyushu_last_status', res.statusString); updateUI(res.statusString.split('§')); }
+        const story = document.getElementById('story');
+        story.insertAdjacentHTML('beforeend', `<div class="msg-ai" style="border-left:4px solid #c8843c; background:rgba(200,132,60,0.05);"><b>【開店立業】</b><br>${res.message}</div>`);
+        story.scrollTop = story.scrollHeight;
+        loadShop();
+      } else { alert(res.message); }
+    } catch (e) { alert("天道阻礙，開店失敗。"); }
+  }
+
+  function renderShopMain(res) {
+    const el = document.getElementById('shop-content');
+    const shopShort = res.loc.split('-')[1] || res.loc;
+    const parent = res.loc.split('-')[0];
+    const curLoc = (document.getElementById('ui-loc').innerText || "").trim();
+    const isAtShop = curLoc === res.loc;
+
+    let guestsHtml = "";
+    if (res.guests && res.guests.length > 0) {
+      guestsHtml = res.guests.map(g => {
+        const tag = g.isParty
+          ? `<span style="font-size:11px; color:#daa520; font-weight:bold;">[同行中]</span>`
+          : `<span style="font-size:11px; color:#888;">[來客]</span>`;
+        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:rgba(0,0,0,0.03); border-radius:4px; margin-bottom:6px;">
+          <span style="color:#800; font-weight:bold;">${g.name}</span>
+          <span>${tag} <span style="font-size:11px; color:#a52a2a;">${g.tag || ''}</span></span>
+        </div>`;
+      }).join("");
+    } else {
+      guestsHtml = `<p style="text-align:center; color:#999; font-size:13px; padding:10px 0;">店裡此刻無人。</p>`;
+    }
+
+    const candidates = getSoulboundCandidates(res.loc);
+    const inviteHtml = candidates.length > 0 ? `
+      <select id="shop-invite-select" class="std-select" style="width:100%; box-sizing:border-box;">
+        ${candidates.map(c => `<option value="${c.name}">${c.name}（目前：${c.loc || '行蹤不明'}）</option>`).join("")}
+      </select>
+      <button class="btn" style="width:100%; margin-top:8px; border-color:#e91e63; color:#e91e63; font-weight:bold; padding:8px 0;" onclick="lockBtn(event, submitShopInviteGuest)">💌 指定招待入店</button>`
+      : `<p style="text-align:center; color:#999; font-size:12px;">尚無已傾心之人可招待。</p>`;
+
+    const actionPanel = isAtShop ? `
+      <div style="margin-top:15px; border-top:1px dashed rgba(200,132,60,0.3); padding-top:12px;">
+        <div style="color:#800; font-size:13px; font-weight:bold; margin-bottom:8px;">🧧 店中客人</div>
+        ${guestsHtml}
+        <button class="btn" style="width:100%; border-color:#a52a2a; color:#a52a2a; padding:6px 0;" onclick="lockBtn(event, submitShopDismissGuest)">🚶 送客 (遣走非同行客人)</button>
+        <div style="margin-top:10px;">${inviteHtml}</div>
+      </div>
+
+      <div style="margin-top:15px; border-top:1px dashed rgba(200,132,60,0.3); padding-top:12px;">
+        <div style="color:#800; font-size:13px; font-weight:bold; margin-bottom:8px;">🛎️ 營業</div>
+        <button id="shop-biz-btn" class="btn" style="width:100%; border-color:#2e8b57; color:#2e8b57; font-weight:bold; padding:8px 0;" onclick="doShopBusiness()">🛎️ 營業</button>
+        <div id="shop-biz-output" style="margin-top:8px;"></div>
+      </div>
+
+      <div style="margin-top:15px; border-top:1px dashed rgba(200,132,60,0.3); padding-top:12px;">
+        <div style="color:#800; font-size:13px; font-weight:bold; margin-bottom:8px;">🪙 小金庫 (本金 ${res.vaultMoney} 兩｜每時辰約 ${res.vaultRate} 兩)</div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn" style="flex:1; border-color:#b8860b; color:#b8860b; padding:6px 0;" onclick="lockBtn(event, submitShopVaultDeposit)">💰 存入</button>
+          <button class="btn" style="flex:1; border-color:#b8860b; color:#b8860b; padding:6px 0;" onclick="lockBtn(event, submitShopVaultWithdraw)">💸 取出</button>
+          <button class="btn" style="flex:1; border-color:#d4af37; color:#d4af37; padding:6px 0;" onclick="lockBtn(event, submitShopSettle)">✨ 結算</button>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:18px;">
+        <button class="btn" style="flex:1; border-color:#888; color:#888; padding:8px 0;" onclick="lockBtn(event, leaveShopScene)">🚪 休息</button>
+        <button class="btn" style="flex:1; border-color:#a52a2a; color:#a52a2a; font-weight:bold; padding:8px 0;" onclick="lockBtn(event, submitShopClose)">🔒 關門大吉</button>
+      </div>
+    ` : `
+      <div style="text-align:center; padding:15px 0;">
+        <p style="color:#888; font-size:13px;">你目前不在店裡，需親自到店才能經營。</p>
+        <button class="btn" style="border-color:#2e8b57; color:#2e8b57; font-weight:bold; padding:8px 20px; margin-top:8px;" onclick="lockBtn(event, () => goToShop('${res.loc}'))">🚶 前往本店</button>
+      </div>
+    `;
+
+    el.innerHTML = `
+      <div style="text-align:center; background:rgba(200,132,60,0.05); border:1px solid rgba(200,132,60,0.3); border-radius:8px; padding:15px;">
+        <div style="font-size:22px; color:#c8843c; font-weight:bold; letter-spacing:2px;">「${shopShort}」</div>
+        <div style="font-size:12px; color:#888; margin-top:4px;">📍 ${parent} ｜ ${res.category}</div>
+        <div style="font-size:13px; color:#666; margin-top:8px; line-height:1.5;">${res.desc}</div>
+      </div>
+      ${actionPanel}`;
+  }
+
+  function goToShop(shopLoc) {
+    closeSystemModal('shop-overlay');
+    travelTo(shopLoc, 0);
+  }
+
+  async function leaveShopScene() {
+    if (!currentShopData || !currentShopData.loc) return;
+    const rootLoc = currentShopData.loc.split('-')[0];
+    closeSystemModal('shop-overlay');
+    await travelTo(rootLoc, 0);
+  }
+
+  async function submitShopInviteGuest() {
+    const sel = document.getElementById('shop-invite-select');
+    if (!sel || !sel.value) { alert("尚無可招待的對象。"); return; }
+    try {
+      const res = await gasRun({ action: "shop_invite_guest", pcId: pc.id, npcName: sel.value });
+      if (res.success) loadShop();
+      else alert(res.message);
+    } catch (e) { alert("天道阻礙，招待失敗。"); }
+  }
+
+  async function submitShopDismissGuest() {
+    try {
+      const res = await gasRun({ action: "shop_dismiss_guest", pcId: pc.id });
+      if (res.success) {
+        const story = document.getElementById('story');
+        story.insertAdjacentHTML('beforeend', `<div class="msg-ai" style="border-left:4px solid #a52a2a; background:rgba(165,42,42,0.05);"><b>【送客】</b><br>${res.message}</div>`);
+        story.scrollTop = story.scrollHeight;
+        loadShop();
+      } else { alert(res.message); }
+    } catch (e) { alert("天道阻礙，送客失敗。"); }
+  }
+
+  async function doShopBusiness() {
+    const btn = document.getElementById('shop-biz-btn');
+    if (!btn || btn.disabled) return;
+    const isNsfw = document.getElementById('nsfw-mode-toggle')?.checked || false;
+    const outputEl = document.getElementById('shop-biz-output');
+    outputEl.innerHTML = '<p style="text-align:center; color:#888; font-size:12px;">客人正絡繹往來...</p>';
+    btn.disabled = true;
+    try {
+      const res = await gasRun({ action: "shop_business", pcId: pc.id, isNsfw: isNsfw });
+      if (res.success) {
+        outputEl.innerHTML = `<div style="font-size:13px; color:#553311; line-height:1.6; padding:10px; background:rgba(200,132,60,0.05); border-radius:6px;">${res.text}</div>`;
+        startShopBizCooldown(btn);
+      } else {
+        outputEl.innerHTML = `<p style="text-align:center; color:#999; font-size:12px;">${res.message}</p>`;
+        btn.disabled = false;
+      }
+    } catch (e) {
+      outputEl.innerHTML = '<p style="text-align:center; color:red; font-size:12px;">天道阻礙，營業失敗。</p>';
+      btn.disabled = false;
+    }
+  }
+
+  function startShopBizCooldown(btn) {
+    if (!btn) return;
+    let remain = 20;
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.innerText = `⏳ 緩口氣 (${remain}s)`;
+    const timer = setInterval(() => {
+      remain--;
+      if (remain <= 0) {
+        clearInterval(timer);
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.innerText = '🛎️ 營業';
+      } else {
+        btn.innerText = `⏳ 緩口氣 (${remain}s)`;
+      }
+    }, 1000);
+  }
+
+  async function submitShopSettle() {
+    try {
+      const res = await gasRun({ action: "shop_settle", pcId: pc.id });
+      if (res.success) {
+        if (res.statusString) { localStorage.setItem('kyushu_last_status', res.statusString); updateUI(res.statusString.split('§')); }
+        const story = document.getElementById('story');
+        story.insertAdjacentHTML('beforeend', `<div class="msg-ai" style="border-left:4px solid #d4af37; background:rgba(212,175,55,0.05);"><b>【小金庫結算】</b><br>${res.message}</div>`);
+        story.scrollTop = story.scrollHeight;
+        loadShop();
+      } else { alert(res.message); }
+    } catch (e) { alert("天道阻礙，結算失敗。"); }
+  }
+
+  async function submitShopVaultDeposit() {
+    const money = parseInt(document.getElementById('ui-money').innerText) || 0;
+    const amountInput = prompt(`要存入小金庫多少銀兩？\n(身上現有：${money} 兩)`);
+    if (amountInput === null) return;
+    const amount = parseInt(amountInput);
+    if (isNaN(amount) || amount <= 0) { alert("存入金額須為正整數。"); return; }
+    try {
+      const res = await gasRun({ action: "shop_vault_deposit", pcId: pc.id, amount: amount });
+      if (res.success) {
+        if (res.statusString) { localStorage.setItem('kyushu_last_status', res.statusString); updateUI(res.statusString.split('§')); }
+        loadShop();
+      } else { alert(res.message); }
+    } catch (e) { alert("天道阻礙，存入失敗。"); }
+  }
+
+  async function submitShopVaultWithdraw() {
+    const vaultMoney = currentShopData ? (currentShopData.vaultMoney || 0) : 0;
+    const amountInput = prompt(`要從小金庫取出多少銀兩？\n(本金現有：${vaultMoney} 兩)`);
+    if (amountInput === null) return;
+    const amount = parseInt(amountInput);
+    if (isNaN(amount) || amount <= 0) { alert("取出金額須為正整數。"); return; }
+    try {
+      const res = await gasRun({ action: "shop_vault_withdraw", pcId: pc.id, amount: amount });
+      if (res.success) {
+        if (res.statusString) { localStorage.setItem('kyushu_last_status', res.statusString); updateUI(res.statusString.split('§')); }
+        loadShop();
+      } else { alert(res.message); }
+    } catch (e) { alert("天道阻礙，取出失敗。"); }
+  }
+
+  async function submitShopClose() {
+    if (!confirm("確定要關閉這間店嗎？\n小金庫本金將全額退回，此操作不可逆！")) return;
+    if (!confirm("再次確認：真的要關門大吉嗎？江湖路上將少這間鋪子。")) return;
+    try {
+      const res = await gasRun({ action: "shop_close", pcId: pc.id });
+      if (res.success) {
+        if (res.statusString) { localStorage.setItem('kyushu_last_status', res.statusString); updateUI(res.statusString.split('§')); }
+        const story = document.getElementById('story');
+        story.insertAdjacentHTML('beforeend', `<div class="msg-ai" style="border-left:4px solid #a52a2a; background:rgba(165,42,42,0.05);"><b>【關門大吉】</b><br>${res.message}</div>`);
+        story.scrollTop = story.scrollHeight;
+        closeSystemModal('shop-overlay');
+        currentShopData = null;
+      } else { alert(res.message); }
+    } catch (e) { alert("天道阻礙，關店失敗。"); }
+  }
 
 
  // ==========================================
