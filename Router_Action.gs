@@ -832,9 +832,10 @@ function buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, instructionStr) {
   const allLogs = sheets.log ? sheets.log.getDataRange().getValues() : [];
   const recentLogStr = allLogs.filter(r => String(r[2]).includes(pName) || String(r[2]).includes(npcName)).slice(-5).map(r => `${r[2]}`).join("\n") || "（尚無相關因果記錄）";
 
-  return `【場景】玩家『${pName}』目前位於『${pLoc}』。\n【近期因果】\n${recentLogStr}\n【對象資料】\n${npcCardStr}\n\n` +
+  return `【場景】玩家『${pName}』目前位於『${pLoc}』。\n【近期因果】(僅供背景參考，純屬回憶，並非當下在場！)\n${recentLogStr}\n【對象資料】\n${npcCardStr}\n\n` +
     `【系統事件·已裁定，嚴禁更改任何結果】${instructionStr}\n` +
-    `★【鐵律】嚴禁輸出任何 items_gained、items_transferred、money_transferred 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！`;
+    `★【鐵律】嚴禁輸出任何 items_gained、items_transferred、money_transferred 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！\n` +
+    `★【在場驗證】本回合唯一在場者僅玩家與「${npcName}」，近期因果中提到的任何其他姓名皆視為不在場的回憶，嚴禁讓其登場、插話或互動！`;
 }
 
 // ==========================================
@@ -3598,10 +3599,11 @@ function actionMultiAttack(userData, pcId, sheets) {
   const allLogs = sheets.log ? sheets.log.getDataRange().getValues() : [];
   const recentLogStr = allLogs.filter(r => String(r[2]).includes(pName)).slice(-5).map(r => `${r[2]}`).join("\n") || "（尚無相關因果記錄）";
 
-  const aiPrompt = `【場景】玩家『${pName}』目前位於『${pLoc}』。\n【近期因果】\n${recentLogStr}${npcCardsStr}\n\n` +
+  const aiPrompt = `【場景】玩家『${pName}』目前位於『${pLoc}』。\n【近期因果】(僅供背景參考，純屬回憶，並非當下在場！)\n${recentLogStr}${npcCardsStr}\n\n` +
     `【系統戰報·已裁定，嚴禁更改任何勝負、傷害或藥效判定】玩家『${pName}』展開連續動作：\n\n` +
     aiPromptParts.join("\n\n") + `\n\n` +
     `★請依此結果，並參照上方地點、近期因果與參戰者性格資料，將以上每一段交手依序串接成一段流暢生動的描寫，可參考玩家自己描述的招式、語氣與下藥手法。\n` +
+    `★【在場驗證】本回合在場者僅限玩家與【參戰者資料】列出之人，近期因果中提到的其他姓名均不在場，嚴禁讓其登場、插話或互動！\n` +
     `★【鐵律】任何被擊倒者最多只是重傷昏迷倒地，【絕對禁止】描寫死亡、斷氣、隕落或屍體！生死由玩家後續定奪。\n` +
     `★【鐵律】嚴禁輸出任何 stat_changes 的生命變化或負面狀態變化，已結算完畢，重複輸出會導致天道崩塌！\n` +
     `★【鐵律】此為單純切磋／下藥交鋒，嚴禁輸出 items_gained、items_transferred 或 money_transferred！` +
