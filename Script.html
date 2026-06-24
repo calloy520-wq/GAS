@@ -2276,7 +2276,7 @@ async function handleMultiAttack(rawMsg) {
         story.insertAdjacentHTML('beforeend',
           `<div style="text-align:center; color:#888; font-size:12px; margin:4px 0;">${skipMsg}</div>`);
       } else {
-        renderCombatReport({ actionType: r.actionType, playerName: pc.name, npcName: r.targetName, pRoll: r.pRoll, pMod: r.pMod, pScore: r.pScore, nRoll: r.nRoll, nMod: r.nMod, nScore: r.nScore, playerWins: r.playerWins, damage: r.damage, critFlavor: r.critFlavor });
+        renderCombatReport({ actionType: r.actionType, playerName: pc.name, npcName: r.targetName, pRoll: r.pRoll, pMod: r.pMod, pScore: r.pScore, nRoll: r.nRoll, nMod: r.nMod, nScore: r.nScore, playerWins: r.playerWins, damage: r.damage, critFlavor: r.critFlavor, isStalemate: r.isStalemate, isDodge: r.isDodge });
       }
     });
     story.scrollTop = story.scrollHeight;
@@ -2311,10 +2311,13 @@ function renderCombatReport(c) {
   else if (c.critFlavor === "player_fumble") critBadge = `<div style="color:#a52a2a; font-weight:bold;">💥 你·大失敗！</div>`;
   else if (c.critFlavor === "npc_fumble") critBadge = `<div style="color:#d4af37; font-weight:bold;">💥 ${c.npcName}·大失敗！</div>`;
 
-  const winColor = c.playerWins ? "#2e8b57" : "#a52a2a";
+  const winColor = c.isStalemate ? "#888" : (c.playerWins ? "#2e8b57" : "#a52a2a");
   const actionType = c.actionType || "攻擊";
   let winText, bottomLine;
-  if (actionType === "攻擊") {
+  if (actionType === "攻擊" && c.isStalemate) {
+    winText = c.isDodge ? `${c.npcName} 堂堂正正避開` : `擊中卻被卸力`;
+    bottomLine = `⚖️ 棋逢對手，${winText}，未傷`;
+  } else if (actionType === "攻擊") {
     winText = c.playerWins ? `你擊中 ${c.npcName}` : `${c.npcName} 反擊得手`;
     bottomLine = `⚔️ ${winText}，造成 ${c.damage} 點傷害`;
   } else {

@@ -3477,20 +3477,28 @@ function actionMultiAttack(userData, pcId, sheets) {
     const pCrit = pRoll === 20, pFumble = pRoll === 1;
     const nCrit = nRoll === 20, nFumble = nRoll === 1;
 
-    let playerWins, critFlavor = "", dmgMultiplier = 1;
+    let diff = Math.abs(pScore - nScore);
+    let playerWins, critFlavor = "", dmgMultiplier = 1, isStalemate = false;
     if (pFumble && !nFumble) { playerWins = false; dmgMultiplier = 1.5; critFlavor = "player_fumble"; }
     else if (nFumble && !pFumble) { playerWins = true; dmgMultiplier = 1.5; critFlavor = "npc_fumble"; }
     else if (pCrit && !nCrit) { playerWins = true; critFlavor = "player_crit"; }
     else if (nCrit && !pCrit) { playerWins = false; critFlavor = "npc_crit"; }
+    // 🔴 棋逢對手：分數差距在2以內，視為僵持(擊中卸力或被堂堂正正閃避)，不掉血，江湖氣味的「沒打到/打到沒傷」
+    else if (diff <= 2) { isStalemate = true; playerWins = pScore >= nScore; }
     else { playerWins = pScore >= nScore; }
 
-    let diff = Math.abs(pScore - nScore);
-    let damage = Math.max(1, diff * 7);
-    if ((playerWins && pCrit && !nCrit) || (!playerWins && nCrit && !pCrit)) damage += 30;
+    let damage = isStalemate ? 0 : Math.max(1, diff * 7);
+    if (!isStalemate && ((playerWins && pCrit && !nCrit) || (!playerWins && nCrit && !pCrit))) damage += 30;
     damage = Math.round(damage * dmgMultiplier);
 
     let resultMsg = "";
-    if (playerWins) {
+    let isDodge = false;
+    if (isStalemate) {
+      isDodge = Math.random() < 0.5;
+      resultMsg = isDodge
+        ? `你與「${npcName}」棋逢對手，這一招被對方堂堂正正地避開了，未能命中！`
+        : `你與「${npcName}」棋逢對手，這一擊確實碰上了，但對方及時卸力化開，未能造成實質傷害！`;
+    } else if (playerWins) {
       let nHp = parseInt(pcData[nIdx][COL.PC.HP]) || 0;
       let nHpAfter = nHp - damage;
       if (nHpAfter <= 5) {
@@ -3540,7 +3548,8 @@ function actionMultiAttack(userData, pcId, sheets) {
     results.push({
       actionType: "攻擊", targetName: npcName, pRoll: pRoll, pMod: pMod, pScore: pScore,
       nRoll: nRoll, nMod: nMod, nScore: nScore,
-      playerWins: playerWins, damage: damage, critFlavor: critFlavor, flavor: seg.flavor
+      playerWins: playerWins, damage: damage, critFlavor: critFlavor, flavor: seg.flavor,
+      isStalemate: isStalemate, isDodge: isDodge
     });
   }
 
