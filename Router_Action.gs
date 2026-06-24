@@ -2339,6 +2339,14 @@ ${locOwnershipNote}
                   });
                 }
               } else pcData[targetIdx][colIdx] = Math.max(1, Math.min(REALM_LIMITS[pcData[targetIdx][COL.PC.REALM] || "凡人"] || 25, numNew));
+            } else if (colIdx === COL.PC.BACK) {
+              // 🔴 身世為終身史記：禁止整段覆寫，新內容以「、」追加並只留最近6段；玩家鎖定時後端強制擋下，不依賴AI自律
+              if (!(targetIdx === pcIndex && userData.backLocked)) {
+                const oldBack = String(pcData[targetIdx][colIdx] || "").trim();
+                let backArr = (!oldBack || oldBack === "無") ? [] : oldBack.split('、').map(x => x.trim()).filter(x => x !== "");
+                if (valStr && valStr !== "無" && !backArr.includes(valStr)) backArr.push(valStr);
+                pcData[targetIdx][colIdx] = (backArr.length > 6 ? backArr.slice(-6) : backArr).join('、') || "無";
+              }
             } else pcData[targetIdx][colIdx] = valStr;
           }
         }
