@@ -34,21 +34,22 @@ function dailyNpcMove() {
     if (id.startsWith("PC_") || id.startsWith("DEAD_")) return;
     if (partyNPCs.has(row[COL.PC.NAME])) return;
 
-    // 🔴 喚醒重傷昏迷者：血回滿、狀態清乾淨，自然甦醒
+    // 🔴 喚醒重傷昏迷者：血回滿、狀態清乾淨，自然甦醒，並移動到隨機地點
+    // 正常的NPC不在此處理範圍內，留在原地，不亂跑
     let statusObj = {};
     try { statusObj = JSON.parse(row[COL.PC.STATUS] || "{}"); } catch (e) {}
     const isKnockedOut = String(statusObj["負面"] || "").includes("重傷昏迷")
       || (parseInt(row[COL.PC.HP]) || 0) <= 1;
-    if (isKnockedOut) {
-      const maxStats = calculateMaxStats(row[COL.PC.REALM], row[COL.PC.CON], row[COL.PC.INT]);
-      pcData[idx][COL.PC.HP] = maxStats.hp;
-      pcData[idx][COL.PC.MP] = maxStats.mp;
-      pcData[idx][COL.PC.MAX_HP] = maxStats.hp;
-      pcData[idx][COL.PC.MAX_MP] = maxStats.mp;
-      pcData[idx][COL.PC.STATUS] = JSON.stringify({
-        "衣服": "重新整理過的衣衫", "姿勢": "站立", "負面": "無", "顏面": "傷後初癒"
-      });
-    }
+    if (!isKnockedOut) return;
+
+    const maxStats = calculateMaxStats(row[COL.PC.REALM], row[COL.PC.CON], row[COL.PC.INT]);
+    pcData[idx][COL.PC.HP] = maxStats.hp;
+    pcData[idx][COL.PC.MP] = maxStats.mp;
+    pcData[idx][COL.PC.MAX_HP] = maxStats.hp;
+    pcData[idx][COL.PC.MAX_MP] = maxStats.mp;
+    pcData[idx][COL.PC.STATUS] = JSON.stringify({
+      "衣服": "重新整理過的衣衫", "姿勢": "站立", "負面": "無", "顏面": "傷後初癒"
+    });
 
     const newLoc = validLocs[Math.floor(Math.random() * validLocs.length)];
     pcData[idx][COL.PC.LOC] = newLoc;
