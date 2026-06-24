@@ -3698,16 +3698,9 @@ function actionMultiAttackNarrate(userData, pcId, sheets) {
     max_tokens: 700,           // 比 actionPlay 的 2000 砍掉一大半
     model: "google/gemini-3.1-flash-lite",
     isNsfwMode: !!isNsfw
+    // 🔴 刻意不傳 chatHistory：上回合的玩家發言(例如「假裝親近」的接近手法)若被當成對話歷史塞回去，
+    // AI會把舊戰術誤當成本回合仍在進行，導致新動作被舊敘述污染。場景/因果/性格卡已經都在 promptText 裡了，不需要這份歷史。
   };
-
-  // 🔴 只帶最近 2 筆歷史，維持語氣連貫但不像完整 play 帶 10 筆那麼重
-  const recentHistoryRaw = getGameHistoryBatchRaw(pcId, 2);
-  if (recentHistoryRaw && recentHistoryRaw.length > 0) {
-    aiConfig.chatHistory = recentHistoryRaw.map(msg => ({
-      role: msg.speaker === "player" ? "user" : "assistant",
-      content: String(msg.content)
-    }));
-  }
 
   const raw = callGeminiAPI(promptText, miniSystem, aiConfig);
 
