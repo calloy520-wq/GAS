@@ -47,16 +47,6 @@ function getShopGuests(pcData, relData, shopLoc, myName) {
   });
 }
 
-// 🟢 把母地圖底下的其他地點隨機挑一個(排除店鋪自身)，查無同伴地點則回母地圖本身
-function pickRandomSiblingLoc(mapData, rootLoc, excludeLoc) {
-  const siblings = mapData.filter(m =>
-    String(m[COL.MAP.PARENT]).trim() === rootLoc && String(m[COL.MAP.NAME]).trim() !== excludeLoc
-  );
-  return siblings.length > 0
-    ? String(siblings[Math.floor(Math.random() * siblings.length)][COL.MAP.NAME]).trim()
-    : rootLoc;
-}
-
 // 🔴 結算小金庫應計利息並存入背包，回傳實際入帳金額(可能為0)。
 // 共用於「結算」按鈕，以及「存入/取出」前置——確保動本金前已發生的收益不會被回頭套利。
 function settleShopVault(sheets, shopData, sIdx, pcData, pIdx) {
@@ -216,7 +206,7 @@ function actionShopInviteGuest(userData, pcId, sheets) {
 }
 
 // ------------------------------------------
-// 送客：店裡所有「非同行」的客人一次送走，目的地各自從母地圖底下隨機挑一個。
+// 送客：店裡所有「非同行」的客人一次送走，統一送回母地區，不再分散到子地點。
 // 同行的夥伴視為自己人，不算客人，不在送客範圍內。
 // ------------------------------------------
 function actionShopDismissGuest(userData, pcId, sheets) {
@@ -239,16 +229,14 @@ function actionShopDismissGuest(userData, pcId, sheets) {
   if (toSend.length === 0) return JSON.stringify({ success: false, message: "店裡目前沒有需要遣走的客人。" });
 
   const rootLoc = shopLoc.split('-')[0].trim();
-  const mapData = sheets.map.getDataRange().getValues();
   const sentNames = [];
 
   toSend.forEach(g => {
-    const destination = pickRandomSiblingLoc(mapData, rootLoc, shopLoc);
     const nIdx = pcData.findIndex(r => r[COL.PC.NAME] === g.name && !String(r[COL.PC.ID]).startsWith("DEAD_"));
     if (nIdx !== -1) {
-      pcData[nIdx][COL.PC.LOC] = destination;
-      sheets.pc.getRange(nIdx + 1, COL.PC.LOC + 1).setValue(destination);
-      sentNames.push(`「${g.name}」往「${destination}」去了`);
+      pcData[nIdx][COL.PC.LOC] = rootLoc;
+      sheets.pc.getRange(nIdx + 1, COL.PC.LOC + 1).setValue(rootLoc);
+      sentNames.push(`「${g.name}」往「${rootLoc}」去了`);
     }
   });
 
