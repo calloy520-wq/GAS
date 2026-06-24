@@ -114,6 +114,9 @@ function actionShopCreate(userData, pcId, sheets) {
   const desc = String(userData.desc || "").trim();
   if (!shopName || !category || !desc) return JSON.stringify({ success: false, message: "店名、類別、服務內容皆不可空白。" });
   if (shopName.includes("-")) return JSON.stringify({ success: false, message: "店名不可含「-」符號。" });
+  if (shopName.length > 8) return JSON.stringify({ success: false, message: "店名不可超過 8 字。" });
+  if (category.length > 10) return JSON.stringify({ success: false, message: "類別不可超過 10 字。" });
+  if (desc.length > 150) return JSON.stringify({ success: false, message: "服務內容不可超過 150 字。" });
 
   const shopData = sheets.shop.getDataRange().getValues();
   if (findShopIdxByOwner(shopData, pcId) !== -1) {
