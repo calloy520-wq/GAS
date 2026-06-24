@@ -113,7 +113,7 @@ function actionShopCreate(userData, pcId, sheets) {
   const category = String(userData.category || "").trim();
   const desc = String(userData.desc || "").trim();
   if (!shopName || !category || !desc) return JSON.stringify({ success: false, message: "店名、類別、服務內容皆不可空白。" });
-  if (shopName.includes("-") || category.includes("-")) return JSON.stringify({ success: false, message: "店名與類型皆不可含「-」符號。" });
+  if (shopName.includes("-")) return JSON.stringify({ success: false, message: "店名不可含「-」符號。" });
 
   const shopData = sheets.shop.getDataRange().getValues();
   if (findShopIdxByOwner(shopData, pcId) !== -1) {
@@ -130,8 +130,8 @@ function actionShopCreate(userData, pcId, sheets) {
   }
 
   const curLoc = String(pcData[pIdx][COL.PC.LOC] || "").split('-')[0].trim() || "青丘城";
-  // 🔴 店名＋類型組合成子地點，避免單純店名讓AI誤判母地點歸屬
-  const shopFullName = `${curLoc}-${shopName}${category}`;
+  // 🔴 子地點固定以「的店鋪」收尾，讓AI一看名稱就知道這只是一間店，類型/服務內容另存於店鋪表與地形描述，敘事時再查表帶入
+  const shopFullName = `${curLoc}-${shopName}的店鋪`;
 
   const mapData = sheets.map.getDataRange().getValues();
   if (mapData.some(m => String(m[COL.MAP.NAME]).trim() === shopFullName)) {
