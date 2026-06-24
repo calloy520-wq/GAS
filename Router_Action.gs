@@ -832,10 +832,18 @@ function buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, instructionStr) {
   const allLogs = sheets.log ? sheets.log.getDataRange().getValues() : [];
   const recentLogStr = allLogs.filter(r => String(r[2]).includes(pName) || String(r[2]).includes(npcName)).slice(-5).map(r => `${r[2]}`).join("\n") || "（尚無相關因果記錄）";
 
+  // 🔴 同地點的其他人(含同行夥伴)也是真的在場，不可被「在場驗證」誤鎖成不在場
+  const pcDataAll = sheets.pc.getDataRange().getValues();
+  const bystanderNames = pcDataAll.filter(r =>
+    String(r[COL.PC.LOC]).trim() === pLoc && r[COL.PC.NAME] !== pName && r[COL.PC.NAME] !== npcName &&
+    !String(r[COL.PC.ID]).startsWith("DEAD_")
+  ).map(r => r[COL.PC.NAME]);
+  const presentStr = bystanderNames.length > 0 ? `玩家、「${npcName}」，以及在場的${bystanderNames.join('、')}` : `玩家與「${npcName}」`;
+
   return `【場景】玩家『${pName}』目前位於『${pLoc}』。\n【近期因果】(僅供背景參考，純屬回憶，並非當下在場！)\n${recentLogStr}\n【對象資料】\n${npcCardStr}\n\n` +
     `【系統事件·已裁定，嚴禁更改任何結果】${instructionStr}\n` +
     `★【鐵律】嚴禁輸出任何 items_gained、items_transferred、money_transferred 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！\n` +
-    `★【在場驗證】本回合唯一在場者僅玩家與「${npcName}」，近期因果中提到的任何其他姓名皆視為不在場的回憶，嚴禁讓其登場、插話或互動！`;
+    `★【在場驗證】本回合在場者僅有${presentStr}，可合理帶到其存在或反應；近期因果中提到的其他姓名均不在場，嚴禁讓其登場、插話或互動！`;
 }
 
 // ==========================================
@@ -3599,11 +3607,20 @@ function actionMultiAttack(userData, pcId, sheets) {
   const allLogs = sheets.log ? sheets.log.getDataRange().getValues() : [];
   const recentLogStr = allLogs.filter(r => String(r[2]).includes(pName)).slice(-5).map(r => `${r[2]}`).join("\n") || "（尚無相關因果記錄）";
 
+  // 🔴 同地點但沒被攻擊波及的人(例如同行夥伴單純在場圍觀)，也算真的在場，不可被「在場驗證」誤鎖
+  const untouchedBystanders = pcData
+    .filter(r => r[COL.PC.ID] != pcId && !String(r[COL.PC.ID]).startsWith("DEAD_") &&
+      String(r[COL.PC.LOC]).trim() === pLoc && !touchedNames.has(r[COL.PC.NAME]))
+    .map(r => r[COL.PC.NAME]);
+  const presentStr = untouchedBystanders.length > 0
+    ? `玩家、【參戰者資料】列出之人，以及在場的${untouchedBystanders.join('、')}`
+    : `玩家與【參戰者資料】列出之人`;
+
   const aiPrompt = `【場景】玩家『${pName}』目前位於『${pLoc}』。\n【近期因果】(僅供背景參考，純屬回憶，並非當下在場！)\n${recentLogStr}${npcCardsStr}\n\n` +
     `【系統戰報·已裁定，嚴禁更改任何勝負、傷害或藥效判定】玩家『${pName}』展開連續動作：\n\n` +
     aiPromptParts.join("\n\n") + `\n\n` +
     `★請依此結果，並參照上方地點、近期因果與參戰者性格資料，將以上每一段交手依序串接成一段流暢生動的描寫，可參考玩家自己描述的招式、語氣與下藥手法。\n` +
-    `★【在場驗證】本回合在場者僅限玩家與【參戰者資料】列出之人，近期因果中提到的其他姓名均不在場，嚴禁讓其登場、插話或互動！\n` +
+    `★【在場驗證】本回合在場者僅有${presentStr}，可合理帶到其存在或反應；近期因果中提到的其他姓名均不在場，嚴禁讓其登場、插話或互動！\n` +
     `★【鐵律】任何被擊倒者最多只是重傷昏迷倒地，【絕對禁止】描寫死亡、斷氣、隕落或屍體！生死由玩家後續定奪。\n` +
     `★【鐵律】嚴禁輸出任何 stat_changes 的生命變化或負面狀態變化，已結算完畢，重複輸出會導致天道崩塌！\n` +
     `★【鐵律】此為單純切磋／下藥交鋒，嚴禁輸出 items_gained、items_transferred 或 money_transferred！` +
