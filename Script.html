@@ -45,7 +45,8 @@ const REALM_LIMITS = _RC.REALM_LIMITS || {"凡人":20, "引氣":25, "凝罡":30,
     '贈禮': { prompt: '請描寫玩家掏出物品示好的過程...' }
   };
 
- window.onload = () => { 
+ window.onload = () => {
+    document.documentElement.style.setProperty('--story-scale', parseFloat(localStorage.getItem('kyushu_story_font_scale')) || 1);
     document.addEventListener('click', (e) => {
       const drawer = document.getElementById('action-drawer');
       const trigger = document.getElementById('plus-trigger');
@@ -214,7 +215,22 @@ function renderRecentLocs(recents = null) {
   function openSettingsMenu() {
       const toggle = document.getElementById('setting-opt-toggle');
       if (toggle) toggle.checked = enableAiOptions;
+      highlightFontScaleBtn(parseFloat(localStorage.getItem('kyushu_story_font_scale')) || 1);
       document.getElementById('settings-overlay').style.display = 'flex';
+  }
+
+  // 對話字體大小：套用並記憶玩家偏好的縮放比例
+  function setStoryFontScale(scale) {
+      document.documentElement.style.setProperty('--story-scale', scale);
+      localStorage.setItem('kyushu_story_font_scale', scale);
+      highlightFontScaleBtn(scale);
+  }
+  function highlightFontScaleBtn(scale) {
+      document.querySelectorAll('.font-scale-btn').forEach(b => {
+          const active = parseFloat(b.dataset.scale) === parseFloat(scale);
+          b.style.background = active ? 'var(--gold-accent)' : '#1a1a1a';
+          b.style.color = active ? '#1a1a1a' : 'var(--gold-accent)';
+      });
   }
 
   // 3. 玩家切換開關時，立刻記憶並隱藏/顯示選項

@@ -89,6 +89,16 @@
             <input type="checkbox" id="setting-opt-toggle" style="width:20px; height:20px; accent-color:#800; cursor:pointer;" onchange="toggleAiOptions(this)">
           </label>
         </div>
+        <div
+          style="background: rgba(51,34,17,0.05); padding: 12px; border-radius: 4px; border: 1px solid rgba(51,34,17,0.2);">
+          <span style="color:#800; font-weight:bold; font-size:15px; display:block; margin-bottom:10px;">🔠 對話字體大小</span>
+          <div style="display:flex; gap:8px;">
+            <button class="font-scale-btn btn" data-scale="0.85" style="flex:1; padding:8px 0; font-size:12px;" onclick="setStoryFontScale(0.85)">小</button>
+            <button class="font-scale-btn btn" data-scale="1" style="flex:1; padding:8px 0; font-size:14px;" onclick="setStoryFontScale(1)">中</button>
+            <button class="font-scale-btn btn" data-scale="1.2" style="flex:1; padding:8px 0; font-size:16px;" onclick="setStoryFontScale(1.2)">大</button>
+            <button class="font-scale-btn btn" data-scale="1.4" style="flex:1; padding:8px 0; font-size:18px;" onclick="setStoryFontScale(1.4)">特大</button>
+          </div>
+        </div>
         <button class="btn" onclick="toggleFullScreen()">🖥️ 切換全螢幕模式</button>
         <button class="btn" style="border-color:#800; color:#800;" onclick="if(confirm('確定退隱江湖？一切因果將煙消雲散。')){localStorage.clear();location.reload();}">🚪 退隱江湖 (登出)</button>
       </div>

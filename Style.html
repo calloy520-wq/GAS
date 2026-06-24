@@ -9,6 +9,7 @@
     --text-sub: #c4c7c5;
     --text-dark: #332211;
     --paper-bg: #f5eedc;
+    --story-scale: 1;
   }
 
   body {
@@ -71,13 +72,13 @@
     border-radius: 18px 18px 4px 18px;
     background: var(--input-bg);
     color: var(--text-main);
-    font-size: 16px;
+    font-size: calc(16px * var(--story-scale));
     line-height: 1.5;
   }
 
   .msg-player .msg-name {
     color: var(--gold-accent);
-    font-size: 14px;
+    font-size: calc(14px * var(--story-scale));
     display: block;
     margin-bottom: 6px;
     font-weight: bold;
@@ -94,14 +95,14 @@
     padding: 12px 16px;
     border-radius: 18px 18px 18px 4px;
     color: var(--text-main);
-    font-size: 17px;
+    font-size: calc(17px * var(--story-scale));
     line-height: 1.7;
     letter-spacing: 0.5px;
   }
 
   .msg-ai b {
     color: var(--gold-accent);
-    font-size: 15px;
+    font-size: calc(15px * var(--story-scale));
     display: block;
     margin-bottom: 6px;
   }
