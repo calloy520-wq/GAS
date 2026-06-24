@@ -23,7 +23,8 @@ const COL = {
   TASK: { OWNER: 0, FACILITY: 1, WORKER: 2, TARGET: 3, START_TIME: 4 },
   FACTION: { ID: 0, NAME: 1, ALIGN: 2, BASE: 3, LEADER: 4, MOTTO: 5 },
   MAIL: { ID: 0, SENDER: 1, RECEIVER: 2, CONTENT: 3, ITEM_ID: 4, ITEM_NAME: 5, STATUS: 6, TIME: 7 },
-  AUTH: { NAME: 0, ID: 1, TITLE: 2, HOME_LOC: 3, DECOR: 4 }
+  AUTH: { NAME: 0, ID: 1, TITLE: 2, HOME_LOC: 3, DECOR: 4 },
+  SHOP: { OWNER: 0, NAME: 1, CATEGORY: 2, DESC: 3, LOC: 4, VAULT: 5, LAST_SETTLE: 6 }
 };
 
 const REALMS = ["凡人", "引氣", "凝罡", "通玄", "罡氣", "意動", "心象", "登峰", "返璞", "天人"];
