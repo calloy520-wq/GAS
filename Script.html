@@ -244,7 +244,7 @@ function renderRecentLocs(recents = null) {
     const actionType = modalId === 'quest-overlay' ? 'quests' : 'inventory';
     const container = document.getElementById(contentId);
 
-    container.innerHTML = `<p style="text-align:center; color:#888; font-style:italic;">正向天道感應資料中...</p>`;
+    container.innerHTML = `<p style="text-align:center; color:#816e54; font-style:italic;">正向天道感應資料中...</p>`;
     try {
       const result = await gasRun({ action: actionType, pcId: pc.id });
 
@@ -313,11 +313,11 @@ function renderRecentLocs(recents = null) {
 
             if (isEquipped) {
                equippedTag = `<span style="color:#d4af37; font-weight:bold; font-size:12px; margin-left:8px;">[★ 裝備中]</span>`;
-               actionButtonsHtml = `<span style="color:#888; font-size:11px; font-style:italic;">(已裝備於身，無法操作)</span>`;
+               actionButtonsHtml = `<span style="color:#816e54; font-size:11px; font-style:italic;">(已裝備於身，無法操作)</span>`;
             } else {
                if (isSellMode) {
                  if (item.type === "定情信物") {
-                   actionButtonsHtml = `<span style="color:#888; font-size:11px; font-style:italic;">(定情信物，無法變賣)</span>`;
+                   actionButtonsHtml = `<span style="color:#816e54; font-size:11px; font-style:italic;">(定情信物，無法變賣)</span>`;
                  } else {
                    actionButtonsHtml = `<button class="btn" style="padding:2px 10px; font-size:11px; border-color:#daa520; color:#daa520;" onclick="handleSellAction('${item.id}', '${item.name.replace(/'/g, "\\'")}')">💰 賣出</button>`;
                  }
@@ -345,13 +345,13 @@ function renderRecentLocs(recents = null) {
         }).join("");
 
         if (htmlOutput.trim() === "") {
-           container.innerHTML = `<p style="text-align:center; color:#999; padding: 20px;">行囊中沒有可操作的物品。</p>`;
+           container.innerHTML = `<p style="text-align:center; color:#816e54; padding: 20px;">行囊中沒有可操作的物品。</p>`;
         } else {
            container.innerHTML = htmlOutput;
         }
 
       } else {
-        container.innerHTML = `<p style="text-align:center; color:#999; padding: 20px;">空空如也，尚未感應到因果聯繫。</p>`;
+        container.innerHTML = `<p style="text-align:center; color:#816e54; padding: 20px;">空空如也，尚未感應到因果聯繫。</p>`;
       }
     } catch (e) {
       container.innerHTML = `<p style="text-align:center; color:red; padding: 20px;">天道阻塞：無法連結伺服器</p>`;
@@ -361,7 +361,7 @@ function renderRecentLocs(recents = null) {
   async function refreshAndOpenNpcList() {
     toggleActionDrawer();
     document.getElementById('npc-overlay').style.display = 'flex';
-    document.getElementById('npc-content').innerHTML = "<p style='text-align:center; color:#999;'>正在感應天地...同步眾生氣息...</p>";
+    document.getElementById('npc-content').innerHTML = "<p style='text-align:center; color:#816e54;'>正在感應天地...同步眾生氣息...</p>";
 
     try {
         await syncData(true); 
@@ -375,7 +375,7 @@ function renderRecentLocs(recents = null) {
      const modal = document.getElementById('npc-inventory-overlay');
      modal.style.display = 'flex';
      const container = document.getElementById('npc-inventory-content');
-     container.innerHTML = `<p style="text-align:center; color:#888;">正在暗中以神識打探「${npcName}」...</p>`;
+     container.innerHTML = `<p style="text-align:center; color:#816e54;">正在暗中以神識打探「${npcName}」...</p>`;
 
      try {
        const data = await gasRun({ action: "inspect_npc", targetName: npcName, pcId: pc.id });
@@ -397,7 +397,7 @@ function renderRecentLocs(recents = null) {
             </div>
           `).join("");
        } else {
-          container.innerHTML = `<p style="text-align:center; color:#999; margin-top:20px;">${data.message || "你看透了對方，但其身上並無值錢之物。"}</p>`;
+          container.innerHTML = `<p style="text-align:center; color:#816e54; margin-top:20px;">${data.message || "你看透了對方，但其身上並無值錢之物。"}</p>`;
        }
      } catch(e) { container.innerHTML = `<p style="color:red; text-align:center; margin-top:20px;">天道感應失敗，神識被阻斷。</p>`;
      }
@@ -572,7 +572,7 @@ function renderRecentLocs(recents = null) {
       modal.style.display = 'flex';
       
       const listEl = document.getElementById('craft-materials-list');
-      listEl.innerHTML = '<div style="color: #aaa; text-align: center;">正在翻找行囊...</div>';
+      listEl.innerHTML = '<div style="color:#816e54; text-align: center;">正在翻找行囊...</div>';
       document.getElementById('craft-intent').value = ""; 
       
       try {
@@ -597,14 +597,14 @@ function renderRecentLocs(recents = null) {
                       <label style="display:flex; align-items:center; gap:10px; margin-bottom:10px; cursor:pointer; padding:4px; background:rgba(255,255,255,0.02); border-radius:4px;">
                           <input type="checkbox" value="${item.id}" data-name="${item.name}" data-type="${item.type}" onchange="handleCraftCheck(this)" style="accent-color:#e91e63; width:18px; height:18px;">
                           <span style="color:#e3e3e3; font-weight:bold;">${item.name}</span>
-                          <span style="font-size:11px; color:#888;">(${item.type})</span>
+                          <span style="font-size:11px; color:#816e54;">(${item.type})</span>
                       </label>
                   `).join("");
               } else {
-                  listEl.innerHTML = '<div style="color: #888; text-align: center; padding:20px;">行囊中的物品皆已裝備在身，無多餘素材可煉。</div>';
+                  listEl.innerHTML = '<div style="color:#816e54; text-align: center; padding:20px;">行囊中的物品皆已裝備在身，無多餘素材可煉。</div>';
               }
           } else {
-              listEl.innerHTML = '<div style="color: #888; text-align: center; padding:20px;">行囊空空如也，無物可煉。</div>';
+              listEl.innerHTML = '<div style="color:#816e54; text-align: center; padding:20px;">行囊空空如也，無物可煉。</div>';
           }
       } catch (e) {
           listEl.innerHTML = '<div style="color: red; text-align: center;">天道感應失敗</div>';
@@ -771,7 +771,7 @@ function renderRecentLocs(recents = null) {
   async function fetchCategorizedMaps() {
     const container = document.getElementById('explore-content');
 
-    container.innerHTML = "<p style='text-align:center; color:#888; font-style:italic; padding: 20px 0;'>正在展開天地畫卷...</p>";
+    container.innerHTML = "<p style='text-align:center; color:#816e54; font-style:italic; padding: 20px 0;'>正在展開天地畫卷...</p>";
     
     try {
       const data = await gasRun({ action: "get_all_categorized_maps" });
@@ -795,7 +795,7 @@ function renderRecentLocs(recents = null) {
   function renderMapCategories() {
     const container = document.getElementById('explore-content');
     if (!categorizedMapData || Object.keys(categorizedMapData).length === 0) {
-      container.innerHTML = "<p style='text-align:center; color:#999;'>天下大亂，輿圖已毀。</p>";
+      container.innerHTML = "<p style='text-align:center; color:#816e54;'>天下大亂，輿圖已毀。</p>";
       return;
     }
 
@@ -928,7 +928,7 @@ function renderRecentLocs(recents = null) {
   const container = document.getElementById('npc-content');
   if (!localNPCs || localNPCs.length === 0) {
       container.innerHTML = `
-        <p style='text-align:center; color:#999;'>四下無人，亦無牽掛。</p>
+        <p style='text-align:center; color:#816e54;'>四下無人，亦無牽掛。</p>
         <div style="border-top:1px dashed rgba(51,34,17,0.2); margin-top:15px; padding-top:15px; text-align:center;">
           <button class="btn" style="border-color:#a0826d; color:#a0826d; padding:8px 20px;" onclick="closeNpcList(); toggleBondModal()">🤝 結識新人</button>
         </div>`;
@@ -949,7 +949,7 @@ function renderRecentLocs(recents = null) {
         if (isInParty) {
             locText += " <span style='font-size:11px; color:#daa520; font-weight:bold;'>[同行中]</span>";
         } else if (busyWith) {
-            locText += ` <span style='font-size:11px; color:#888; font-weight:bold;'>[與 ${busyWith} 同行]</span>`;
+            locText += ` <span style='font-size:11px; color:#816e54; font-weight:bold;'>[與 ${busyWith} 同行]</span>`;
         }
         
         let cardStyle = n.isExact ? "border-left: 3px solid var(--gold-accent); padding-left:8px;" : "opacity: 0.8; padding-left:8px; border-left: 3px solid #555;";
@@ -1294,7 +1294,7 @@ function renderRecentLocs(recents = null) {
         const memoryStr = (s[17] || "").replace(/@@@/g, '|');
         
         const renderTags = (str, color) => {
-            if (!str || str === "無") return `<span style="color:#888; font-style:italic;">純白如紙...</span>`;
+            if (!str || str === "無") return `<span style="color:#816e54; font-style:italic;">純白如紙...</span>`;
             return str.split('、').map(tag => 
                 `<span style="display:inline-block; background:rgba(${color},0.15); border:1px solid rgba(${color},0.5); padding:2px 8px; border-radius:12px; margin:2px 4px 2px 0; font-size:12px; color:rgb(${color});">${tag}</span>`
             ).join('');
@@ -1324,8 +1324,8 @@ function renderRecentLocs(recents = null) {
         const skEl = document.getElementById('ui-skills');
         const knEl = document.getElementById('ui-kinks');
         const relEl = document.getElementById('ui-rel-section');
-        if (skEl) skEl.innerHTML = `<span style="color:#888; font-style:italic;">純白如紙...</span>`;
-        if (knEl) knEl.innerHTML = `<span style="color:#888; font-style:italic;">純白如紙...</span>`;
+        if (skEl) skEl.innerHTML = `<span style="color:#816e54; font-style:italic;">純白如紙...</span>`;
+        if (knEl) knEl.innerHTML = `<span style="color:#816e54; font-style:italic;">純白如紙...</span>`;
         if (relEl) relEl.style.display = "none";
     }
 
@@ -2376,7 +2376,7 @@ const limit = REALM_LIMITS[realm] || 25;
 
 document.getElementById('cultivate-count-text').innerHTML = 
   `今日剩餘次數：${1 - cultCount} / 1<br>
-  <span style="font-size:12px; color:#888;">境界上限：${limit}</span><br>
+  <span style="font-size:12px; color:#816e54;">境界上限：${limit}</span><br>
   <span style="font-size:12px; color:#d4af37;">
   💪${baseStr} 🦴${baseCon} 🍃${baseAgi} 👁️${baseInt} 🍀${baseLuk}
   </span>`;
@@ -2682,7 +2682,7 @@ document.getElementById('cultivate-count-text').innerHTML =
     Object.values(tabs).forEach(([btnId, panelId]) => {
       const btn = document.getElementById(btnId);
       const panel = document.getElementById(panelId);
-      if (btn) { btn.style.borderBottomColor = 'transparent'; btn.style.color = '#888'; btn.style.fontWeight = 'normal'; }
+      if (btn) { btn.style.borderBottomColor = 'transparent'; btn.style.color = '#816e54'; btn.style.fontWeight = 'normal'; }
       if (panel) panel.style.display = 'none';
     });
     // 點亮當前
@@ -2700,15 +2700,15 @@ document.getElementById('cultivate-count-text').innerHTML =
   // ---------- 倉庫頁 ----------
   async function loadHomeWarehouse() {
     const container = document.getElementById('home-warehouse-content');
-    container.innerHTML = '<p style="text-align:center; color:#888;">正在感應倉庫氣息...</p>';
+    container.innerHTML = '<p style="text-align:center; color:#816e54;">正在感應倉庫氣息...</p>';
     try {
       const res = await gasRun({ action: "warehouse_get", pcId: pc.id });
       if (!res.success) { container.innerHTML = `<p style="text-align:center; color:red;">${res.message}</p>`; return; }
       if (!res.data || res.data.length === 0) {
-        container.innerHTML = `<p style="text-align:center; color:#999; padding:20px;">倉庫空空如也。(0/${res.max})</p>`;
+        container.innerHTML = `<p style="text-align:center; color:#816e54; padding:20px;">倉庫空空如也。(0/${res.max})</p>`;
         return;
       }
-      container.innerHTML = `<p style="text-align:center; color:#888; font-size:12px; margin-bottom:10px;">(${res.data.length}/${res.max})</p>` +
+      container.innerHTML = `<p style="text-align:center; color:#816e54; font-size:12px; margin-bottom:10px;">(${res.data.length}/${res.max})</p>` +
         res.data.map(item => `
           <div class="npc-card" style="border-left: 3px solid #b8860b; padding-left: 10px; margin-bottom:12px;">
             <b style="color: #b8860b;">${item.name}</b> <span style="font-size:11px; color:#666;">(${item.type})</span><br>
@@ -2822,7 +2822,7 @@ document.getElementById('cultivate-count-text').innerHTML =
     const dwellEl = document.getElementById('home-dwelling-content');
     const decorEl = document.getElementById('home-decor-content');
     const target = which === 'decor' ? decorEl : dwellEl;
-    target.innerHTML = '<p style="text-align:center; color:#888;">正在感應歸處...</p>';
+    target.innerHTML = '<p style="text-align:center; color:#816e54;">正在感應歸處...</p>';
 
     try {
       const [res] = await Promise.all([
@@ -2854,7 +2854,7 @@ document.getElementById('cultivate-count-text').innerHTML =
     if (!res.hasHome) {
       const curLoc = (document.getElementById('ui-loc').innerText || "").split('-')[0];
       el.innerHTML = `
-        <div style="text-align:center; padding:20px 0; color:#888;">
+        <div style="text-align:center; padding:20px 0; color:#816e54;">
           <div style="font-size:40px; margin-bottom:10px;">🍃</div>
           <div style="font-size:15px; color:#666;">你尚無歸處，如浮萍漂泊江湖。</div>
           <div style="font-size:12px; color:#555; margin-top:8px;">在當前所在地「${curLoc}」開闢一處家園吧。</div>
@@ -2874,14 +2874,14 @@ document.getElementById('cultivate-count-text').innerHTML =
       residentsHtml = res.residents.map(r => {
         const tag = r.isParty
           ? `<span style="font-size:11px; color:#daa520; font-weight:bold;">[同行中]</span>`
-          : `<span style="font-size:11px; color:#888;">[暫居]</span>`;
+          : `<span style="font-size:11px; color:#816e54;">[暫居]</span>`;
         return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:rgba(0,0,0,0.03); border-radius:4px; margin-bottom:6px;">
           <span style="color:#800; font-weight:bold;">${r.name}</span>
           <span>${tag} <span style="font-size:11px; color:#a52a2a;">${r.relTag||''}</span></span>
         </div>`;
       }).join("");
     } else {
-      residentsHtml = `<p style="text-align:center; color:#999; font-size:13px; padding:10px 0;">空蕩蕩的，無人在家。<br><span style="font-size:11px; color:#aaa;">(帶同行夥伴回家，或取消同行讓她暫居此處)</span></p>`;
+      residentsHtml = `<p style="text-align:center; color:#816e54; font-size:13px; padding:10px 0;">空蕩蕩的，無人在家。<br><span style="font-size:11px; color:#816e54;">(帶同行夥伴回家，或取消同行讓她暫居此處)</span></p>`;
     }
 
     const candidates = getSoulboundCandidates(res.homeLoc);
@@ -2895,13 +2895,13 @@ document.getElementById('cultivate-count-text').innerHTML =
           <button class="btn" style="width:100%; margin-top:8px; border-color:#e91e63; color:#e91e63; font-weight:bold; padding:8px 0;" onclick="lockBtn(event, submitHomeInviteGuest)">💌 邀來家裡坐</button>
         </div>`;
     } else {
-      inviteHtml = `<p style="text-align:center; color:#999; font-size:12px; margin-top:10px;">尚無已傾心之人可邀。</p>`;
+      inviteHtml = `<p style="text-align:center; color:#816e54; font-size:12px; margin-top:10px;">尚無已傾心之人可邀。</p>`;
     }
 
     el.innerHTML = `
       <div style="text-align:center; background:rgba(200,132,60,0.05); border:1px solid rgba(200,132,60,0.3); border-radius:8px; padding:15px; margin-bottom:15px;">
         <div style="font-size:22px; color:#c8843c; font-weight:bold; letter-spacing:2px;">「${homeShort}」</div>
-        <div style="font-size:12px; color:#888; margin-top:4px;">📍 ${parent}</div>
+        <div style="font-size:12px; color:#816e54; margin-top:4px;">📍 ${parent}</div>
         <div style="font-size:13px; color:#666; margin-top:8px; line-height:1.5;">${res.homeDesc}</div>
         <div style="display:flex; gap:10px; margin-top:12px;">
           <button class="btn" style="flex:1; border-color:#2e8b57; color:#2e8b57; font-weight:bold; padding:8px 0;" onclick="lockBtn(event, () => goHome('${res.homeLoc}'))">🚪 回家</button>
@@ -2920,7 +2920,7 @@ document.getElementById('cultivate-count-text').innerHTML =
     if (!res.success) { el.innerHTML = `<p style="text-align:center; color:red;">${res.message||'感應失敗'}</p>`; return; }
 
     if (!res.hasHome) {
-      el.innerHTML = `<div style="text-align:center; padding:30px 0; color:#888;">
+      el.innerHTML = `<div style="text-align:center; padding:30px 0; color:#816e54;">
         <div style="font-size:40px; margin-bottom:10px;">🎨</div>
         <div style="font-size:14px; color:#666;">尚無家園可佈置。</div>
         <div style="font-size:12px; color:#555; margin-top:6px;">請先到「居所」頁建立你的家。</div>
@@ -2931,9 +2931,9 @@ document.getElementById('cultivate-count-text').innerHTML =
     el.innerHTML = `
       <div style="background:rgba(200,132,60,0.05); border:1px solid rgba(200,132,60,0.3); border-radius:8px; padding:15px;">
         <div style="color:#c8843c; font-size:13px; font-weight:bold; margin-bottom:6px;">🎨 親手佈置你的家</div>
-        <div style="font-size:11px; color:#888; margin-bottom:10px; line-height:1.5;">寫下你家的模樣——擺設、氛圍、角落的細節。<br>回到家時，天道會根據這段描述把你的家寫進場景。</div>
+        <div style="font-size:11px; color:#816e54; margin-bottom:10px; line-height:1.5;">寫下你家的模樣——擺設、氛圍、角落的細節。<br>回到家時，天道會根據這段描述把你的家寫進場景。</div>
         <textarea id="home-decor-input" class="std-in" maxlength="200" placeholder="例如：推門便是滿室藥香，牆上掛著一柄缺口的舊劍，窗邊那盆蘭花開得正好，角落臥著隻打盹的橘貓..." style="width:100%; box-sizing:border-box; height:130px; resize:none; font-family:inherit; line-height:1.6;">${res.homeDesc === '一處屬於你的安身之所。' ? '' : (res.homeDesc||'')}</textarea>
-        <div style="text-align:right; font-size:11px; color:#aaa; margin-top:2px;">最多 200 字</div>
+        <div style="text-align:right; font-size:11px; color:#816e54; margin-top:2px;">最多 200 字</div>
         <button class="btn" style="width:100%; margin-top:10px; background:#c8843c; color:#fff; border:none; font-weight:bold; padding:10px;" onclick="lockBtn(event, saveHomeDecor)">✍️ 落筆佈置</button>
       </div>`;
   }
@@ -3015,7 +3015,7 @@ document.getElementById('cultivate-count-text').innerHTML =
 
   async function loadShop() {
     const el = document.getElementById('shop-content');
-    el.innerHTML = '<p style="text-align:center; color:#888;">正在感應鋪面氣息...</p>';
+    el.innerHTML = '<p style="text-align:center; color:#816e54;">正在感應鋪面氣息...</p>';
     try {
       const [res] = await Promise.all([
         gasRun({ action: "shop_get", pcId: pc.id }),
@@ -3034,7 +3034,7 @@ document.getElementById('cultivate-count-text').innerHTML =
     const el = document.getElementById('shop-content');
     const curLoc = (document.getElementById('ui-loc').innerText || "").split('-')[0];
     el.innerHTML = `
-      <div style="text-align:center; padding:10px 0 20px; color:#888;">
+      <div style="text-align:center; padding:10px 0 20px; color:#816e54;">
         <div style="font-size:40px; margin-bottom:10px;">🏮</div>
         <div style="font-size:15px; color:#666;">你尚未開店，江湖路上少了一份營生。</div>
         <div style="font-size:12px; color:#555; margin-top:8px;">將在當前所在地「${curLoc}」開店。</div>
@@ -3081,14 +3081,14 @@ document.getElementById('cultivate-count-text').innerHTML =
       guestsHtml = res.guests.map(g => {
         const tag = g.isParty
           ? `<span style="font-size:11px; color:#daa520; font-weight:bold;">[同行中]</span>`
-          : `<span style="font-size:11px; color:#888;">[來客]</span>`;
+          : `<span style="font-size:11px; color:#816e54;">[來客]</span>`;
         return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:rgba(0,0,0,0.03); border-radius:4px; margin-bottom:6px;">
           <span style="color:#800; font-weight:bold;">${g.name}</span>
           <span>${tag} <span style="font-size:11px; color:#a52a2a;">${g.tag || ''}</span></span>
         </div>`;
       }).join("");
     } else {
-      guestsHtml = `<p style="text-align:center; color:#999; font-size:13px; padding:10px 0;">店裡此刻無人。</p>`;
+      guestsHtml = `<p style="text-align:center; color:#816e54; font-size:13px; padding:10px 0;">店裡此刻無人。</p>`;
     }
 
     const candidates = getSoulboundCandidates(res.loc);
@@ -3097,7 +3097,7 @@ document.getElementById('cultivate-count-text').innerHTML =
         ${candidates.map(c => `<option value="${c.name}">${c.name}（目前：${c.loc || '行蹤不明'}）</option>`).join("")}
       </select>
       <button class="btn" style="width:100%; margin-top:8px; border-color:#e91e63; color:#e91e63; font-weight:bold; padding:8px 0;" onclick="lockBtn(event, submitShopInviteGuest)">💌 指定招待入店</button>`
-      : `<p style="text-align:center; color:#999; font-size:12px;">尚無已傾心之人可招待。</p>`;
+      : `<p style="text-align:center; color:#816e54; font-size:12px;">尚無已傾心之人可招待。</p>`;
 
     const actionPanel = isAtShop ? `
       <div style="margin-top:15px; border-top:1px dashed rgba(200,132,60,0.3); padding-top:12px;">
@@ -3128,7 +3128,7 @@ document.getElementById('cultivate-count-text').innerHTML =
       </div>
     ` : `
       <div style="text-align:center; padding:15px 0;">
-        <p style="color:#888; font-size:13px;">你目前不在店裡，需親自到店才能經營。</p>
+        <p style="color:#816e54; font-size:13px;">你目前不在店裡，需親自到店才能經營。</p>
         <button class="btn" style="border-color:#2e8b57; color:#2e8b57; font-weight:bold; padding:8px 20px; margin-top:8px;" onclick="lockBtn(event, () => goToShop('${res.loc}'))">🚶 前往本店</button>
       </div>
     `;
@@ -3136,7 +3136,7 @@ document.getElementById('cultivate-count-text').innerHTML =
     el.innerHTML = `
       <div style="text-align:center; background:rgba(200,132,60,0.05); border:1px solid rgba(200,132,60,0.3); border-radius:8px; padding:15px;">
         <div style="font-size:22px; color:#c8843c; font-weight:bold; letter-spacing:2px;">「${shopShort}」</div>
-        <div style="font-size:12px; color:#888; margin-top:4px;">📍 ${parent} ｜ ${res.category}</div>
+        <div style="font-size:12px; color:#816e54; margin-top:4px;">📍 ${parent} ｜ ${res.category}</div>
         <div style="font-size:13px; color:#666; margin-top:8px; line-height:1.5;">${res.desc}</div>
       </div>
       ${actionPanel}`;
@@ -3181,7 +3181,7 @@ document.getElementById('cultivate-count-text').innerHTML =
     if (!btn || btn.disabled) return;
     const isNsfw = document.getElementById('nsfw-mode-toggle')?.checked || false;
     const outputEl = document.getElementById('shop-biz-output');
-    outputEl.innerHTML = '<p style="text-align:center; color:#888; font-size:12px;">客人正絡繹往來...</p>';
+    outputEl.innerHTML = '<p style="text-align:center; color:#816e54; font-size:12px;">客人正絡繹往來...</p>';
     btn.disabled = true;
     try {
       const res = await gasRun({ action: "shop_business", pcId: pc.id, isNsfw: isNsfw });
@@ -3189,7 +3189,7 @@ document.getElementById('cultivate-count-text').innerHTML =
         outputEl.innerHTML = `<div style="font-size:13px; color:#553311; line-height:1.6; padding:10px; background:rgba(200,132,60,0.05); border-radius:6px;">${res.text}</div>`;
         startShopBizCooldown(btn);
       } else {
-        outputEl.innerHTML = `<p style="text-align:center; color:#999; font-size:12px;">${res.message}</p>`;
+        outputEl.innerHTML = `<p style="text-align:center; color:#816e54; font-size:12px;">${res.message}</p>`;
         btn.disabled = false;
       }
     } catch (e) {
@@ -3498,7 +3498,7 @@ document.getElementById('cultivate-count-text').innerHTML =
       const track = document.getElementById('race-track');
       track.innerHTML = HORSE_CONFIG.map(h => `
         <div style="display:flex; align-items:center; gap:8px;">
-          <div style="width:64px; font-size:14px; font-weight:700; color:#f5f5f5; text-shadow: 0 0 3px #000, 0 0 3px #000; text-align:right;">${h.name}</div>
+          <div style="width:64px; font-size:14px; font-weight:700; color:#e3e3e3; text-align:right;">${h.name}</div>
           <div style="flex:1; background:#1a1a1a; border:1px solid #555; border-radius:4px; height:18px; position:relative; overflow:hidden;">
             <div id="race-bar-${h.id}" style="height:100%; width:0%; background:${h.color}; transition: width 0.25s linear;"></div>
           </div>
@@ -3509,7 +3509,7 @@ document.getElementById('cultivate-count-text').innerHTML =
   function renderRaceHorseButtons() {
       const container = document.getElementById('race-horse-buttons');
       container.innerHTML = HORSE_CONFIG.map(h => `
-        <button class="btn" onclick="lockBtn(event, () => placeRaceBet(${h.id}))" style="border-color:${h.color}; border-width:2px; color:#fff; text-shadow:0 0 3px #000; background:rgba(255,255,255,0.04); font-size:14px; font-weight:600; flex: 1 0 45%;">${h.name}<br><span style="font-size:11px; color:${h.color};">${h.tier} 1賠${h.payout}</span></button>
+        <button class="btn" onclick="lockBtn(event, () => placeRaceBet(${h.id}))" style="border-color:${h.color}; border-width:2px; color:#e3e3e3; font-size:14px; font-weight:600; flex: 1 0 45%;">${h.name}<br><span style="font-size:11px; color:${h.color};">${h.tier} 1賠${h.payout}</span></button>
       `).join('');
   }
 
@@ -3552,7 +3552,7 @@ document.getElementById('cultivate-count-text').innerHTML =
                   ? `🎉 「${res.winnerName}」率先衝線！恭喜中獎，贏得 ${res.winnings - betAmount} 兩白銀！`
                   : `💀 「${res.winnerName}」率先衝線。你的愛馬未能奪冠，輸了 ${betAmount} 兩。`;
                 document.getElementById('race-result-msg').innerHTML =
-                  `<span style="font-size:18px; font-weight:700; color:${resultColor}; text-shadow:0 0 3px #000;">${resultLine}</span><br><br><span style="font-size:16px; line-height:1.6; color:#f0f0f0;">${res.narration}</span>`;
+                  `<span style="font-size:18px; font-weight:700; color:${resultColor};">${resultLine}</span><br><br><span style="font-size:16px; line-height:1.6; color:#e3e3e3;">${res.narration}</span>`;
 
                 if (res.statusString) {
                     localStorage.setItem('kyushu_last_status', res.statusString);
@@ -3627,12 +3627,12 @@ function switchNoticeTab(tab) {
 
   if (tab === 'rumor') {
     rumorBtn.style.borderBottomColor = '#b8860b'; rumorBtn.style.color = '#b8860b'; rumorBtn.style.fontWeight = 'bold';
-    mailBtn.style.borderBottomColor = 'transparent'; mailBtn.style.color = '#888'; mailBtn.style.fontWeight = 'normal';
+    mailBtn.style.borderBottomColor = 'transparent'; mailBtn.style.color = '#816e54'; mailBtn.style.fontWeight = 'normal';
     rumorPanel.style.display = 'block'; mailPanel.style.display = 'none';
     loadRumors();
   } else {
     mailBtn.style.borderBottomColor = '#b8860b'; mailBtn.style.color = '#b8860b'; mailBtn.style.fontWeight = 'bold';
-    rumorBtn.style.borderBottomColor = 'transparent'; rumorBtn.style.color = '#888'; rumorBtn.style.fontWeight = 'normal';
+    rumorBtn.style.borderBottomColor = 'transparent'; rumorBtn.style.color = '#816e54'; rumorBtn.style.fontWeight = 'normal';
     rumorPanel.style.display = 'none'; mailPanel.style.display = 'block';
     
     // ✨ 紀錄玩家打開信箱的時間戳記
@@ -3644,11 +3644,11 @@ function switchNoticeTab(tab) {
 
 async function loadRumors() {
   const container = document.getElementById('rumor-list');
-  container.innerHTML = '<p style="text-align:center; color:#888; font-style:italic;">感應江湖氣息中...</p>';
+  container.innerHTML = '<p style="text-align:center; color:#816e54; font-style:italic;">感應江湖氣息中...</p>';
   try {
     const res = await gasRun({ action: 'get_rumors', pcId: pc.id });
     if (!res.success || !res.data || res.data.length === 0) {
-      container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">江湖此刻一片平靜，無甚傳聞。</p>';
+      container.innerHTML = '<p style="text-align:center; color:#816e54; padding:20px;">江湖此刻一片平靜，無甚傳聞。</p>';
       return;
     }
     const typeIcon = {
@@ -3675,7 +3675,7 @@ async function loadRumors() {
 }
 async function loadMails() {
   const container = document.getElementById('mail-list');
-  container.innerHTML = '<p style="text-align:center; color:#888; font-style:italic;">翻閱傳音玉簡中...</p>';
+  container.innerHTML = '<p style="text-align:center; color:#816e54; font-style:italic;">翻閱傳音玉簡中...</p>';
   try {
     // 呼叫新的 get_mails
     const res = await gasRun({ action: 'get_mails', pcId: pc.id });
@@ -3689,7 +3689,7 @@ async function loadMails() {
     }
 
     if (!res.success || !res.data || res.data.length === 0) {
-      container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">傳音玉簡空空如也。</p>';
+      container.innerHTML = '<p style="text-align:center; color:#816e54; padding:20px;">傳音玉簡空空如也。</p>';
       unreadMailCount = 0;
       clearNoticeBadge();
       return;
@@ -3707,7 +3707,7 @@ async function loadMails() {
       let attachHtml = "";
       if (m.attachItemId) {
          if (m.status === "已領取") {
-            attachHtml = `<div style="margin-top:8px; font-size:11px; color:#888;">📦 附件：${m.attachItemName} (已領取)</div>`;
+            attachHtml = `<div style="margin-top:8px; font-size:11px; color:#816e54;">📦 附件：${m.attachItemName} (已領取)</div>`;
          } else {
             attachHtml = `
             <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center; background:rgba(218,165,32,0.1); padding:4px 8px; border-radius:4px; border:1px dashed #daa520;">
@@ -3871,8 +3871,8 @@ async function openFactionPanel() {
 }
 
 async function loadFactionData() {
-  document.getElementById('my-faction-content').innerHTML = '<p style="text-align:center; color:#888; font-style:italic;">感應門派氣息中...</p>';
-  document.getElementById('all-faction-content').innerHTML = '<p style="text-align:center; color:#888; font-style:italic;">感應天下大勢中...</p>';
+  document.getElementById('my-faction-content').innerHTML = '<p style="text-align:center; color:#816e54; font-style:italic;">感應門派氣息中...</p>';
+  document.getElementById('all-faction-content').innerHTML = '<p style="text-align:center; color:#816e54; font-style:italic;">感應天下大勢中...</p>';
   
   try {
     const res = await gasRun({ action: 'get_faction_info', pcId: pc.id });
@@ -3892,7 +3892,7 @@ function renderMyFaction(res) {
   
   if (res.myFaction === "無" || !res.myFactionData) {
     container.innerHTML = `
-      <div style="text-align:center; padding: 30px 0; color:#888;">
+      <div style="text-align:center; padding: 30px 0; color:#816e54;">
         <div style="font-size:40px; margin-bottom:10px;">🌾</div>
         <div style="font-size:15px; color:#666;">你目前是江湖散人，未加入任何宗門。</div>
         <div style="font-size:12px; color:#555; margin-top:8px;">在江湖中遊歷，自然會與宗門產生因果。</div>
@@ -3909,31 +3909,31 @@ function renderMyFaction(res) {
     <div style="background: rgba(212,175,55,0.05); border: 1px solid rgba(212,175,55,0.3); border-radius: 8px; padding: 15px; margin-bottom: 15px;">
       <div style="text-align:center; margin-bottom: 12px;">
         <div style="font-size:22px; color:#d4af37; font-weight:bold; letter-spacing:3px;">【 ${f.name} 】</div>
-        <div style="font-size:12px; color:#888; margin-top:4px;">${f.motto || "暗中發展的神秘勢力"}</div>
+        <div style="font-size:12px; color:#816e54; margin-top:4px;">${f.motto || "暗中發展的神秘勢力"}</div>
       </div>
       
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">
         <div style="background:rgba(0,0,0,0.1); padding:8px; border-radius:4px;">
-          <div style="font-size:11px; color:#888;">⚔️ 陣營</div>
+          <div style="font-size:11px; color:#816e54;">⚔️ 陣營</div>
           <div style="font-size:13px; color:#d4af37; font-weight:bold;">${f.align}</div>
         </div>
         <div style="background:rgba(0,0,0,0.1); padding:8px; border-radius:4px;">
-          <div style="font-size:11px; color:#888;">📍 駐地</div>
+          <div style="font-size:11px; color:#816e54;">📍 駐地</div>
           <div style="font-size:13px; color:#d4af37; font-weight:bold;">${f.base}</div>
         </div>
         <div style="background:rgba(0,0,0,0.1); padding:8px; border-radius:4px;">
-          <div style="font-size:11px; color:#888;">👑 掌舵者</div>
+          <div style="font-size:11px; color:#816e54;">👑 掌舵者</div>
           <div style="font-size:13px; color:#d4af37; font-weight:bold;">${f.leader || "神祕人"}</div>
         </div>
         <div style="background:rgba(0,0,0,0.1); padding:8px; border-radius:4px;">
-          <div style="font-size:11px; color:#888;">${statusIcon} 氣運</div>
+          <div style="font-size:11px; color:#816e54;">${statusIcon} 氣運</div>
           <div style="font-size:13px; color:${powerColor}; font-weight:bold;">${f.status} (${f.power})</div>
         </div>
       </div>
 
       <div style="background:rgba(0,0,0,0.15); border-radius:6px; padding:10px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <span style="font-size:12px; color:#888;">門派氣運值</span>
+          <span style="font-size:12px; color:#816e54;">門派氣運值</span>
           <span style="font-size:12px; color:${powerColor}; font-weight:bold;">${f.power} / 100</span>
         </div>
         <div style="background:#333; border-radius:4px; height:8px; overflow:hidden;">
@@ -3947,12 +3947,12 @@ function renderMyFaction(res) {
       <div style="display:flex; justify-content:space-around; text-align:center;">
         <div>
           <div style="font-size:18px; color:#d4af37; font-weight:bold;">${res.myRank}</div>
-          <div style="font-size:11px; color:#888; margin-top:2px;">現任階級</div>
+          <div style="font-size:11px; color:#816e54; margin-top:2px;">現任階級</div>
         </div>
         <div style="border-left:1px solid rgba(212,175,55,0.2);"></div>
         <div>
           <div style="font-size:18px; color:#d4af37; font-weight:bold;">${res.myContrib}</div>
-          <div style="font-size:11px; color:#888; margin-top:2px;">累積貢獻</div>
+          <div style="font-size:11px; color:#816e54; margin-top:2px;">累積貢獻</div>
         </div>
       </div>
     </div>
@@ -3968,7 +3968,7 @@ function renderMyFaction(res) {
 function renderAllFactions(factions) {
   const container = document.getElementById('all-faction-content');
   if (!factions || factions.length === 0) {
-    container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">天下尚無門派現世。</p>';
+    container.innerHTML = '<p style="text-align:center; color:#816e54; padding:20px;">天下尚無門派現世。</p>';
     return;
   }
 
@@ -3986,7 +3986,7 @@ function renderAllFactions(factions) {
         <div style="background:#222; border-radius:3px; height:5px; overflow:hidden; margin-bottom:6px;">
           <div style="background:${powerColor}; height:100%; width:${f.power}%;"></div>
         </div>
-        <div style="display:flex; gap:12px; font-size:11px; color:#888;">
+        <div style="display:flex; gap:12px; font-size:11px; color:#816e54;">
           <span>⚔️ ${f.align}</span>
           <span>📍 ${f.base}</span>
           <span>👑 ${f.leader}</span>
@@ -4006,7 +4006,7 @@ function switchFactionTab(tab) {
 
   // 全部重置
   [mineBtn, allBtn, rankBtn].forEach(btn => {
-    if (btn) { btn.style.borderBottomColor = 'transparent'; btn.style.color = '#888'; btn.style.fontWeight = 'normal'; }
+    if (btn) { btn.style.borderBottomColor = 'transparent'; btn.style.color = '#816e54'; btn.style.fontWeight = 'normal'; }
   });
   [minePanel, allPanel, rankPanel].forEach(panel => {
     if (panel) panel.style.display = 'none';
@@ -4027,12 +4027,12 @@ function switchFactionTab(tab) {
 
 async function loadRanking() {
   const container = document.getElementById('ranking-content');
-  container.innerHTML = '<p style="text-align:center; color:#888; font-style:italic;">感應天下英豪中...</p>';
+  container.innerHTML = '<p style="text-align:center; color:#816e54; font-style:italic;">感應天下英豪中...</p>';
   
   try {
     const res = await gasRun({ action: 'get_ranking', pcId: pc.id });
     if (!res.success || !res.data || res.data.length === 0) {
-      container.innerHTML = '<p style="text-align:center; color:#999; padding:20px;">天下尚無英豪現世。</p>';
+      container.innerHTML = '<p style="text-align:center; color:#816e54; padding:20px;">天下尚無英豪現世。</p>';
       return;
     }
 
@@ -4055,13 +4055,13 @@ async function loadRanking() {
               <span style="font-size:14px; color:#d4af37; font-weight:bold;">${r.name}</span>
               ${playerTag}${meTag}
             </div>
-            <div style="font-size:11px; color:#888;">
+            <div style="font-size:11px; color:#816e54;">
               ${r.realm} · ${r.faction === "無" ? "散人" : r.faction} · ${r.rank}
             </div>
           </div>
           <div style="text-align:right;">
             <div style="font-size:16px; color:#b22222; font-weight:bold;">${r.power}</div>
-            <div style="font-size:10px; color:#888;">戰力</div>
+            <div style="font-size:10px; color:#816e54;">戰力</div>
           </div>
         </div>`;
     }).join('');
@@ -4115,8 +4115,8 @@ async function openEpicPanel() {
 }
 
 async function loadEpicData() {
-  document.getElementById('epic-history-content').innerHTML = '<p style="text-align:center; color:#888; font-style:italic;">翻閱命運長河中...</p>';
-  document.getElementById('epic-stats-content').innerHTML = '<p style="text-align:center; color:#888; font-style:italic;">統計江湖足跡中...</p>';
+  document.getElementById('epic-history-content').innerHTML = '<p style="text-align:center; color:#816e54; font-style:italic;">翻閱命運長河中...</p>';
+  document.getElementById('epic-stats-content').innerHTML = '<p style="text-align:center; color:#816e54; font-style:italic;">統計江湖足跡中...</p>';
   
   try {
     const res = await gasRun({ action: 'get_epic_history', pcId: pc.id });
@@ -4147,7 +4147,7 @@ function renderEpicHistory(res) {
             <span style="color:#e91e63; font-weight:bold; font-size:14px;">『${r.npc}』</span>
             <span style="font-size:11px; color:#d4af37;">${r.isSoulBound ? '💍 已傾心' : '🔗 深厚羈絆'}</span>
           </div>
-          <div style="font-size:12px; color:#888; margin-bottom:4px;">
+          <div style="font-size:12px; color:#816e54; margin-bottom:4px;">
             關係：${r.tag.replace('(已傾心)','').trim()} &nbsp;|&nbsp; 好感：${r.fav} &nbsp;|&nbsp; 交談：${talkCount}次 ${r.isSoulBound ? `&nbsp;|&nbsp; 🌸 雙修：${intimacyCount}次` : ''}
           </div>
           ${r.majorEvent && r.majorEvent !== "無" ? `
@@ -4172,7 +4172,7 @@ function renderEpicHistory(res) {
         </div>`;
     });
   } else if (res.relRecords.length === 0) {
-    html = '<p style="text-align:center; color:#999; padding:30px 0;">命運長河空白如紙，一切尚待書寫。</p>';
+    html = '<p style="text-align:center; color:#816e54; padding:30px 0;">命運長河空白如紙，一切尚待書寫。</p>';
   }
 
   container.innerHTML = html;
@@ -4201,25 +4201,25 @@ function renderEpicHistory(res) {
 
 function renderEpicStats(stats) {
   const container = document.getElementById('epic-stats-content');
-  if (!stats) { container.innerHTML = '<p style="color:#999; text-align:center;">無足跡資料。</p>'; return; }
+  if (!stats) { container.innerHTML = '<p style="color:#816e54; text-align:center;">無足跡資料。</p>'; return; }
 
   container.innerHTML = `
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
       <div style="background:rgba(178,34,34,0.08); border:1px solid rgba(178,34,34,0.3); border-radius:8px; padding:12px; text-align:center;">
         <div style="font-size:28px; color:#b22222; font-weight:bold;">${stats.kills}</div>
-        <div style="font-size:12px; color:#888; margin-top:2px;">⚔️ 擊殺</div>
+        <div style="font-size:12px; color:#816e54; margin-top:2px;">⚔️ 擊殺</div>
       </div>
       <div style="background:rgba(156,39,176,0.08); border:1px solid rgba(156,39,176,0.3); border-radius:8px; padding:12px; text-align:center;">
         <div style="font-size:28px; color:#9C27B0; font-weight:bold;">${stats.questsDone}</div>
-        <div style="font-size:12px; color:#888; margin-top:2px;">📜 完成天命</div>
+        <div style="font-size:12px; color:#816e54; margin-top:2px;">📜 完成天命</div>
       </div>
       <div style="background:rgba(70,130,180,0.08); border:1px solid rgba(70,130,180,0.3); border-radius:8px; padding:12px; text-align:center;">
         <div style="font-size:28px; color:#4682b4; font-weight:bold;">${stats.locationsCount}</div>
-        <div style="font-size:12px; color:#888; margin-top:2px;">🗺️ 踏足地點</div>
+        <div style="font-size:12px; color:#816e54; margin-top:2px;">🗺️ 踏足地點</div>
       </div>
       <div style="background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.3); border-radius:8px; padding:12px; text-align:center;">
         <div style="font-size:28px; color:#d4af37; font-weight:bold;">${stats.realm}</div>
-        <div style="font-size:12px; color:#888; margin-top:2px;">🌌 當前境界</div>
+        <div style="font-size:12px; color:#816e54; margin-top:2px;">🌌 當前境界</div>
       </div>
     </div>
 
@@ -4229,13 +4229,13 @@ function renderEpicStats(stats) {
       <div style="display:flex; justify-content:space-around;">
         <div>
           <div style="font-size:22px; color:#e91e63; font-weight:bold;">${stats.intimacyTotal}</div>
-          <div style="font-size:11px; color:#888;">累計次數</div>
+          <div style="font-size:11px; color:#816e54;">累計次數</div>
         </div>
         ${stats.topIntimacy ? `
         <div style="border-left:1px solid rgba(233,30,99,0.2);"></div>
         <div>
           <div style="font-size:16px; color:#e91e63; font-weight:bold;">『${stats.topIntimacy}』</div>
-          <div style="font-size:11px; color:#888;">最深羈絆 (${stats.topIntimacyCount}次)</div>
+          <div style="font-size:11px; color:#816e54;">最深羈絆 (${stats.topIntimacyCount}次)</div>
         </div>` : ''}
       </div>
     </div>` : ''}`;
@@ -4406,11 +4406,11 @@ function switchEpicTab(tab) {
 
   if (tab === 'history') {
     histBtn.style.borderBottomColor = '#800080'; histBtn.style.color = '#800080'; histBtn.style.fontWeight = 'bold';
-    statBtn.style.borderBottomColor = 'transparent'; statBtn.style.color = '#888'; statBtn.style.fontWeight = 'normal';
+    statBtn.style.borderBottomColor = 'transparent'; statBtn.style.color = '#816e54'; statBtn.style.fontWeight = 'normal';
     histPanel.style.display = 'block'; statPanel.style.display = 'none';
   } else {
     statBtn.style.borderBottomColor = '#800080'; statBtn.style.color = '#800080'; statBtn.style.fontWeight = 'bold';
-    histBtn.style.borderBottomColor = 'transparent'; histBtn.style.color = '#888'; histBtn.style.fontWeight = 'normal';
+    histBtn.style.borderBottomColor = 'transparent'; histBtn.style.color = '#816e54'; histBtn.style.fontWeight = 'normal';
     histPanel.style.display = 'none'; statPanel.style.display = 'block';
   }
 }
