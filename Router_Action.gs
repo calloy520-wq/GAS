@@ -1869,6 +1869,8 @@ function actionPlay(userData, pcId, sheets) {
   const pc = pcData[pcIndex];
   const pcName = pc[COL.PC.NAME];
   let curL = pc[COL.PC.LOC];
+  const curLRoot = String(curL).split('-')[0].trim();
+  const locOwnershipNote = String(curL).includes('-') ? `\n★【地點歸屬鐵律】：玩家當前位置「${curL}」只是「${curLRoot}」境內由玩家自建的一處私人據點（店鋪/居所/領地等），玩家僅擁有這一處據點本身！「${curLRoot}」依然是廣闊的公共城鎮/地區，住滿其他百姓、商家與往來人物，絕非玩家的地盤或私產！嚴禁將整座「${curLRoot}」敘述成只屬於玩家、唯玩家獨尊，或讓無關路人因此對玩家卑躬屈膝、俯首稱臣！` : '';
 
 
   let isItemChanged = false;
@@ -2119,6 +2121,7 @@ ${localHistoryStr}
 ${PROMPT_REL}
 ${remoteNpcStr}
 ★【在場驗證鐵律——最高優先級，下筆前必看】：本回合唯一可以登場、說話、互動的角色，僅限【目前同行隊伍成員】與緊鄰上方【當前同地人物】清單列出之人！前塵因果、歷史紀錄、話題情報中提到的任何其他姓名，全部視為不在場的回憶，嚴禁無視「同地」設定憑空召喚、穿越或讓其開口說話、出手！若【當前同地人物】顯示「此地四下無人」，本回合除玩家與同行夥伴外，不可讓任何具名角色登場！
+${locOwnershipNote}
 
 ★【系統底層防呆】：
 1. 【位置同步強制】：玩家明確要移動「前往/去/走向/進入/離開」任何地點，stat_changes 且敘事已抵達才更新 attr:「位置」！
