@@ -52,6 +52,7 @@
       <button class="drawer-item" onclick="triggerDrawerAction('inventory')"><i>🎒</i><span>翻找行囊</span></button>
       <button class="drawer-item" onclick="openCraftMenu()"><i>🔥</i><span>造物煉成</span></button>
       <button class="drawer-item" onclick="openHomeMenu()"><i>🏡</i><span>我的家</span></button>
+      <button class="drawer-item" onclick="openShopMenu()"><i>🏪</i><span>我的店</span></button>
       <button class="drawer-item" onclick="openJianghuHubMenu()"><i>🍶</i><span>江湖百味</span></button>
       <button class="drawer-item" onclick="triggerDrawerAction('quest')"><i>📜</i><span>檢視天命</span></button>
       <button class="drawer-item" onclick="triggerDrawerAction('explore')"><i>🧭</i><span>探索疆域</span></button>
@@ -333,6 +334,16 @@
 
       <div id="panel-home-warehouse" style="display:none;">
         <div id="home-warehouse-content"><p style="text-align:center; color:#888;">正在感應倉庫氣息...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="shop-overlay" class="modal-overlay" onclick="closeSystemModal('shop-overlay')">
+    <div class="modal-scroll" onclick="event.stopPropagation()" style="max-width: 440px;">
+      <span class="modal-close-btn" onclick="closeSystemModal('shop-overlay')">&times;</span>
+      <h2 style="text-align:center; color:#c8843c; border-bottom:2px solid #c8843c; padding-bottom:10px; margin-top:0;">🏪 我的店</h2>
+      <div id="shop-content" style="margin-top:15px;">
+        <p style="text-align:center; color:#888;">正在感應鋪面氣息...</p>
       </div>
     </div>
   </div>

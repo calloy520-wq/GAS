@@ -224,6 +224,52 @@ function actionHomeMove(userData, pcId, sheets) {
 }
 
 // ------------------------------------------
+// 招待朋友來家裡坐：對象限「已傾心」者，選中即把她的人挪到家中。
+// 沿用店鋪「同地即客人」的邏輯，誰在家直接看 PC.LOC 是否等於家的全名，
+// 家是遠端管理面板，邀人時玩家本人不必親自在家。
+// ------------------------------------------
+function actionHomeInviteGuest(userData, pcId, sheets) {
+  if (!sheets.auth || !sheets.rel) return JSON.stringify({ success: false, message: "天道異常：表不存在" });
+
+  const npcName = String(userData.npcName || "").trim();
+  if (!npcName) return JSON.stringify({ success: false, message: "請指定邀請對象。" });
+
+  const authData = sheets.auth.getDataRange().getValues();
+  const aIdx = findAuthIdx(authData, pcId);
+  if (aIdx === -1 || !authData[aIdx][COL.AUTH.HOME_LOC]) {
+    return JSON.stringify({ success: false, message: "你尚無家園，無從邀人來坐。" });
+  }
+  const homeLoc = String(authData[aIdx][COL.AUTH.HOME_LOC]).trim();
+
+  const pcData = sheets.pc.getDataRange().getValues();
+  const pIdx = pcData.findIndex(r => r[COL.PC.ID] == pcId);
+  if (pIdx === -1) return JSON.stringify({ success: false, message: "查無此人" });
+  const myName = pcData[pIdx][COL.PC.NAME];
+
+  const relData = sheets.rel.getDataRange().getValues();
+  const rIdx = relData.findIndex(r => r[COL.REL.PC] === myName && r[COL.REL.NPC] === npcName);
+  const fav = rIdx !== -1 ? (parseInt(relData[rIdx][COL.REL.FAV]) || 0) : 0;
+  const isSoulBound = rIdx !== -1 && String(relData[rIdx][COL.REL.TAG] || "").includes("(已傾心)");
+  if (fav < 100 || !isSoulBound) {
+    return JSON.stringify({ success: false, message: `「${npcName}」尚未對你傾心，無法邀來家中。` });
+  }
+
+  const nIdx = pcData.findIndex(r => r[COL.PC.NAME] === npcName && !String(r[COL.PC.ID]).startsWith("DEAD_"));
+  if (nIdx === -1) return JSON.stringify({ success: false, message: "查無此人。" });
+  if (String(pcData[nIdx][COL.PC.LOC] || "").trim() === homeLoc) {
+    return JSON.stringify({ success: false, message: `「${npcName}」已經在家裡了。` });
+  }
+
+  const isBusy = relData.find(r => r[COL.REL.NPC] === npcName && r[COL.REL.IS_PARTY] === "同行" && r[COL.REL.PC] !== myName);
+  if (isBusy) return JSON.stringify({ success: false, message: `天道阻礙：「${npcName}」已與『${isBusy[COL.REL.PC]}』結伴，無法邀來！` });
+
+  pcData[nIdx][COL.PC.LOC] = homeLoc;
+  sheets.pc.getRange(nIdx + 1, COL.PC.LOC + 1).setValue(homeLoc);
+
+  return JSON.stringify({ success: true, message: `你邀請「${npcName}」來家裡坐坐。` });
+}
+
+// ------------------------------------------
 // 裝潢：整段覆蓋坤圖那筆家的 desc
 // ------------------------------------------
 function actionHomeDecorate(userData, pcId, sheets) {

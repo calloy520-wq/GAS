@@ -77,7 +77,8 @@ const ActionRouter = {
   "shop_settle": actionShopSettle,
   "shop_vault_deposit": actionShopVaultDeposit,
   "shop_vault_withdraw": actionShopVaultWithdraw,
-  "shop_close": actionShopClose
+  "shop_close": actionShopClose,
+  "home_invite_guest": actionHomeInviteGuest
 
 };
 
