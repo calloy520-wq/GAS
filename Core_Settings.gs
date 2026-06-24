@@ -325,7 +325,7 @@ function getCharacterTotalStats(charId, sheets, cachedPcData = null, cachedItemD
   let eqAcc2 = row[COL.PC.ACC2] ? String(row[COL.PC.ACC2]).trim() : "";
 
   let addSTR = 0, addCON = 0, addAGI = 0, addINT = 0, addLUK = 0;
-  let wepSTR = 0, armCON = 0; // 🔴 武器/防具本體的原始加成(不灌realm倍率)，傷害公式單獨拿來算「打得多痛/擋得多少」，跟骰子命中率脫鉤
+  let wepSTR = 0, armCON = 0, wepName = "", armName = ""; // 🔴 武器/防具本體的原始加成與名稱(不灌realm倍率)，傷害公式跟AI敘述都拿來用，跟骰子命中率脫鉤
   const equippedItems = [eqWeapon, eqArmor, eqAcc1, eqAcc2].filter(name => name !== "");
 
   if (equippedItems.length > 0 && (cachedItemData || sheets.item)) {
@@ -336,8 +336,8 @@ function getCharacterTotalStats(charId, sheets, cachedPcData = null, cachedItemD
         const iSTR = parseInt(itemRow[COL.ITEM.STR]) || 0, iCON = parseInt(itemRow[COL.ITEM.CON]) || 0;
         addSTR += iSTR; addCON += iCON;
         addAGI += parseInt(itemRow[COL.ITEM.AGI]) || 0; addINT += parseInt(itemRow[COL.ITEM.INT]) || 0; addLUK += parseInt(itemRow[COL.ITEM.LUK]) || 0;
-        if (eqIdOrName === eqWeapon) wepSTR = iSTR;
-        if (eqIdOrName === eqArmor) armCON = iCON;
+        if (eqIdOrName === eqWeapon) { wepSTR = iSTR; wepName = itemRow[COL.ITEM.NAME]; }
+        if (eqIdOrName === eqArmor) { armCON = iCON; armName = itemRow[COL.ITEM.NAME]; }
       }
     });
   }
@@ -345,7 +345,7 @@ function getCharacterTotalStats(charId, sheets, cachedPcData = null, cachedItemD
   return {
     id: charId, name: row[COL.PC.NAME], hp: parseInt(row[COL.PC.HP]) || 100, maxHp: parseInt(row[COL.PC.MAX_HP]) || 100,
     STR: baseSTR + addSTR, CON: baseCON + addCON, AGI: baseAGI + addAGI, INT: baseINT + addINT, LUK: baseLUK + addLUK,
-    WEP: eqWeapon, ARM: eqArmor, wepSTR: wepSTR, armCON: armCON
+    WEP: eqWeapon, ARM: eqArmor, wepSTR: wepSTR, armCON: armCON, wepName: wepName, armName: armName
   };
 }
 

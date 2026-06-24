@@ -2056,7 +2056,7 @@ function actionPlay(userData, pcId, sheets) {
 
     PROMPT_ENV = `【身負天命】\n${activeQuests}\n\n${rumorDesc}【天下勢力】\n${factionListDesc}`;
     const inventoryDesc = itemData.filter(it => it[COL.ITEM.OWNER] == pcId).slice(-30).map(it => it[COL.ITEM.NAME]).join("、") || "空空如也";
-    PROMPT_GEAR = `【武裝】：${pcData[pcIndex][COL.PC.WEP] || "赤手空拳"}\n【武學】：${pcData[pcIndex][COL.PC.MARTIAL]
+    PROMPT_GEAR = `【武裝】：${resolveItemName(pcData[pcIndex][COL.PC.WEP], itemData) || "赤手空拳"}\n【武學】：${pcData[pcIndex][COL.PC.MARTIAL]
       ? `【玩家自創、已掌握】${pcData[pcIndex][COL.PC.MARTIAL]}（★絕對禁止讓NPC重複教授或聲稱是自己的武學！）`
       : "尚無自創武學"}\n【行囊】：${inventoryDesc}`;
     PROMPT_REL = `【當前同地人物】\n${localSceneStr}${thirdPartyStr}`;
@@ -3543,10 +3543,16 @@ function actionMultiAttack(userData, pcId, sheets) {
     else if (nHasPoison) debuffHint = `（「${npcName}」身上中毒尚未消退，反應遲滯，可在敘述中帶到這點）\n`;
     else if (nHasCharm) debuffHint = `（「${npcName}」身上媚惑尚未消退，意亂神迷，可在敘述中帶到這點）\n`;
 
-    // 🔴 武器/防具達一定品階才提示AI帶到，避免凡品雜物也硬寫一句神兵防身
+    // 🔴 武器/防具達一定品階才提示AI帶到，並把實際物品名稱餵給AI，避免凡品雜物也硬寫一句神兵防身
     let gearHint = "";
-    if (atkWepBonus >= 4) gearHint += `（${playerWins ? "玩家" : `「${npcName}」`}手中兵刃材質不凡，這一擊格外沉重）\n`;
-    if (defArmBonus >= 4) gearHint += `（${playerWins ? `「${npcName}」` : "玩家"}身披精良防具，硬生生卸去不少力道）\n`;
+    if (atkWepBonus >= 4) {
+      const wepName = (playerWins ? pTotal.wepName : nTotal.wepName) || "兵刃";
+      gearHint += `（${playerWins ? "玩家" : `「${npcName}」`}手中「${wepName}」材質不凡，這一擊格外沉重）\n`;
+    }
+    if (defArmBonus >= 4) {
+      const armName = (playerWins ? nTotal.armName : pTotal.armName) || "防具";
+      gearHint += `（${playerWins ? `「${npcName}」` : "玩家"}身披「${armName}」，硬生生卸去不少力道）\n`;
+    }
 
     aiPromptParts.push(
       `【對戰：玩家 vs 「${npcName}」】玩家原話：「${seg.flavor || "（未多說，直接出手）"}」\n` +
