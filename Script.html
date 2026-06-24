@@ -2051,7 +2051,7 @@ let plainTextContext = cleanText;
       if (data.options && Array.isArray(data.options) && data.options.length > 0) {
         currentOptions = data.options;
         let optionsHtml = `<div style="color: var(--gold-accent); font-weight: bold; border-bottom: 1px dashed rgba(212, 175, 55, 0.3); padding-bottom: 6px; margin-bottom: 8px;">【命運的抉擇】</div>`;
-        optionsHtml += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">`;
+        optionsHtml += `<div class="options-grid">`;
         plainTextContext += `\n\n【命運的抉擇】\n`; 
         data.options.forEach(optText => {
           optionsHtml += `<button class="btn-option" onclick="send('${optText.replace(/'/g, "\\'")}', true)">${optText}</button>`;
