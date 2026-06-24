@@ -314,7 +314,7 @@ function actionUseItemOnNpc(userData, pcId, sheets) {
   sheets.item.deleteRow(iIdx + 1);
   sheets.pc.getRange(nIdx + 1, 1, 1, pcData[nIdx].length).setValues([pcData[nIdx]]);
 
-  const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, instructionStr);
+  const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, instructionStr, pcData[pIdx]);
   return JSON.stringify({ success: true, itemName: itemName, targetName: npcName, effectStr: effectStr, aiPrompt: aiPrompt });
 }
 
@@ -776,7 +776,7 @@ function actionRequestItemFromNpc(userData, pcId, sheets) {
 
   sheets.item.getRange(iIdx + 1, COL.ITEM.OWNER + 1).setValue(pcId);
 
-  const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家開口向「${npcName}」索要「${itemName}」，對方已答應交出此物（結果已定，禁止改變）。請描寫玩家開口的話術與「${npcName}」交出物品時的反應，語氣務必貼合對方性格與雙方關係。`);
+  const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家開口向「${npcName}」索要「${itemName}」，對方已答應交出此物（結果已定，禁止改變）。請描寫玩家開口的話術與「${npcName}」交出物品時的反應，語氣務必貼合對方性格與雙方關係。`, pcData[pIdx]);
   return JSON.stringify({ success: true, aiPrompt: aiPrompt, itemName: itemName, npcName: npcName });
 }
 
@@ -814,12 +814,12 @@ function actionRequestDiscardNpcItem(userData, pcId, sheets) {
 
   sheets.item.deleteRow(iIdx + 1);
 
-  const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家要求「${npcName}」丟棄「${itemName}」，對方因對玩家已是全心傾心，依言照辦、親手丟棄了此物（結果已定，禁止改變）。請描寫玩家開口的話術與「${npcName}」依言丟棄物品時的反應，語氣務必貼合對方性格與雙方深厚關係。`);
+  const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家要求「${npcName}」丟棄「${itemName}」，對方因對玩家已是全心傾心，依言照辦、親手丟棄了此物（結果已定，禁止改變）。請描寫玩家開口的話術與「${npcName}」依言丟棄物品時的反應，語氣務必貼合對方性格與雙方深厚關係。`, pcData[pIdx]);
   return JSON.stringify({ success: true, aiPrompt: aiPrompt, itemName: itemName, npcName: npcName });
 }
 
 // 🔹 共用：組裝含地點/性格/關係/近期因果的提示詞，避免索要/丟棄敘事出戲
-function buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, instructionStr) {
+function buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, instructionStr, pRow) {
   const npcName = npcRow[COL.PC.NAME];
   const relData = sheets.rel ? sheets.rel.getDataRange().getValues() : [];
   const relRow = relData.find(r => r[COL.REL.PC] === pName && r[COL.REL.NPC] === npcName);
@@ -829,18 +829,28 @@ function buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, instructionStr) {
   const nickStr = (nickMatch && nickMatch[1].trim()) ? ` | 稱呼玩家:${nickMatch[1].trim()}` : "";
   const npcCardStr = `【${npcName}】境界:${npcRow[COL.PC.REALM] || "凡人"} | 性格:[表象]${prefArr[0] || "無"} [內裡]${prefArr[1] || "無"} | 特徵:${traitArr[1] || "無"} | 與玩家關係:${relRow ? relRow[COL.REL.TAG] : "萍水相逢"}(好感:${relRow ? relRow[COL.REL.FAV] : 0})${nickStr}`;
 
+  // 🔴 玩家自己的性格也要讓AI知道，台詞與反應才不會千人一面
+  const pPrefArr = String((pRow && pRow[COL.PC.PREF]) || "").split('、');
+  const pTraitArr = String((pRow && pRow[COL.PC.TRAIT]) || "").split('、');
+  const playerCardStr = pRow ? `【玩家『${pName}』】性格:[表象]${pPrefArr[0] || "無"} [內裡]${pPrefArr[1] || "無"} | 特徵:${pTraitArr[1] || "無"}\n` : "";
+
   const allLogs = sheets.log ? sheets.log.getDataRange().getValues() : [];
   const recentLogStr = allLogs.filter(r => String(r[2]).includes(pName) || String(r[2]).includes(npcName)).slice(-5).map(r => `${r[2]}`).join("\n") || "（尚無相關因果記錄）";
 
-  // 🔴 同地點的其他人(含同行夥伴)也是真的在場，不可被「在場驗證」誤鎖成不在場
+  // 🔴 同地點的其他人都是真的在場，不可被「在場驗證」誤鎖成不在場；同行夥伴另外標出，AI才知道誰會吃醋誰只是路人
   const pcDataAll = sheets.pc.getDataRange().getValues();
+  const partyNames = relData.filter(r => r[COL.REL.PC] === pName && r[COL.REL.IS_PARTY] === "同行").map(r => r[COL.REL.NPC]);
   const bystanderNames = pcDataAll.filter(r =>
     String(r[COL.PC.LOC]).trim() === pLoc && r[COL.PC.NAME] !== pName && r[COL.PC.NAME] !== npcName &&
     !String(r[COL.PC.ID]).startsWith("DEAD_")
   ).map(r => r[COL.PC.NAME]);
-  const presentStr = bystanderNames.length > 0 ? `玩家、「${npcName}」，以及在場的${bystanderNames.join('、')}` : `玩家與「${npcName}」`;
+  const partyHere = bystanderNames.filter(n => partyNames.includes(n));
+  const othersHere = bystanderNames.filter(n => !partyNames.includes(n));
+  let presentStr = `玩家與「${npcName}」`;
+  if (partyHere.length > 0) presentStr += `，同行夥伴${partyHere.join('、')}也在場`;
+  if (othersHere.length > 0) presentStr += `，以及在場的${othersHere.join('、')}`;
 
-  return `【場景】玩家『${pName}』目前位於『${pLoc}』。\n【近期因果】(僅供背景參考，純屬回憶，並非當下在場！)\n${recentLogStr}\n【對象資料】\n${npcCardStr}\n\n` +
+  return `【場景】玩家『${pName}』目前位於『${pLoc}』。\n【近期因果】(僅供背景參考，純屬回憶，並非當下在場！)\n${recentLogStr}\n【對象資料】\n${npcCardStr}\n${playerCardStr}\n` +
     `【系統事件·已裁定，嚴禁更改任何結果】${instructionStr}\n` +
     `★【鐵律】嚴禁輸出任何 items_gained、items_transferred、money_transferred 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！\n` +
     `★【在場驗證】本回合在場者僅有${presentStr}，可合理帶到其存在或反應；近期因果中提到的其他姓名均不在場，嚴禁讓其登場、插話或互動！`;
@@ -887,18 +897,18 @@ function actionGiftItem(userData, pcId, sheets) {
       sheets.rel.appendRow([pName, npcName, 100, finalTag, "同行", "", `收下信物「${itemName}」，徹底傾心。`]);
     }
     addRumor(sheets, "GIFT_BOND", pLoc, npcName);
-    const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家將定情信物「${itemName}」贈予「${npcName}」，對方好感度滿溢，已滿心歡喜收下並徹底傾心於玩家（結果已定，禁止改變）！請細膩描寫符合對方個性、掩飾不住的喜悅與締結羈絆的對話。`);
+    const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家將定情信物「${itemName}」贈予「${npcName}」，對方好感度滿溢，已滿心歡喜收下並徹底傾心於玩家（結果已定，禁止改變）！請細膩描寫符合對方個性、掩飾不住的喜悅與締結羈絆的對話。`, pcData[pIdx]);
     return JSON.stringify({
       success: true, aiPrompt, itemName, npcName, soulBound: true,
       soulBoundEventMsg: `💞 「${npcName}」收下了「${itemName}」，徹底傾心於你！<br><span style="font-size:13px; color:#ffb6c1;">✨ 羈絆已至深處，「逆天改命」功能已解鎖，可重新賦予對方命格與裝備之權。</span>`,
       freshlyBoundNpcName: npcName
     });
   } else if (currentFav < 30) {
-    const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家想將「${itemName}」送給「${npcName}」，但兩人交情尚淺（好感${currentFav}），對方並未收下，物品仍在玩家身上（結果已定，禁止改變）。請依「${npcName}」的個性，描寫她疏離婉拒、不收禮物的反應。`);
+    const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家想將「${itemName}」送給「${npcName}」，但兩人交情尚淺（好感${currentFav}），對方並未收下，物品仍在玩家身上（結果已定，禁止改變）。請依「${npcName}」的個性，描寫她疏離婉拒、不收禮物的反應。`, pcData[pIdx]);
     return JSON.stringify({ success: true, aiPrompt, itemName, npcName, rejected: true });
   } else {
     sheets.item.getRange(iIdx + 1, COL.ITEM.OWNER + 1).setValue(npcRow[COL.PC.ID]);
-    const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家已將「${itemName}」交給「${npcName}」，系統底層已完成物品轉移（結果已定，禁止改變）。請依「${npcName}」的個性與好感，純描寫她收下禮物的反應與神情。`);
+    const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家已將「${itemName}」交給「${npcName}」，系統底層已完成物品轉移（結果已定，禁止改變）。請依「${npcName}」的個性與好感，純描寫她收下禮物的反應與神情。`, pcData[pIdx]);
     return JSON.stringify({ success: true, aiPrompt, itemName, npcName });
   }
 }
@@ -945,7 +955,7 @@ function actionExecuteNpc(userData, pcId, sheets) {
     updateFactionPower(sheets, deadFaction, powerLoss, eventMsg);
   }
 
-  const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, execTarget, `玩家對昏迷倒地的「${targetName}」補刀處決，對方已徹底隕落，財物與裝備已盡數歸入玩家行囊（結果已定，禁止改變）。請生動描寫補刀終結的場面。`);
+  const aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, execTarget, `玩家對昏迷倒地的「${targetName}」補刀處決，對方已徹底隕落，財物與裝備已盡數歸入玩家行囊（結果已定，禁止改變）。請生動描寫補刀終結的場面。`, pcData[pIdx]);
   sheets.pc.getRange(execIdx + 1, COL.PC.ID + 1).setValue("DEAD_" + execTarget[COL.PC.ID]);
   return JSON.stringify({ success: true, aiPrompt, npcName: targetName });
 }
@@ -959,16 +969,27 @@ function actionUseItemSelf(userData, pcId, sheets) {
   const actualName = itemData[iIdx][COL.ITEM.NAME] || itemName;
   sheets.item.deleteRow(iIdx + 1);
 
-  // 🔴 補上地點 + 在場旁人，避免AI寫出與當前場景不符或憑空捏造的反應
+  // 🔴 補上地點 + 在場旁人(分清同行夥伴與路人) + 玩家自身性格，避免AI寫出與當前場景/人物不符或憑空捏造的反應
   const pcData = sheets.pc.getDataRange().getValues();
   const pIdx = pcData.findIndex(r => r[COL.PC.ID] == pcId);
+  const pName = pIdx !== -1 ? pcData[pIdx][COL.PC.NAME] : "";
   const pLoc = pIdx !== -1 ? String(pcData[pIdx][COL.PC.LOC]).trim() : "";
+  const pPrefArr = String((pIdx !== -1 && pcData[pIdx][COL.PC.PREF]) || "").split('、');
+  const pTraitArr = String((pIdx !== -1 && pcData[pIdx][COL.PC.TRAIT]) || "").split('、');
+  const playerCardStr = pIdx !== -1 ? `【玩家『${pName}』】性格:[表象]${pPrefArr[0] || "無"} [內裡]${pPrefArr[1] || "無"} | 特徵:${pTraitArr[1] || "無"}\n` : "";
+
+  const relData = sheets.rel ? sheets.rel.getDataRange().getValues() : [];
+  const partyNames = relData.filter(r => r[COL.REL.PC] === pName && r[COL.REL.IS_PARTY] === "同行").map(r => r[COL.REL.NPC]);
   const bystanderNames = pcData
     .filter(r => r[COL.PC.ID] != pcId && !String(r[COL.PC.ID]).startsWith("DEAD_") && String(r[COL.PC.LOC]).trim() === pLoc)
     .map(r => r[COL.PC.NAME]);
-  const sceneStr = pLoc
-    ? `【場景】玩家目前位於『${pLoc}』。${bystanderNames.length > 0 ? `在場還有：${bystanderNames.join("、")}，請合理帶到他們的存在或反應，不要視而不見。` : "現場再無旁人，請勿憑空捏造路人或對話對象。"}\n`
-    : "";
+  const partyHere = bystanderNames.filter(n => partyNames.includes(n));
+  const othersHere = bystanderNames.filter(n => !partyNames.includes(n));
+  let placeStr = "";
+  if (partyHere.length > 0) placeStr += `同行夥伴${partyHere.join("、")}也在場，請合理帶到其反應。`;
+  if (othersHere.length > 0) placeStr += `在場還有：${othersHere.join("、")}，請合理帶到他們的存在或反應，不要視而不見。`;
+  if (!placeStr) placeStr = "現場再無旁人，請勿憑空捏造路人或對話對象。";
+  const sceneStr = pLoc ? `${playerCardStr}【場景】玩家目前位於『${pLoc}』。${placeStr}\n` : playerCardStr;
 
   const aiPrompt = `${sceneStr}【系統事件·已裁定，嚴禁更改任何結果】玩家將「${actualName}」消耗/施放了，系統底層已將物品扣除完畢。請生動描寫使用的效果與周圍的反應；若是強行食用不可食之物，請描寫滑稽場面。\n★【鐵律】嚴禁輸出任何 items_used、items_lost、items_gained 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！`;
   return JSON.stringify({ success: true, aiPrompt, itemName: actualName });
@@ -1022,7 +1043,7 @@ function actionStealNpcItem(userData, pcId, sheets) {
       return JSON.stringify({ success: false, message: `行囊已滿（${MAX_BAG_SIZE}/${MAX_BAG_SIZE}），下手得手也無處安放，請先清理包包再來！` });
     }
     sheets.item.getRange(iIdx + 1, COL.ITEM.OWNER + 1).setValue(pcId);
-    aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家妙手空空，暗中將「${npcName}」身上的「${itemName}」偷天換日轉移到自己行囊，對方渾然未覺（結果已定，禁止改變）！請生動描寫玩家不著痕跡的偷竊手法，以及對方毫無所覺的反應。`);
+    aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家妙手空空，暗中將「${npcName}」身上的「${itemName}」偷天換日轉移到自己行囊，對方渾然未覺（結果已定，禁止改變）！請生動描寫玩家不著痕跡的偷竊手法，以及對方毫無所覺的反應。`, pcData[pIdx]);
   } else {
     const relData = sheets.rel ? sheets.rel.getDataRange().getValues() : [];
     const rIdx = relData.findIndex(r => r[COL.REL.PC] === pName && r[COL.REL.NPC] === npcName);
@@ -1034,7 +1055,7 @@ function actionStealNpcItem(userData, pcId, sheets) {
     }
     const newHp = Math.max(1, (parseInt(pcData[pIdx][COL.PC.HP]) || 0) - 10);
     sheets.pc.getRange(pIdx + 1, COL.PC.HP + 1).setValue(newHp);
-    aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家妙手空空企圖偷取「${npcName}」身上的「${itemName}」，卻被當場識破！對方震怒反擊，玩家因而損失了好感並受了些皮肉傷（結果已定，禁止改變）。請生動描寫玩家偷竊失手、被識破當場的尷尬與對方的怒意反擊。`);
+    aiPrompt = buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, `玩家妙手空空企圖偷取「${npcName}」身上的「${itemName}」，卻被當場識破！對方震怒反擊，玩家因而損失了好感並受了些皮肉傷（結果已定，禁止改變）。請生動描寫玩家偷竊失手、被識破當場的尷尬與對方的怒意反擊。`, pcData[pIdx]);
   }
 
   return JSON.stringify({ success: true, aiPrompt, itemName, npcName, stealSuccess: success });
