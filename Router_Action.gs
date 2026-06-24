@@ -3690,7 +3690,8 @@ function actionMultiAttackNarrate(userData, pcId, sheets) {
 3. 強制分段：每2~3句插入 <br><br>，整段至少3個 <br><br>，禁止整坨。換行一律用 <br><br>，禁止真實換行，禁止輸出任何 HTML 標籤。
 4. ★這是純敘事補完，系統底層已結算完所有勝負、傷害與藥效數值，你只負責寫過程的字，禁止更改任何結果。
 5. 敘事務必與提供的【場景】地點、【近期因果】與【參戰者資料】(性格/特徵/關係)一致，禁止憑空換地點或讓角色性格走偏。
-6. 只輸出 JSON：{"narration":"你的敘述，內含<br><br>分段"}，禁止任何其他欄位、禁止 Markdown。`;
+6. ★對話歷史中的內容是「已經發生並結束」的既定事實：歷史中的行動方式(例如特定接近手法、招式、道具)絕對禁止被當成本回合仍在持續或重新發生一次；但歷史造成的後續影響(例如NPC因此產生的警戒、敵意、態度轉變)必須視為既定事實並自然延續下去。本回合唯一真正發生的新事件，只有【系統戰報】裡提供的內容。
+7. 只輸出 JSON：{"narration":"你的敘述，內含<br><br>分段"}，禁止任何其他欄位、禁止 Markdown。`;
 
   let aiConfig = {
     temperature: 0.85,
@@ -3698,9 +3699,17 @@ function actionMultiAttackNarrate(userData, pcId, sheets) {
     max_tokens: 700,           // 比 actionPlay 的 2000 砍掉一大半
     model: "google/gemini-3.1-flash-lite",
     isNsfwMode: !!isNsfw
-    // 🔴 刻意不傳 chatHistory：上回合的玩家發言(例如「假裝親近」的接近手法)若被當成對話歷史塞回去，
-    // AI會把舊戰術誤當成本回合仍在進行，導致新動作被舊敘述污染。場景/因果/性格卡已經都在 promptText 裡了，不需要這份歷史。
   };
+
+  // 🔴 帶最近2筆歷史維持劇情連續性；但miniSystem規則6已明確告知AI：歷史是既定事實，
+  // 結果要延續(NPC態度等)，但動作本身不能被誤認成本回合又重演一次。
+  const recentHistoryRaw = getGameHistoryBatchRaw(pcId, 2);
+  if (recentHistoryRaw && recentHistoryRaw.length > 0) {
+    aiConfig.chatHistory = recentHistoryRaw.map(msg => ({
+      role: msg.speaker === "player" ? "user" : "assistant",
+      content: String(msg.content)
+    }));
+  }
 
   const raw = callGeminiAPI(promptText, miniSystem, aiConfig);
 
