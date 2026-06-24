@@ -130,8 +130,9 @@ function actionShopCreate(userData, pcId, sheets) {
   }
 
   const curLoc = String(pcData[pIdx][COL.PC.LOC] || "").split('-')[0].trim() || "青丘城";
-  // 🔴 子地點固定以「的店鋪」收尾，讓AI一看名稱就知道這只是一間店，類型/服務內容另存於店鋪表與地形描述，敘事時再查表帶入
-  const shopFullName = `${curLoc}-${shopName}的店鋪`;
+  const pcName = pcData[pIdx][COL.PC.NAME];
+  // 🔴 子地點改為以「玩家姓名」命名，方便系統識別產業歸屬並顯示於輿圖
+  const shopFullName = `${curLoc}-${pcName}的店鋪`;
 
   const mapData = sheets.map.getDataRange().getValues();
   if (mapData.some(m => String(m[COL.MAP.NAME]).trim() === shopFullName)) {

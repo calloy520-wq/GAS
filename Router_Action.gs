@@ -1877,7 +1877,7 @@ function actionPlay(userData, pcId, sheets) {
     const shopRow = sheets.shop.getDataRange().getValues().find(r => String(r[COL.SHOP.LOC] || "").trim() === String(curL).trim());
     if (shopRow) {
       const isOwnShop = String(shopRow[COL.SHOP.OWNER]) === String(pcId);
-      shopInfoStr = `\n★【在地店鋪資訊】：眼前這處據點是「${shopRow[COL.SHOP.NAME]}」，類型：${shopRow[COL.SHOP.CATEGORY]}，經營內容：${shopRow[COL.SHOP.DESC]}。${isOwnShop ? "（此店為玩家本人所有）" : "（此店並非玩家所有，玩家僅是訪客）"}`;
+      shopInfoStr = `\n★【在地店鋪資訊】：此處座標標籤為「${curL}」，但其世俗招牌（品牌名）為「${shopRow[COL.SHOP.NAME]}」。類型：${shopRow[COL.SHOP.CATEGORY]}，經營內容：${shopRow[COL.SHOP.DESC]}。${isOwnShop ? "（此店為玩家本人所有）" : "（此店並非玩家所有）"}`;
     }
   }
 
