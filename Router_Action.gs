@@ -2917,8 +2917,9 @@ ${locOwnershipNote}
     // 相容新結構(subject/object/event)與舊結構(people/event)
     let logSubject = String(logSum.subject || "").trim();
     let logObject = String(logSum.object || "").trim();
-    let logEvent = String(logSum.event || "因果輪轉").trim();
     let logTag = IMPORTANT_LOG_TAGS.has(String(logSum.tag || "").trim()) ? String(logSum.tag).trim() : "閒聊";
+    // 🔴 慾海模式：因果文字不交由AI自由生成(避免肉體細節寫入表單)，改由GAS依tag固定挑選隱晦樣板
+    let logEvent = isNsfwMode ? pickNsfwCausalityEvent(logTag) : String(logSum.event || "因果輪轉").trim();
     // 組出「人」欄字串：有主被動就標方向，沒有就退回舊寫法
     let logPeopleStr;
     if (logSubject) {
