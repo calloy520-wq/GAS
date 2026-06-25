@@ -2297,7 +2297,10 @@ ${locOwnershipNote}
 
     if (aiData.quests && Array.isArray(aiData.quests) && sheets.quest) {
       aiData.quests.forEach(q => {
-        const qIdx = questData.findIndex(r => r[COL.QUEST.PC] == pcId && r[COL.QUEST.NAME] === String(q.name).trim() && r[COL.QUEST.STATUS] === "進行中");
+        const qName = String(q.name || "").trim();
+        // 🔴 防呆：AI 沒給任務名（多半是只想更新目標時漏填）就略過，避免生出一筆無名任務
+        if (!qName) return;
+        const qIdx = questData.findIndex(r => r[COL.QUEST.PC] == pcId && r[COL.QUEST.NAME] === qName && r[COL.QUEST.STATUS] === "進行中");
         if (qIdx !== -1) {
           if (q.target) questData[qIdx][COL.QUEST.TARGET] = q.target;
           if (q.status && q.status !== "進行中" && isExplicitQuestAction(questData[qIdx][COL.QUEST.NAME])) {
@@ -2315,11 +2318,15 @@ ${locOwnershipNote}
             if (q.reward_money !== undefined || q.reward_item !== undefined) questData[qIdx][COL.QUEST.REWARD_LOCKED] = "Y";
           }
         } else {
+          // 🔴 防重複堆疊生成：若已存在同名任務（不論已結案/逾期失敗），代表 AI 只是在敘事中重述舊任務，
+          // 直接略過，不再 append 一筆全新的重複任務，避免天命面板出現多筆同名任務堆疊。
+          const existsSameName = questData.some(r => r[COL.QUEST.PC] == pcId && r[COL.QUEST.NAME] === qName);
+          if (existsSameName) return;
           const rewardMoney = q.reward_money !== undefined ? Math.max(0, Math.min(MAX_QUEST_REWARD_MONEY, parseInt(q.reward_money) || 0)) : Math.floor(Math.random() * 400) + 100;
           const rewardItem = q.reward_item !== undefined ? (String(q.reward_item).trim() || "無") : "無";
           const rewardLocked = (q.reward_money !== undefined || q.reward_item !== undefined) ? "Y" : "";
           const deadlineVal = (q.deadline_days && parseInt(q.deadline_days) > 0) ? (Date.now() + parseInt(q.deadline_days) * 86400000) : "";
-          questData.push([pcId, String(q.name).trim(), (q.target ? String(q.target).trim() : "調查中"), q.status || "進行中", rewardMoney, rewardItem, rewardLocked, deadlineVal]);
+          questData.push([pcId, qName, (q.target ? String(q.target).trim() : "調查中"), q.status || "進行中", rewardMoney, rewardItem, rewardLocked, deadlineVal]);
           sheets.quest.appendRow(questData[questData.length - 1]);
         }
       });
