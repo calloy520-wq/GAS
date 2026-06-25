@@ -52,6 +52,24 @@ function pickRelevantLogs(rows, limit) {
   return importantSlice.concat(casualSlice).sort((a, b) => new Date(a[0]) - new Date(b[0]));
 }
 
+// 🔴 因果寫入專用：地點/性質直接嵌入內容字串，避免後續只取r[2]時遺失地點與標籤資訊
+// （此格式純粹給AI後續讀取理解用，玩家永遠不會看到這欄原始內容）
+function formatCausalityEntry(loc, tag, peopleStr, eventStr) {
+  return `[地:${loc || "未知"}][性:${tag || "閒聊"}] ${peopleStr}：${eventStr}`;
+}
+
+// 🔴 因果讀取專用共用函式：統一 filter + pickRelevantLogs + join 邏輯，
+// 避免consume_item/use_item_self/贈禮/連擊等多處各自重複一份、未來改動容易漏改。
+function getRecentCausalityStr(sheets, pName, npcName, limit) {
+  if (!sheets.log) return "（尚無相關因果記錄）";
+  const allLogs = sheets.log.getDataRange().getValues();
+  const filtered = allLogs.filter(r =>
+    String(r[2]).includes(pName) || (npcName && String(r[2]).includes(npcName))
+  );
+  const picked = pickRelevantLogs(filtered, limit || 5);
+  return picked.map(r => r[2]).join("\n") || "（尚無相關因果記錄）";
+}
+
 function saveGameHistoryBatch(pcId, entries) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("歷史暫存");
