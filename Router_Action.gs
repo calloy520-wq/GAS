@@ -275,8 +275,7 @@ function actionConsumeItem(userData, pcId, sheets) {
   if (!placeStr) placeStr = "現場再無旁人，請勿憑空捏造路人或對話對象。";
   const sceneStr = pLoc ? `${playerCardStr}【場景】玩家目前位於『${pLoc}』。${placeStr}\n` : playerCardStr;
 
-  const allLogs = sheets.log ? sheets.log.getDataRange().getValues() : [];
-  const recentLogStr = pickRelevantLogs(allLogs.filter(r => String(r[2]).includes(pName)), 5).map(r => `${r[2]}`).join("\n") || "（尚無相關因果記錄）";
+  const recentLogStr = getRecentCausalityStr(sheets, pName, null, 5);
 
   const aiPrompt = `${sceneStr}【近期因果】(僅供背景參考，純屬回憶，並非當下在場！)\n${recentLogStr}\n【系統事件·已裁定，嚴禁更改任何結果】玩家服下了「${itemRow[COL.ITEM.NAME]}」，藥效已底層結算完畢：${effectStr}。請生動描寫藥力於經脈間化開的過程、玩家當下的生理反應，以及周圍人物見狀的態度。\n★【鐵律】嚴禁輸出任何 items_used、items_lost、items_gained 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！`;
 
@@ -880,8 +879,7 @@ function buildNpcRequestPrompt(sheets, pName, pLoc, npcRow, instructionStr, pRow
   const pTraitArr = String((pRow && pRow[COL.PC.TRAIT]) || "").split('、');
   const playerCardStr = pRow ? `【玩家『${pName}』】性格:[表象]${pPrefArr[0] || "無"} [內裡]${pPrefArr[1] || "無"} | 特徵:${pTraitArr[1] || "無"}\n` : "";
 
-  const allLogs = sheets.log ? sheets.log.getDataRange().getValues() : [];
-  const recentLogStr = pickRelevantLogs(allLogs.filter(r => String(r[2]).includes(pName) || String(r[2]).includes(npcName)), 5).map(r => `${r[2]}`).join("\n") || "（尚無相關因果記錄）";
+  const recentLogStr = getRecentCausalityStr(sheets, pName, npcName, 5);
 
   // 🔴 同地點的其他人都是真的在場，不可被「在場驗證」誤鎖成不在場；同行夥伴另外標出，AI才知道誰會吃醋誰只是路人
   const pcDataAll = sheets.pc.getDataRange().getValues();
@@ -1037,8 +1035,7 @@ function actionUseItemSelf(userData, pcId, sheets) {
   if (!placeStr) placeStr = "現場再無旁人，請勿憑空捏造路人或對話對象。";
   const sceneStr = pLoc ? `${playerCardStr}【場景】玩家目前位於『${pLoc}』。${placeStr}\n` : playerCardStr;
 
-  const allLogs = sheets.log ? sheets.log.getDataRange().getValues() : [];
-  const recentLogStr = pickRelevantLogs(allLogs.filter(r => String(r[2]).includes(pName)), 5).map(r => `${r[2]}`).join("\n") || "（尚無相關因果記錄）";
+  const recentLogStr = getRecentCausalityStr(sheets, pName, null, 5);
 
   const aiPrompt = `${sceneStr}【近期因果】(僅供背景參考，純屬回憶，並非當下在場！)\n${recentLogStr}\n【系統事件·已裁定，嚴禁更改任何結果】玩家將「${actualName}」消耗/施放了，系統底層已將物品扣除完畢。請生動描寫使用的效果與周圍的反應；若是強行食用不可食之物，請描寫滑稽場面。\n★【鐵律】嚴禁輸出任何 items_used、items_lost、items_gained 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！`;
   return JSON.stringify({ success: true, aiPrompt, itemName: actualName });
@@ -2026,7 +2023,7 @@ function actionPlay(userData, pcId, sheets) {
   // 🔴 只讀一次 log，後面兩處共用
   const allLogs = sheets.log.getDataRange().getValues();
 
-  const history = pickRelevantLogs(allLogs.filter(r => String(r[2]).includes(pcName)), 12).map(r => `[${r[0]}] ${r[2]} ｜ ${r[3]}`).join("\n");
+  const history = pickRelevantLogs(allLogs.filter(r => String(r[2]).includes(pcName)), 12).map(r => r[2]).join("\n");
   const pTotal = getCharacterTotalStats(pcId, sheets, pcData, itemData);
   const currentAmbition = pc[COL.PC.INTENT] ? String(pc[COL.PC.INTENT]).trim() : "初入江湖，隨遇而安。";
 
@@ -2054,7 +2051,7 @@ function actionPlay(userData, pcId, sheets) {
       const eventStr = String(r[2] || "");
       return !eventStr.includes(pcName) && presentNpcNamesForLog.some(n => eventStr.includes(n));
     });
-    const localHistory = pickRelevantLogs(localLogs, 10).map(r => `[他人因果] ${r[2]} ｜ ${r[3]}`).join("\n");
+    const localHistory = pickRelevantLogs(localLogs, 10).map(r => `[他人因果] ${r[2]}`).join("\n");
     if (localHistory) localHistoryStr = `\n★【眼前眾生近期遭遇】：(NPC 可能會告狀或展露餘韻！)\n${localHistory}`;
   }
 
@@ -2932,7 +2929,8 @@ ${locOwnershipNote}
       safeWriteSheet(sheets.quest, questData);
     }
 
-    sheets.log.appendRow([new Date(), pcId, `人：${logPeopleStr} ｜ 事：${logEvent}`, curL = pcData[pcIndex][COL.PC.LOC], logTag]);
+    curL = pcData[pcIndex][COL.PC.LOC];
+    sheets.log.appendRow([new Date(), pcId, formatCausalityEntry(curL, logTag, logPeopleStr, logEvent), curL, logTag]);
     trimLogRowsByOwner(sheets.log, pcId, 60, 20);
 
     const localPeopleList = getLocalPeopleList(sheets, pcName, pcId, curL, relData, sheets.task ? sheets.task.getDataRange().getValues() : [], pcData);
@@ -3771,8 +3769,7 @@ function actionMultiAttack(userData, pcId, sheets) {
   });
   const npcCardsStr = npcCardsArr.length > 0 ? `\n【參戰者資料】\n${npcCardsArr.join("\n")}` : "";
 
-  const allLogs = sheets.log ? sheets.log.getDataRange().getValues() : [];
-  const recentLogStr = pickRelevantLogs(allLogs.filter(r => String(r[2]).includes(pName)), 5).map(r => `${r[2]}`).join("\n") || "（尚無相關因果記錄）";
+  const recentLogStr = getRecentCausalityStr(sheets, pName, null, 5);
 
   // 🔴 同地點但沒被攻擊波及的人(例如同行夥伴單純在場圍觀)，也算真的在場，不可被「在場驗證」誤鎖
   const untouchedBystanders = pcData
@@ -3912,7 +3909,7 @@ function actionMultiAttackNarrate(userData, pcId, sheets) {
       if (pIdx !== -1) {
         const pName = pcData[pIdx][COL.PC.NAME];
         const pLoc = pcData[pIdx][COL.PC.LOC];
-        sheets.log.appendRow([new Date(), pcId, `人：${pName} ｜ 事：${narrationText.replace(/<br\s*\/?>/g, " ").slice(0, 150)}`, pLoc, "閒聊"]);
+        sheets.log.appendRow([new Date(), pcId, formatCausalityEntry(pLoc, "閒聊", pName, narrationText.replace(/<br\s*\/?>/g, " ").slice(0, 150)), pLoc, "閒聊"]);
         trimLogRowsByOwner(sheets.log, pcId, 60, 20);
       }
     }
