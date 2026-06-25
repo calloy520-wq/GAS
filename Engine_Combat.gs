@@ -37,18 +37,19 @@ function buildDefaultSystemPrompt(isNsfwMode, backLocked) {
     "顏面": "神情潮紅(≤12字)"
   };
 
+  // 🔴 key改數字代碼(1=陰道 2=陽具 3=後穴 4=右手 5=左手)，避免AI每回合輸出原始器官字
   const _physicalState = {
-    "蜜穴": "陰道狀態(≤15字)",
-    "肉棒": "陽具狀態(≤15字)",
-    "菊穴": "後穴狀態(≤15字)",
-    "右手": "右手動作",
-    "左手": "左手動作"
+    "1": "陰道狀態(≤15字)",
+    "2": "陽具狀態(≤15字)",
+    "3": "後穴狀態(≤15字)",
+    "4": "右手動作",
+    "5": "左手動作"
   };
 
   // 🔴 npc的範本欄位全填「同上」：Router_Action.gs解析intimacy_feedback時的ignoreWords防呆清單本就含「同上」，
   // 即使AI偷懶照抄範本字面值也會被當成敷衍語忽略、不會寫進玩家看到的狀態欄，省字數不引入新的失敗模式。
   const _visibleStateRef = { "衣服": "同上", "姿勢": "同上", "負面": "同上", "顏面": "同上" };
-  const _physicalStateRef = { "蜜穴": "同上", "肉棒": "同上", "菊穴": "同上", "右手": "同上", "左手": "同上" };
+  const _physicalStateRef = { "1": "同上", "2": "同上", "3": "同上", "4": "同上", "5": "同上" };
 
   // 🔴 NSFW模式：只專注情慾本身，江湖雜務(物品/銀兩/陣營/任務/招募/地圖/戰鬥數值)本回合完全不追蹤、
   // 不出現在輸出範本內，大幅縮減 JSON 範本字數；SFW(純淨模式)的 baseJson 維持完整不動。
@@ -150,7 +151,7 @@ ${backLocked
 1. 【女女柔軟】(核心)純女女之愛，無論誰主導皆是【纏綿體貼、有來有往】，❌禁套用男性陽剛/粗暴模板(掠奪、烙印、宣示主權、長驅直入)，主動方亦是女子，柔中帶情。
 2. 近距離直寫視/觸/嗅/聽，全身皆有快感(胸部亦是)，親吻/揉胸/廝磨/愛撫交織，勿困單一部位；台詞被嬌喘打斷，勿一氣呵成。
 3. 器官依配對裁決：無陽具填無「肉棒」、無陰道填無「蜜穴」。絕對禁止插入式陽具，以手指/舌/器物替代，嚴禁憑空生出男性器官。
-4. physical_state限蜜穴/肉棒/菊穴/右手/左手，其餘進narration。據實填當下肉體狀態，未被碰填無；脫離接觸改寫「鬆開/餘韻」。
+4. physical_state欄位key固定用數字代碼(1=陰道 2=陽具 3=後穴 4=右手 5=左手)，禁用文字key，其餘進narration。據實填當下肉體狀態，未被碰該代碼不填；脫離接觸改寫「鬆開/餘韻」。
 5. log_summary：subject填主導方真名、object填承受方真名(三人以上填眾人)，符合實際方向，禁因身分預設主動方；tag預設「閒聊」，唯有實質承諾/秘密/重大轉折才升級標「承諾」/「秘密」/「變故」。
 6. 粗暴動作轉為紅印/酥麻/強烈快感，禁肉體破損流血。雙修技巧(2~5字)填入dynamic_skills，貼合身分個性，禁動輒填無。`
     : `
@@ -226,6 +227,11 @@ function callGeminiAPI(prompt, systemOverride = null, config = {}) {
     payload: JSON.stringify(payload), muteHttpExceptions: true
   };
 
+  // 🔴 降階重試專用：一旦判定為審查攔截，下一次重試改塞更含蓄的筆法指令，
+  // 而非原樣重送(原樣重送對審查攔截毫無意義，只會再被擋一次)。一般網路錯誤則不降階，原樣重試即可。
+  const softenSuffix = `\n\n★【降階重試】上一次輸出未通過審查判定，請改用更含蓄典雅的筆法重新演繹本回合：以景喻情、意境留白，避免直白器官名稱與動作描寫，情慾僅以氛圍、情感與感官烘托表現，其餘JSON欄位規則不變。`;
+  let softened = false;
+
   for (let i = 0; i < retries; i++) {
     try {
       const res = UrlFetchApp.fetch(MODEL_URL, options);
@@ -245,7 +251,15 @@ function callGeminiAPI(prompt, systemOverride = null, config = {}) {
       } else { throw new Error("無效的選項結構"); }
     } catch (e) {
       lastErrorMessage = e.message;
-      if (i < retries - 1) Utilities.sleep(2000);
+      if (i < retries - 1) {
+        if (e.message === "Triggered_NSFW_Filter" && !softened) {
+          softened = true;
+          apiMessages[0].content = systemContent + softenSuffix;
+          payload.messages = apiMessages;
+          options.payload = JSON.stringify(payload);
+        }
+        Utilities.sleep(2000);
+      }
     }
   }
 
