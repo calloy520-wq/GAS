@@ -1528,6 +1528,16 @@ function actionGetAllCategorizedMaps(userData, pcId, sheets) {
     const [sx, sy] = _spiralCoordForIndex(missingCoordIndex++);
     return `${sx * SPIRAL_SPACING},${sy * SPIRAL_SPACING}`;
   };
+  // 🔴 母節點座標去重：展開神識時母節點是用座標定位的，只要座標為空、或與已用座標相撞
+  //    (含舊資料字面 "0,0")，就改派一個唯一的螺旋座標，徹底避免在 (0,0) 重疊堆疊。
+  const usedCoords = new Set();
+  const resolveCoord = (desired) => {
+    let c = String(desired || "").trim();
+    if (c === "") c = nextFallbackCoord();
+    while (usedCoords.has(c)) c = nextFallbackCoord();
+    usedCoords.add(c);
+    return c;
+  };
 
   // 🔴 新增：統計每個地點的人數
   const allPcData = sheets.pc.getDataRange().getValues();
@@ -1553,9 +1563,8 @@ function actionGetAllCategorizedMaps(userData, pcId, sheets) {
     const cat = String(mapData[i][COL.MAP.TYPE] || "未分類").trim();
     const parent = String(mapData[i][COL.MAP.PARENT] || "").trim();
     const desc = String(mapData[i][COL.MAP.DESC] || "");
-    // 🔴 這裡多抓了 COORD 欄位（缺座標時用螺旋演算法分配唯一座標，避免疊圖在0,0）
+    // 🔴 這裡多抓了 COORD 欄位（缺座標或撞號時改派唯一座標，避免疊圖在0,0）
     const rawCoord = String(mapData[i][COL.MAP.COORD] || "").trim();
-    const coord = rawCoord !== "" ? rawCoord : nextFallbackCoord();
 
     if (!mapTree[cat]) mapTree[cat] = {};
     if (parent === "") {
@@ -1563,12 +1572,12 @@ function actionGetAllCategorizedMaps(userData, pcId, sheets) {
       const existing = mapTree[cat][name];
       if (existing) {
         existing.desc = desc;
-        existing.coord = coord;
+        existing.coord = resolveCoord(rawCoord);
       } else {
-        mapTree[cat][name] = { desc: desc, subs: [], count: locCount[name] || 0, coord: coord };
+        mapTree[cat][name] = { desc: desc, subs: [], count: locCount[name] || 0, coord: resolveCoord(rawCoord) };
       }
     } else {
-      if (!mapTree[cat][parent]) mapTree[cat][parent] = { desc: "區域中心", subs: [], count: locCount[parent] || 0, coord: nextFallbackCoord() };
+      if (!mapTree[cat][parent]) mapTree[cat][parent] = { desc: "區域中心", subs: [], count: locCount[parent] || 0, coord: resolveCoord("") };
       mapTree[cat][parent].subs.push({
         name: name, desc: desc, count: locCount[name] || 0
       });
@@ -2263,13 +2272,16 @@ ${locOwnershipNote}
           let parentNode = memoryMapData.find(r => String(r[COL.MAP.NAME] || "").trim() === parentName);
           let mapType = parentNode ? parentNode[COL.MAP.TYPE] : (m.type || "險地");
           let coordStrObj = parentNode && parentNode[COL.MAP.COORD] ? String(parentNode[COL.MAP.COORD]) : "0,0";
-          let rx, ry, coordStr, attempts = 0;
+          let coordStr, attempts = 0;
           let baseX = parseInt(coordStrObj.split(',')[0]) || 0;
           let baseY = parseInt(coordStrObj.split(',')[1]) || 0;
           do {
-            let offsetX = parentNode ? (Math.floor(Math.random() * 3) - 1) : (Math.floor(Math.random() * 120) - 60);
-            let offsetY = parentNode ? (Math.floor(Math.random() * 3) - 1) : (Math.floor(Math.random() * 120) - 60);
+            // 🔴 修正：隨嘗試次數擴大搜尋半徑，避免子節點擠在父座標周圍 9 格而耗盡、導致座標重複堆疊
+            let spread = parentNode ? (1 + Math.floor(attempts / 8)) : 60;
+            let offsetX = Math.floor(Math.random() * (spread * 2 + 1)) - spread;
+            let offsetY = Math.floor(Math.random() * (spread * 2 + 1)) - spread;
             coordStr = `${baseX + offsetX},${baseY + offsetY}`;
+            attempts++; // 🔴 修正：原本漏了遞增，導致 attempts<200 防呆煞車永遠失效、可能無限迴圈逾時
           } while (memoryMapData.some(r => String(r[COL.MAP.COORD] || "").trim() === coordStr) && attempts < 200);
 
           const newMapRow = ["九州", fullName, mapType, coordStr, m.desc || "未知地界。", parentName];
