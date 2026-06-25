@@ -2541,6 +2541,11 @@ ${locOwnershipNote}
     let actionItemId = (userData.combatData && userData.combatData.actionItemId) ? userData.combatData.actionItemId : null;
     let protectedIdsSet = new Set(protectedItemIds);
 
+    // 🔴 實體阻擋：只有真的從行囊裡刪掉東西才算數，玩家畫面上的「失去/使用」提示只能來自這兩個陣列，
+    // 嚴禁直接信任 aiData.items_lost / items_used 的文字宣稱（AI可能憑空捏造玩家根本沒有的道具）。
+    const verifiedLostNames = [];
+    const verifiedUsedNames = [];
+
     // 一次性過濾 itemData
     itemData = itemData.filter(it => {
       // 如果是剛才轉移過的物品，保留
@@ -2554,17 +2559,17 @@ ${locOwnershipNote}
 
       // 如果是 AI 判定的遺失物：優先用 ID，再退回 name（只刪玩家自己的）
       const idHit = lostIds.indexOf(String(it[COL.ITEM.ID]).trim());
-      if (idHit !== -1 && it[COL.ITEM.OWNER] == pcId) { lostIds.splice(idHit, 1); return false; }
+      if (idHit !== -1 && it[COL.ITEM.OWNER] == pcId) { lostIds.splice(idHit, 1); verifiedLostNames.push(it[COL.ITEM.NAME]); return false; }
 
       const nameHit = lostNames.indexOf(String(it[COL.ITEM.NAME]).trim());
-      if (nameHit !== -1 && it[COL.ITEM.OWNER] == pcId) { lostNames.splice(nameHit, 1); return false; }
+      if (nameHit !== -1 && it[COL.ITEM.OWNER] == pcId) { lostNames.splice(nameHit, 1); verifiedLostNames.push(it[COL.ITEM.NAME]); return false; }
 
       // 🟢 如果是 AI 判定「已使用消耗」的物品：優先 ID，再退回 name（只刪玩家自己的）
       const usedIdHit = usedIds.indexOf(String(it[COL.ITEM.ID]).trim());
-      if (usedIdHit !== -1 && it[COL.ITEM.OWNER] == pcId) { usedIds.splice(usedIdHit, 1); return false; }
+      if (usedIdHit !== -1 && it[COL.ITEM.OWNER] == pcId) { usedIds.splice(usedIdHit, 1); verifiedUsedNames.push(it[COL.ITEM.NAME]); return false; }
 
       const usedNameHit = usedNames.indexOf(String(it[COL.ITEM.NAME]).trim());
-      if (usedNameHit !== -1 && it[COL.ITEM.OWNER] == pcId) { usedNames.splice(usedNameHit, 1); return false; }
+      if (usedNameHit !== -1 && it[COL.ITEM.OWNER] == pcId) { usedNames.splice(usedNameHit, 1); verifiedUsedNames.push(it[COL.ITEM.NAME]); return false; }
 
       return true; // 其他物品全數保留
     });
@@ -2767,7 +2772,7 @@ ${locOwnershipNote}
     });
 
     isRelChanged = isRelChanged || !!(aiData.rel_changes && aiData.rel_changes.length > 0) || !!(aiData.recruited && aiData.recruited.length > 0) || !!dismissedNpc;
-    isItemChanged = isItemChanged || !!(aiData.items_gained && aiData.items_gained.length > 0) || !!(aiData.items_lost && aiData.items_lost.length > 0) || !!(aiData.items_used && aiData.items_used.length > 0) || !!(aiData.items_transferred && aiData.items_transferred.length > 0);
+    isItemChanged = isItemChanged || !!(aiData.items_gained && aiData.items_gained.length > 0) || verifiedLostNames.length > 0 || verifiedUsedNames.length > 0 || !!(aiData.items_transferred && aiData.items_transferred.length > 0);
     isQuestChanged = isQuestChanged || !!(aiData.quests && aiData.quests.length > 0);
 
     const logSum = aiData.log_summary || {};
@@ -2843,14 +2848,14 @@ ${locOwnershipNote}
       const names = _itemLabel(aiData.items_gained);
       if (names) finalResponseText += `<br><br><span style="color:#d4af37; font-size:13px;">✨ 獲得：${names}</span>`;
     }
-    // 2. 遺失邏輯
-    if (aiData.items_lost && aiData.items_lost.length > 0) {
-      const names = _itemLabel(aiData.items_lost);
+    // 2. 遺失邏輯：只渲染上面過濾itemData時「真的有刪到」的物品，AI宣稱玩家沒有的東西絕不顯示
+    if (verifiedLostNames.length > 0) {
+      const names = _itemLabel(verifiedLostNames);
       if (names) finalResponseText += `<br><br><span style="color:#d9534f; font-size:13px;">💔 失去：${names}</span>`;
     }
-    // 3. 使用邏輯
-    if (aiData.items_used && aiData.items_used.length > 0) {
-      const names = _itemLabel(aiData.items_used);
+    // 3. 使用邏輯：同上，僅渲染真實從行囊扣除的物品
+    if (verifiedUsedNames.length > 0) {
+      const names = _itemLabel(verifiedUsedNames);
       if (names) finalResponseText += `<br><br><span style="color:#5bc0de; font-size:13px;">🧪 使用：${names}</span>`;
     }
     // 🔴 在處理完 items_gained 之後，緊接著加上這段好感度渲染
