@@ -1834,6 +1834,8 @@ async function checkName(event) {
       pc = { id: data.pcId, name, sex };
       localStorage.setItem('kyushu_v27', JSON.stringify(pc));
       startGame(false);
+    } else {
+      alert(data.message || "創角失敗，請重試。");
     }
   } catch(e) {
     alert("投胎失敗");

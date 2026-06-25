@@ -1401,6 +1401,10 @@ function actionManualNpc(userData, pcId, sheets) {
     const pcRows = sheets.pc.getDataRange().getValues();
     if (pcRows.find(r => r[COL.PC.NAME] === finalName && !String(r[COL.PC.ID]).startsWith("DEAD_"))) return JSON.stringify({ success: false, message: "此人已在名錄。" });
   } else {
+    // 🔴 玩家創角：前端check_name只在送出前驗證過一次，仍可能因延遲填表或直打API而與其他玩家撞名，
+    //   故創角寫入前必須再次擋重複，否則會產生兩個同名PC，後續所有靠姓名查找的功能都會抓錯人。
+    const pcRows = sheets.pc.getDataRange().getValues();
+    if (pcRows.find(r => r[COL.PC.NAME] === finalName && !String(r[COL.PC.ID]).startsWith("DEAD_"))) return JSON.stringify({ success: false, message: "此名號已有大俠使用，請換一個名號。" });
     if (sheets.auth) { try { sheets.auth.appendRow([finalName, newId, "江湖散人", "", ""]); } catch (e) { } }
   }
 
