@@ -58,6 +58,19 @@ function formatCausalityEntry(loc, tag, peopleStr, eventStr) {
   return `[地:${loc || "未知"}][性:${tag || "閒聊"}] ${peopleStr}：${eventStr}`;
 }
 
+// 🔴 慾海模式因果固定樣板：不讓AI自由描述肉體細節寫進因果表，改由GAS依tag挑選隱晦樣板字句，
+// 隨機輕微變化避免每筆一模一樣，但內容永遠不含具體姿勢/器官等細節
+const NSFW_CAUSALITY_TEMPLATES = {
+  "閒聊": ["共度了一段不可言說的春宵", "有了一段曖昧難言的獨處時光", "在無人察覺之處，留下一段隱密的纏綿記憶", "兩人之間的情意，在私密時刻悄然加深"],
+  "承諾": ["在情意正濃時，許下了一個不輕的承諾"],
+  "秘密": ["在最赤裸的時刻，洩漏了一個藏在心底的秘密"],
+  "變故": ["這段私密時光裡，發生了意料之外的變故"]
+};
+function pickNsfwCausalityEvent(tag) {
+  const pool = NSFW_CAUSALITY_TEMPLATES[tag] || NSFW_CAUSALITY_TEMPLATES["閒聊"];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 // 🔴 因果讀取專用共用函式：統一 filter + pickRelevantLogs + join 邏輯，
 // 避免consume_item/use_item_self/贈禮/連擊等多處各自重複一份、未來改動容易漏改。
 function getRecentCausalityStr(sheets, pName, npcName, limit) {

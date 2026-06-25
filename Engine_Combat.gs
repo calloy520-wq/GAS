@@ -80,7 +80,8 @@ function buildDefaultSystemPrompt(isNsfwMode, backLocked) {
       ],
       "rel_changes": baseJson.rel_changes,
       "mentioned_names": baseJson.mentioned_names,
-      "log_summary": baseJson.log_summary
+      // 🔴 慾海模式event欄位禁止描述肉體細節：實際因果文字改由GAS固定樣式生成(隱晦化)，AI只需給方向與標籤
+      "log_summary": { "subject": "主動方真名", "object": "被動/承受方真名(三人以上填眾人)", "event": "無須填寫實際肉體細節，僅需10字內極簡概括(如'共度春宵')", "tag": baseJson.log_summary.tag }
     };
   } else {
     baseJson.intimacy_feedback = { "npcs": [{ "name": "NPC名", "mutual_nicknames": "無" }] };
