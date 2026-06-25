@@ -86,11 +86,38 @@ const ActionRouter = {
 // ------------------------------------------
 // 🔹 主進入點 (Main Entry) - 極致精簡版
 // ------------------------------------------
+// 🔴 全域輸入防護：所有玩家輸入在進入任何 action handler 前，先在此統一過濾。
+//   前端 maxlength/檢查皆可被繞過(devtools、直打API)，故後端必須是唯一可信的防線。
+function sanitizeUserData_(userData) {
+  // 名稱類欄位禁用 HTML/JS 斷字字元，避免在前端各處 innerHTML/onclick 拼接時被拿來做標籤或屬性逃脫
+  const STRICT_NAME_FIELDS = new Set(["name", "npcName", "targetName", "factionName", "newRelName", "shopName"]);
+  const NAME_MAX = 20;
+  const GLOBAL_MAX = 2000; // 一般自由文字欄位(訊息/敘述/意圖等)的最終上限，各 handler 仍可再收更緊
+
+  // 控制字元、零寬字元、雙向控制字元 —— 對畫面顯示無意義，只會被用來搞渲染或藏字
+  const CONTROL_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g;
+  // 開頭為這些字元、寫入 Google Sheet 儲存格時可能被解讀成公式
+  const FORMULA_LEAD_RE = /^[=+\-@\t\r]+/;
+
+  for (const key in userData) {
+    if (typeof userData[key] !== "string") continue;
+    let v = userData[key].replace(CONTROL_RE, "").replace(FORMULA_LEAD_RE, "");
+    if (STRICT_NAME_FIELDS.has(key)) {
+      v = v.replace(/[<>&"'`]/g, "").slice(0, NAME_MAX);
+    } else {
+      v = v.slice(0, GLOBAL_MAX);
+    }
+    userData[key] = v;
+  }
+  return userData;
+}
+
 function handleGameAction(userData) {
   if (typeof userData === "string") {
     try { userData = JSON.parse(userData); }
     catch (err) { return JSON.stringify({ success: false, message: "後端偵測：JSON結構解析異常" }); }
   }
+  userData = sanitizeUserData_(userData);
 
   const action = userData.action || "play";
   const pcId = userData.pcId;
@@ -1351,7 +1378,8 @@ function actionUpdateFate(userData, pcId, sheets) {
 
   let targetCol = fateType === 'trait' ? COL.PC.TRAIT : fateType === 'pref' ? COL.PC.PREF : fateType === 'back' ? COL.PC.BACK : fateType === 'intent' ? COL.PC.INTENT : fateType === 'martial' ? COL.PC.MARTIAL : -1;
   if (targetCol === -1) return JSON.stringify({ success: false, message: "未知的命格類型" });
-  pcData[pIdx][targetCol] = fateValue;
+  // 🔴 命格欄位直寫入表格，需自行把關長度（全域 sanitizer 只做通用上限）
+  pcData[pIdx][targetCol] = String(fateValue || "").slice(0, 120);
   sheets.pc.getRange(pIdx + 1, 1, 1, pcData[pIdx].length).setValues([pcData[pIdx]]);
 
   let relMem = "";
