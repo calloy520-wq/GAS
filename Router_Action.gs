@@ -1506,9 +1506,28 @@ function actionManualNpc(userData, pcId, sheets) {
   } catch (e) { return JSON.stringify({ success: false, message: "建立失敗:" + e.message }); }
 }
 
+// 🔴 修正：原本所有缺座標的地點都會被塞進 (0,0)，導致俯瞰圖上大量節點重疊堆疊。
+// 改用方形螺旋演算法，讓每個缺座標的地點依序分配到唯一、不重疊的座標。
+function _spiralCoordForIndex(n) {
+  let x = 0, y = 0, dx = 0, dy = -1;
+  for (let i = 0; i < n; i++) {
+    if (x === y || (x < 0 && x === -y) || (x > 0 && x === 1 - y)) {
+      const t = dx; dx = -dy; dy = t;
+    }
+    x += dx; y += dy;
+  }
+  return [x, y];
+}
+
 function actionGetAllCategorizedMaps(userData, pcId, sheets) {
   if (!sheets.map) return JSON.stringify({ success: false, message: "坤圖表不存在" });
   const mapData = sheets.map.getDataRange().getValues();
+  let missingCoordIndex = 0;
+  const SPIRAL_SPACING = 4; // 網格間距，避免自動分配的節點互相重疊
+  const nextFallbackCoord = () => {
+    const [sx, sy] = _spiralCoordForIndex(missingCoordIndex++);
+    return `${sx * SPIRAL_SPACING},${sy * SPIRAL_SPACING}`;
+  };
 
   // 🔴 新增：統計每個地點的人數
   const allPcData = sheets.pc.getDataRange().getValues();
@@ -1534,8 +1553,9 @@ function actionGetAllCategorizedMaps(userData, pcId, sheets) {
     const cat = String(mapData[i][COL.MAP.TYPE] || "未分類").trim();
     const parent = String(mapData[i][COL.MAP.PARENT] || "").trim();
     const desc = String(mapData[i][COL.MAP.DESC] || "");
-    // 🔴 這裡多抓了 COORD 欄位
-    const coord = String(mapData[i][COL.MAP.COORD] || "0,0").trim(); 
+    // 🔴 這裡多抓了 COORD 欄位（缺座標時用螺旋演算法分配唯一座標，避免疊圖在0,0）
+    const rawCoord = String(mapData[i][COL.MAP.COORD] || "").trim();
+    const coord = rawCoord !== "" ? rawCoord : nextFallbackCoord();
 
     if (!mapTree[cat]) mapTree[cat] = {};
     if (parent === "") {
@@ -1548,7 +1568,7 @@ function actionGetAllCategorizedMaps(userData, pcId, sheets) {
         mapTree[cat][name] = { desc: desc, subs: [], count: locCount[name] || 0, coord: coord };
       }
     } else {
-      if (!mapTree[cat][parent]) mapTree[cat][parent] = { desc: "區域中心", subs: [], count: locCount[parent] || 0, coord: "0,0" };
+      if (!mapTree[cat][parent]) mapTree[cat][parent] = { desc: "區域中心", subs: [], count: locCount[parent] || 0, coord: nextFallbackCoord() };
       mapTree[cat][parent].subs.push({
         name: name, desc: desc, count: locCount[name] || 0
       });
