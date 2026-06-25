@@ -75,6 +75,9 @@ function buildDefaultSystemPrompt(isNsfwMode, backLocked) {
           "mutual_nicknames": "無"
         }]
       },
+      "stat_changes": [
+        { "target": "角色名號(玩家或NPC)", "attr": "位置", "value": "母區域-分支名稱（僅當劇情中實際移動到新地點才輸出此項，沒有移動就整個陣列留空[]）" }
+      ],
       "rel_changes": baseJson.rel_changes,
       "mentioned_names": baseJson.mentioned_names,
       "log_summary": baseJson.log_summary
@@ -141,7 +144,7 @@ ${backLocked
 3. 軟肋/反差萌節制：快照中標註的「軟肋」只是角色背景彩蛋之一，【絕對禁止】每回合或連續多回合刻意安排情境去觸發它，【絕對禁止】反覆強調成該角色唯一性格。預設應完全略過此欄，只有場景本就自然涉及該軟肋情境時才可順勢輕輕一筆帶過，且同一軟肋至少間隔數回合不重複使用。
 
 【狀態與輸出】
-1. 本回合只專注情慾本身：肢體/感官/姿勢等狀態一律填入 intimacy_feedback，嚴禁另輸出 stat_changes；位置、戰鬥、物品、銀兩、陣營、任務等江湖事務本回合不追蹤、不輸出。
+1. 本回合只專注情慾本身：肢體/感官/姿勢等狀態一律填入 intimacy_feedback，嚴禁另以 stat_changes 輸出生命/真氣/負面等任何數值或狀態；戰鬥、物品、銀兩、陣營、任務等江湖事務本回合不追蹤、不輸出。唯獨「位置」例外：若劇情中玩家或NPC明確移動到了新地點(如走進房間、轉移陣地)，仍須透過 stat_changes 輸出該角色的「位置」變更(格式同純淨模式：母區域-分支，限一個減號)，否則之後的場景與在場人物判定會錯亂；沒有移動就不輸出。
 2. 只輸出合法JSON，options固定4個且順序不可變：[主動]強勢掌握、[被動]委婉試探、[接續]延續互動、[反差]跳脫氛圍，每項20字。`;
 
   const baseRules = isNsfwMode ? nsfwBaseRules : sfwBaseRules;
