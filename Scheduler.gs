@@ -126,9 +126,81 @@ function generateNpcMessage(npcRow, playerRow, relRow) {
     const parsed = JSON.parse(result);
     // 完美接住 AI 回傳的 message 欄位，或是意外觸發防護網時的 narration
     const finalMsg = parsed.message || parsed.narration || parsed.content || "";
-    return finalMsg.replace(/["{}]/g, "").trim(); 
+    return finalMsg.replace(/["{}]/g, "").trim();
   } catch (e) {
     Logger.log(`解析 JSON 失敗: ${e.message}`);
     return "";
   }
+}
+
+// ==========================================
+// 🔴 半自動主線彙整：不自動生成主線，只彙整全體玩家現況寫進「天道彙整」分頁，
+// 由站長自行判讀後，再手動把主線結論寫進「規矩」表。
+// 建議在 Apps Script 編輯器的「觸發條件」介面手動加一個每日時間驅動的觸發器指向此函式。
+// ==========================================
+function generateWorldSummary() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const pcSheet = ss.getSheetByName("眾生");
+  const questSheet = ss.getSheetByName("天命");
+  const epicSheet = ss.getSheetByName("史紀");
+  const trendSheet = ss.getSheetByName("大勢");
+  if (!pcSheet) return;
+
+  const pcData = pcSheet.getDataRange().getValues();
+  const players = pcData.slice(1).filter(r => String(r[COL.PC.ID]).startsWith("PC_"));
+
+  // 1. 境界分布
+  const realmCount = {};
+  REALMS.forEach(r => realmCount[r] = 0);
+  players.forEach(r => {
+    const realm = r[COL.PC.REALM] || "凡人";
+    realmCount[realm] = (realmCount[realm] || 0) + 1;
+  });
+  const realmLines = REALMS.filter(r => realmCount[r] > 0).map(r => `${r}：${realmCount[r]}人`);
+
+  // 2. 陣營消長（直接讀現成的「大勢」表）
+  let trendLines = [];
+  if (trendSheet) {
+    const tData = trendSheet.getDataRange().getValues();
+    trendLines = tData.slice(1).filter(r => r[0]).map(r => `${r[0]}：${r[1] || "中立"}(${r[2] || 50}) — ${r[4] || "無近期動態"}`);
+  }
+
+  // 3. 近期大事（全體玩家最近30筆史紀）
+  let epicLines = [];
+  if (epicSheet) {
+    const eData = epicSheet.getDataRange().getValues();
+    epicLines = eData.slice(1).slice(-30).reverse().map(r => `[${r[0]}] ${r[1]}`);
+  }
+
+  // 4. 天命任務完成統計
+  let questStatusCount = { "進行中": 0, "已結案": 0, "逾期失敗": 0 };
+  if (questSheet) {
+    const qData = questSheet.getDataRange().getValues();
+    qData.slice(1).forEach(r => {
+      const status = r[COL.QUEST.STATUS];
+      questStatusCount[status] = (questStatusCount[status] || 0) + 1;
+    });
+  }
+  const questLines = Object.keys(questStatusCount).map(s => `${s}：${questStatusCount[s]}件`);
+
+  // 5. 寫入「天道彙整」分頁（每次重新整理，只留最新一份）
+  let outSheet = ss.getSheetByName("天道彙整");
+  if (!outSheet) outSheet = ss.insertSheet("天道彙整");
+  outSheet.clear();
+
+  const rows = [
+    [`【天道彙整】更新時間：${new Date().toLocaleString()}`],
+    [""],
+    ["▍境界分布"], ...realmLines.map(l => [l]),
+    [""],
+    ["▍陣營消長"], ...(trendLines.length ? trendLines.map(l => [l]) : [["（尚無陣營資料）"]]),
+    [""],
+    ["▍近期江湖大事（最新30筆）"], ...(epicLines.length ? epicLines.map(l => [l]) : [["（尚無紀錄）"]]),
+    [""],
+    ["▍天命任務統計"], ...questLines.map(l => [l]),
+    [""],
+    ["（此分頁僅供站長判讀現況，不會自動寫回遊戲；主線結論請手動填入「規矩」表）"]
+  ];
+  outSheet.getRange(1, 1, rows.length, 1).setValues(rows);
+  outSheet.setColumnWidth(1, 600);
 }

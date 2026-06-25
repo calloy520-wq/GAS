@@ -201,9 +201,10 @@ function callGeminiAPI(prompt, systemOverride = null, config = {}) {
   // 🔴 智能融合：套用大一統系統提示詞
   let systemContent = systemOverride || buildDefaultSystemPrompt(config.isNsfwMode, config.backLocked);
 
-  // 👇 將原本的 if (lawText !== "") 替換成下面這樣：
+  // 🔴 規矩表(主線時局/天道異象)優先度降低：放在天道鐵律之後而非之前，
+  // 避免時局描述被AI誤判成比鐵律本身更高位階的指令
   if (lawText !== "" && !config.ignoreLaw) {
-    systemContent = lawText + "\n\n" + systemContent;
+    systemContent = systemContent + "\n\n" + lawText;
   }
 
   // 🔴【替換開始】組裝原生多輪 messages 陣列
