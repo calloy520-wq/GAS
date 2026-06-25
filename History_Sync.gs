@@ -16,6 +16,42 @@ function trimRowsByOwner(sheet, pcId, keepCount, idColIndex0Based) {
     }
   }
 }
+// 🔴 因果log專用：依tag分級保留，避免承諾/秘密/變故被閒聊擠出歷史
+const IMPORTANT_LOG_TAGS = new Set(["承諾", "秘密", "變故"]);
+
+function trimLogRowsByOwner(sheet, pcId, keepCount, importantCap) {
+  if (!sheet) return;
+  const totalRows = sheet.getLastRow();
+  if (totalRows <= 1) return;
+  const data = sheet.getRange(2, 1, totalRows - 1, 5).getValues();
+  const myRows = [];
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][1]) === String(pcId)) myRows.push({ rowNum: i + 2, tag: String(data[i][4] || "") });
+  }
+  if (myRows.length <= keepCount) return;
+
+  const casual = myRows.filter(r => !IMPORTANT_LOG_TAGS.has(r.tag));
+  const important = myRows.filter(r => IMPORTANT_LOG_TAGS.has(r.tag));
+
+  let overBy = myRows.length - keepCount;
+  let toDelete = casual.slice(0, Math.min(overBy, casual.length));
+  overBy -= toDelete.length;
+  if (overBy > 0 && important.length > importantCap) {
+    toDelete = toDelete.concat(important.slice(0, Math.min(overBy, important.length - importantCap)));
+  }
+
+  toDelete.sort((a, b) => b.rowNum - a.rowNum).forEach(r => sheet.deleteRows(r.rowNum, 1));
+}
+
+// 🔴 取歷史時優先保留承諾/秘密/變故，剩餘額度才依recency填閒聊，避免重要事被擠出視窗
+function pickRelevantLogs(rows, limit) {
+  const important = rows.filter(r => IMPORTANT_LOG_TAGS.has(String(r[4] || "")));
+  const casual = rows.filter(r => !IMPORTANT_LOG_TAGS.has(String(r[4] || "")));
+  const importantSlice = important.slice(-limit);
+  const casualSlice = casual.slice(-Math.max(0, limit - importantSlice.length));
+  return importantSlice.concat(casualSlice).sort((a, b) => new Date(a[0]) - new Date(b[0]));
+}
+
 function saveGameHistoryBatch(pcId, entries) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("歷史暫存");
