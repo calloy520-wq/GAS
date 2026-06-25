@@ -323,7 +323,7 @@ function renderRecentLocs(recents = null) {
              } else {
                return `
                 <div class="npc-card" style="border-left: 3px solid #daa520; padding-left: 10px; margin-bottom:12px; background:rgba(218,175,32,0.05); border-radius:4px;">
-                  <b style="color: #daa520;">✨ [已完成] ${item.name}</b><br>
+                  <b style="color: #8b5a2b;">✨ [已完成] ${item.name}</b><br>
                   <small style="color: #553311; display:block; margin-bottom:4px;">目標：${item.target}</small>
                   <small style="color: #b8860b; font-weight:bold; display:block; margin-bottom:8px;">🎁 未領取報酬：${item.money} 兩銀 ${item.item && item.item !== "無" ? `/ 「${item.item}」` : ''}</small>
                   <div style="display:flex; gap:8px;">
@@ -345,7 +345,7 @@ function renderRecentLocs(recents = null) {
             let equippedTag = "";
 
             if (isEquipped) {
-               equippedTag = `<span style="color:#d4af37; font-weight:bold; font-size:12px; margin-left:8px;">[★ 裝備中]</span>`;
+               equippedTag = `<span style="color:#8b5a2b; font-weight:bold; font-size:12px; margin-left:8px;">[★ 裝備中]</span>`;
                actionButtonsHtml = `<span style="color:#816e54; font-size:11px; font-style:italic;">(已裝備於身，無法操作)</span>`;
             } else {
                if (isSellMode) {
@@ -371,7 +371,7 @@ function renderRecentLocs(recents = null) {
               <div class="npc-card" style="border-left: 3px solid #2e8b57; padding-left: 10px; margin-bottom:12px;">
                 <b style="color: #2e8b57;">${item.name}</b> <span style="font-size:11px; color:#666;">(${item.type})</span>${equippedTag}<br>
                 <small style="color: #553311; display:block; margin-bottom:8px;">描述：${item.desc}</small>
-                ${item.stats ? `<small style="color: #d4af37; display:block; margin-bottom:8px; font-weight:bold;">✨ ${item.stats}</small>` : ''}
+                ${item.stats ? `<small style="color: #8b5a2b; display:block; margin-bottom:8px; font-weight:bold;">✨ ${item.stats}</small>` : ''}
                 <div style="display:flex; gap:8px;">${actionButtonsHtml}</div>
               </div>`;
           }
@@ -979,7 +979,7 @@ function renderRecentLocs(recents = null) {
 
         let locText = n.isExact ? "[📍此地]" : `[📍${n.loc}]`;
         if (isInParty) {
-            locText += " <span style='font-size:11px; color:#daa520; font-weight:bold;'>[同行中]</span>";
+            locText += " <span style='font-size:11px; color:#8b5a2b; font-weight:bold;'>[同行中]</span>";
         } else if (busyWith) {
             locText += ` <span style='font-size:11px; color:#816e54; font-weight:bold;'>[與 ${busyWith} 同行]</span>`;
         }
@@ -996,7 +996,7 @@ function renderRecentLocs(recents = null) {
             }
         } else {
             // 📍 在同一地點：顯示互動、命格、以及【快速組隊】！
-            actionButtonsHtml = `<button class="btn-act" style="border-color:#d4af37; color:#d4af37; font-weight:bold; padding: 6px 12px;" onclick="closeNpcList(); openInteractMenu('${n.name}')">✨ 互動</button>`;
+            actionButtonsHtml = `<button class="btn-act" style="border-color:#8b5a2b; color:#8b5a2b; font-weight:bold; padding: 6px 12px;" onclick="closeNpcList(); openInteractMenu('${n.name}')">✨ 互動</button>`;
             if (!n.isPC) {
                 actionButtonsHtml += `<button class="btn-act" style="border-color:#8b008b; color:#8b008b; padding: 6px 12px;" onclick="closeNpcList(); openStatus('${n.id}', '${n.name}')">📜 命格</button>`;
 
@@ -1396,7 +1396,7 @@ function renderRecentLocs(recents = null) {
     currentSelectingSlot = slotType;
     document.getElementById("modal-gear-title").innerText = "更換【" + slotType + "】欄位";
     const listEl = document.getElementById("modal-gear-list");
-    listEl.innerHTML = '<div style="color: #aaa; text-align: center; padding: 20px; font-size:13px;">正在查閱《琳琅表》行囊氣息...</div>';
+    listEl.innerHTML = '<div style="color: #816e54; text-align: center; padding: 20px; font-size:13px;">正在查閱《琳琅表》行囊氣息...</div>';
     document.getElementById("gear-modal").style.display = "flex";
     
     try {
@@ -2403,7 +2403,7 @@ const limit = REALM_LIMITS[realm] || 25;
 document.getElementById('cultivate-count-text').innerHTML = 
   `今日剩餘次數：${1 - cultCount} / 1<br>
   <span style="font-size:12px; color:#816e54;">境界上限：${limit}</span><br>
-  <span style="font-size:12px; color:#d4af37;">
+  <span style="font-size:12px; color:#8b5a2b;">
   💪${baseStr} 🦴${baseCon} 🍃${baseAgi} 👁️${baseInt} 🍀${baseLuk}
   </span>`;
 
@@ -2739,7 +2739,7 @@ document.getElementById('cultivate-count-text').innerHTML =
           <div class="npc-card" style="border-left: 3px solid #b8860b; padding-left: 10px; margin-bottom:12px;">
             <b style="color: #b8860b;">${item.name}</b> <span style="font-size:11px; color:#666;">(${item.type})</span><br>
             <small style="color: #553311; display:block; margin-bottom:8px;">描述：${item.desc}</small>
-            ${item.stats ? `<small style="color: #d4af37; display:block; margin-bottom:8px; font-weight:bold;">✨ ${item.stats}</small>` : ''}
+            ${item.stats ? `<small style="color: #8b5a2b; display:block; margin-bottom:8px; font-weight:bold;">✨ ${item.stats}</small>` : ''}
             <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#2e8b57; color:#2e8b57;" onclick="lockBtn(event, () => handleWarehouseRetrieve('${item.id}', '${item.name.replace(/'/g, "\\'")}'))">📤 取出至行囊</button>
           </div>`).join("");
     } catch (e) {
@@ -2766,7 +2766,7 @@ document.getElementById('cultivate-count-text').innerHTML =
   // ---------- 資源頁(原仙府) ----------
   async function loadHomeResource() {
     const container = document.getElementById('home-resource-content');
-    container.innerHTML = '<div style="color:#d4af37; text-align:center; padding:30px 0;">神識延伸，正在感應仙府靈氣...</div>';
+    container.innerHTML = '<div style="color:#816e54; text-align:center; padding:30px 0;">神識延伸，正在感應仙府靈氣...</div>';
     try {
       const res = await gasRun({ action: "estate_get", pcId: pc.id });
       if (res.success) {
@@ -2899,7 +2899,7 @@ document.getElementById('cultivate-count-text').innerHTML =
     if (res.residents && res.residents.length > 0) {
       residentsHtml = res.residents.map(r => {
         const tag = r.isParty
-          ? `<span style="font-size:11px; color:#daa520; font-weight:bold;">[同行中]</span>`
+          ? `<span style="font-size:11px; color:#8b5a2b; font-weight:bold;">[同行中]</span>`
           : `<span style="font-size:11px; color:#816e54;">[暫居]</span>`;
         return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:rgba(0,0,0,0.03); border-radius:4px; margin-bottom:6px;">
           <span style="color:#800; font-weight:bold;">${r.name}</span>
@@ -3105,7 +3105,7 @@ document.getElementById('cultivate-count-text').innerHTML =
     if (res.guests && res.guests.length > 0) {
       guestsHtml = res.guests.map(g => {
         const tag = g.isParty
-          ? `<span style="font-size:11px; color:#daa520; font-weight:bold;">[同行中]</span>`
+          ? `<span style="font-size:11px; color:#8b5a2b; font-weight:bold;">[同行中]</span>`
           : `<span style="font-size:11px; color:#816e54;">[來客]</span>`;
         return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:rgba(0,0,0,0.03); border-radius:4px; margin-bottom:6px;">
           <span style="color:#800; font-weight:bold;">${g.name}</span>
@@ -3470,7 +3470,7 @@ document.getElementById('cultivate-count-text').innerHTML =
 
           let html = `<div style="font-size:15px; line-height:1.6;">${res.narration}</div>`;
           if (res.itemsGained && res.itemsGained.length > 0) {
-              html += `<div style="margin-top:8px; color:#ffd700; font-weight:bold;">獲得：${res.itemsGained.map(it => `${it.name}(${it.tier})`).join('、')}</div>`;
+              html += `<div style="margin-top:8px; color:#8b5a2b; font-weight:bold;">獲得：${res.itemsGained.map(it => `${it.name}(${it.tier})`).join('、')}</div>`;
           } else {
               html += `<div style="margin-top:8px; color:#816e54;">這趟一無所獲。</div>`;
           }
@@ -3966,15 +3966,15 @@ function renderMyFaction(res) {
     </div>
 
     <div style="background: rgba(51,34,17,0.05); border: 1px solid rgba(51,34,17,0.2); border-radius: 8px; padding: 12px;">
-      <div style="font-size:13px; color:#d4af37; font-weight:bold; margin-bottom:8px; border-bottom:1px dashed rgba(212,175,55,0.3); padding-bottom:6px;">我在宗門中的地位</div>
+      <div style="font-size:13px; color:#8b5a2b; font-weight:bold; margin-bottom:8px; border-bottom:1px dashed rgba(139,90,43,0.3); padding-bottom:6px;">我在宗門中的地位</div>
       <div style="display:flex; justify-content:space-around; text-align:center;">
         <div>
-          <div style="font-size:18px; color:#d4af37; font-weight:bold;">${res.myRank}</div>
+          <div style="font-size:18px; color:#8b5a2b; font-weight:bold;">${res.myRank}</div>
           <div style="font-size:11px; color:#816e54; margin-top:2px;">現任階級</div>
         </div>
-        <div style="border-left:1px solid rgba(212,175,55,0.2);"></div>
+        <div style="border-left:1px solid rgba(139,90,43,0.2);"></div>
         <div>
-          <div style="font-size:18px; color:#d4af37; font-weight:bold;">${res.myContrib}</div>
+          <div style="font-size:18px; color:#8b5a2b; font-weight:bold;">${res.myContrib}</div>
           <div style="font-size:11px; color:#816e54; margin-top:2px;">累積貢獻</div>
         </div>
       </div>
@@ -4003,7 +4003,7 @@ function renderAllFactions(factions) {
     return `
       <div style="background: rgba(51,34,17,0.03); border: 1px solid rgba(51,34,17,0.15); border-left: 3px solid ${powerColor}; border-radius: 4px; padding: 10px; margin-bottom: 8px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <span style="font-size:15px; color:#d4af37; font-weight:bold;">${rankLabel} ${f.name}</span>
+          <span style="font-size:15px; color:#8b5a2b; font-weight:bold;">${rankLabel} ${f.name}</span>
           <span style="font-size:12px; color:${powerColor}; font-weight:bold;">${statusIcon} ${f.status} (${f.power})</span>
         </div>
         <div style="background:#222; border-radius:3px; height:5px; overflow:hidden; margin-bottom:6px;">
@@ -4068,14 +4068,14 @@ async function loadRanking() {
       const bgColor = isMe ? 'rgba(212,175,55,0.1)' : 'rgba(51,34,17,0.03)';
       const borderColor = isMe ? '#d4af37' : 'rgba(51,34,17,0.15)';
       const playerTag = r.isPlayer ? `<span style="font-size:10px; color:#9C27B0; border:1px solid #9C27B0; padding:1px 4px; border-radius:3px; margin-left:4px;">玩家</span>` : '';
-      const meTag = isMe ? `<span style="font-size:10px; color:#d4af37; border:1px solid #d4af37; padding:1px 4px; border-radius:3px; margin-left:4px;">我</span>` : '';
+      const meTag = isMe ? `<span style="font-size:10px; color:#8b5a2b; border:1px solid #8b5a2b; padding:1px 4px; border-radius:3px; margin-left:4px;">我</span>` : '';
 
       return `
         <div style="background:${bgColor}; border:1px solid ${borderColor}; border-radius:6px; padding:10px; margin-bottom:8px; display:flex; align-items:center; gap:10px;">
           <div style="font-size:18px; min-width:30px; text-align:center;">${medal}</div>
           <div style="flex:1;">
             <div style="display:flex; align-items:center; margin-bottom:3px;">
-              <span style="font-size:14px; color:#d4af37; font-weight:bold;">${r.name}</span>
+              <span style="font-size:14px; color:#8b5a2b; font-weight:bold;">${r.name}</span>
               ${playerTag}${meTag}
             </div>
             <div style="font-size:11px; color:#816e54;">
@@ -4168,7 +4168,7 @@ function renderEpicHistory(res) {
         <div style="background:rgba(233,30,99,0.04); border:1px solid rgba(233,30,99,0.2); border-left:3px solid #e91e63; border-radius:4px; padding:10px; margin-bottom:8px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
             <span style="color:#e91e63; font-weight:bold; font-size:14px;">『${r.npc}』</span>
-            <span style="font-size:11px; color:#d4af37;">${r.isSoulBound ? '💍 已傾心' : '🔗 深厚羈絆'}</span>
+            <span style="font-size:11px; color:#8b5a2b;">${r.isSoulBound ? '💍 已傾心' : '🔗 深厚羈絆'}</span>
           </div>
           <div style="font-size:12px; color:#816e54; margin-bottom:4px;">
             關係：${r.tag.replace('(已傾心)','').trim()} &nbsp;|&nbsp; 好感：${r.fav} &nbsp;|&nbsp; 交談：${talkCount}次 ${r.isSoulBound ? `&nbsp;|&nbsp; 🌸 雙修：${intimacyCount}次` : ''}
@@ -4241,7 +4241,7 @@ function renderEpicStats(stats) {
         <div style="font-size:12px; color:#816e54; margin-top:2px;">🗺️ 踏足地點</div>
       </div>
       <div style="background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.3); border-radius:8px; padding:12px; text-align:center;">
-        <div style="font-size:28px; color:#d4af37; font-weight:bold;">${stats.realm}</div>
+        <div style="font-size:28px; color:#8b5a2b; font-weight:bold;">${stats.realm}</div>
         <div style="font-size:12px; color:#816e54; margin-top:2px;">🌌 當前境界</div>
       </div>
     </div>
