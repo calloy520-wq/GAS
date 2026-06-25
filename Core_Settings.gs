@@ -19,7 +19,7 @@ const COL = {
   },
   ITEM: { NAME: 0, TYPE: 1, DESC: 2, PRICE: 3, OWNER: 4, STR: 5, CON: 6, AGI: 7, INT: 8, LUK: 9, ID: 10, LOC2: 11 },
   REL: { PC: 0, NPC: 1, FAV: 2, TAG: 3, IS_PARTY: 4, MEMORY: 5, MAJOR_EVENT: 6 },
-  QUEST: { PC: 0, NAME: 1, TARGET: 2, STATUS: 3, MONEY: 4, ITEM: 5 },
+  QUEST: { PC: 0, NAME: 1, TARGET: 2, STATUS: 3, MONEY: 4, ITEM: 5, REWARD_LOCKED: 6, DEADLINE: 7 },
   MAP: { REGION: 0, NAME: 1, TYPE: 2, COORD: 3, DESC: 4, PARENT: 5 },
   TASK: { OWNER: 0, FACILITY: 1, WORKER: 2, TARGET: 3, START_TIME: 4 },
   FACTION: { ID: 0, NAME: 1, ALIGN: 2, BASE: 3, LEADER: 4, MOTTO: 5 },
@@ -41,6 +41,7 @@ const REALM_LIMITS = {
 };
 const MAX_BAG_SIZE = 20;
 const MAX_WAREHOUSE_SIZE = 200;
+const MAX_QUEST_REWARD_MONEY = 2000; // 天命懸賞銀兩上限：系統隨機獎勵約100~500，給4倍彈性空間防AI暴增
 
 // 🟢 共用 D20 骰子：1=大失敗、20=大成功
 function rollD20() {

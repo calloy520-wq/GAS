@@ -310,6 +310,16 @@ function renderRecentLocs(recents = null) {
                     <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#666; color:#666;" onclick="lockBtn(event, () => handleQuestAction('abandon', '${safeName}'))">放棄</button>
                   </div>
                 </div>`;
+             } else if (item.status === "逾期失敗") {
+               return `
+                <div class="npc-card" style="border-left: 3px solid #888; padding-left: 10px; margin-bottom:12px; background:rgba(136,136,136,0.05); border-radius:4px;">
+                  <b style="color: #888;">⌛ [逾期失敗] ${item.name}</b><br>
+                  <small style="color: #553311; display:block; margin-bottom:4px;">目標：${item.target}</small>
+                  <small style="color: #888; font-weight:bold; display:block; margin-bottom:8px;">天命已逝，未能在期限內完成。</small>
+                  <div style="display:flex; gap:8px;">
+                    <button class="btn" style="padding:2px 10px; font-size:11px; border-color:#555; color:#555;" onclick="lockBtn(event, () => handleQuestAction('delete', '${safeName}'))">抹除紀錄</button>
+                  </div>
+                </div>`;
              } else {
                return `
                 <div class="npc-card" style="border-left: 3px solid #daa520; padding-left: 10px; margin-bottom:12px; background:rgba(218,175,32,0.05); border-radius:4px;">

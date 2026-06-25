@@ -23,7 +23,7 @@ function buildDefaultSystemPrompt(isNsfwMode, backLocked) {
     "money_transferred": [{ "from": "付款方名", "to": "收款方名(給玩家填自己)", "amount": 100 }],
     "events": [],
     "quests": [
-      { "name": "任務名稱(僅在接到新任務時填)", "target": "明確目標", "status": "進行中", "reward_money": 100, "reward_item": "無" }
+      { "name": "任務名稱(僅在接到新任務時填)", "target": "明確目標", "status": "進行中", "reward_money": 100, "reward_item": "無", "deadline_days": "僅任務明確有時限(如限時營救)才填整數天數，一般任務留空字串" }
     ],
     "recruited": [],
     "log_summary": { "subject": "主動方真名", "object": "被動/承受方真名(三人以上填眾人)", "event": "誰對誰做了什麼+對方反應，須含明確主被動方向，50字內", "tag": "閒聊/承諾/秘密/變故，四選一" }
@@ -157,7 +157,8 @@ ${backLocked
 【五、純淨江湖】
 1. 武學意境：筆墨集中真氣流轉、兵刃交鋒、身法破風、環境殺氣，嚴禁任何性暗示或情慾描寫。
 2. 邊界守護：複數NPC同場時各自依個性獨立判斷，禁擅自無腦聯手圍攻。
-3. 因果結算：買情報寫 quests。★【禁止搜屍】：系統並未記錄屍體/戰敗對象身上的實際物品，【絕對禁止】因玩家描述「搜屍/翻找屍體」而憑空輸出 items_transferred 或 items_gained，僅可描寫「搜尋無獲」或對方早已被人捲走財物。懸賞銀兩由底層發放，禁在此輸出銀兩 stat_changes。`;
+3. 因果結算：買情報寫 quests。★【禁止搜屍】：系統並未記錄屍體/戰敗對象身上的實際物品，【絕對禁止】因玩家描述「搜屍/翻找屍體」而憑空輸出 items_transferred 或 items_gained，僅可描寫「搜尋無獲」或對方早已被人捲走財物。懸賞銀兩由底層發放，禁在此輸出銀兩 stat_changes。
+4. 任務期限：deadline_days 僅在新任務建立當下可填，且僅限敘事明確暗示急迫性(如限時營救/期限懸賞)才填整數天數，一般任務留空字串代表永不過期；任務一旦建立，期限不可於後續回合更改。`;
 
   return baseRules + "\n" + specificRules + "\n\n★【輸出範本】\n" + JSON.stringify(finalJson, null, 2);
 }

@@ -406,6 +406,20 @@ function actionEmpowerNpc(userData, pcId, sheets) {
   return JSON.stringify({ success: true, promptText: `【天道動作：玩家消耗了一滴蘊含無上生命法則的「造化綠液」護住對方心脈，並與好感度達到 100 的『${npcName}』進行傳功雙修！\n在造化之力的修補下，對方五圍洗髓重塑，境界拔升至「${nextRealm}」！\n請極盡生動地描寫這場靈肉交融與造化法則灌體的情境！(★天道鐵律：底層已結算，嚴禁輸出 items_lost 或 stat_changes 避免重複扣除！)】` });
 }
 
+// 🟢 惰性逾期檢查：只改記憶體陣列，由呼叫端決定何時 safeWriteSheet 回寫
+function checkAndExpireQuests(sheets, pcId, questData) {
+  const now = Date.now();
+  let changed = false;
+  questData.forEach(row => {
+    if (row[COL.QUEST.PC] != pcId || row[COL.QUEST.STATUS] !== "進行中") return;
+    const deadline = parseInt(row[COL.QUEST.DEADLINE]);
+    if (!deadline || isNaN(deadline) || now <= deadline) return;
+    row[COL.QUEST.STATUS] = "逾期失敗";
+    changed = true;
+  });
+  return changed;
+}
+
 function actionClaimQuestReward(userData, pcId, sheets) {
   let pcData = sheets.pc.getDataRange().getValues();
   const pcIndex = pcData.findIndex(r => r[COL.PC.ID] == pcId);
@@ -414,7 +428,7 @@ function actionClaimQuestReward(userData, pcId, sheets) {
   const qData = sheets.quest.getDataRange().getValues();
   let questRowIdx = -1;
   for (let i = qData.length - 1; i >= 1; i--) {
-    if (qData[i][COL.QUEST.PC] == pcId && qData[i][COL.QUEST.NAME] === userData.questName && qData[i][COL.QUEST.STATUS] !== "進行中") {
+    if (qData[i][COL.QUEST.PC] == pcId && qData[i][COL.QUEST.NAME] === userData.questName && qData[i][COL.QUEST.STATUS] === "已結案") {
       questRowIdx = i; break;
     }
   }
@@ -461,7 +475,8 @@ function actionClaimQuestReward(userData, pcId, sheets) {
       const realmIndex = REALMS.indexOf(currentRealm);
 
 
-      const gain = 100 * Math.pow(2, realmIndex);
+      const MAX_FACTION_CONTRIB_GAIN = 3200; // 封頂在「意動」境量級，避免天人境(原51200)指數爆炸
+      const gain = Math.min(MAX_FACTION_CONTRIB_GAIN, 100 * Math.pow(2, realmIndex));
 
       updateFactionPower(sheets, myFaction, 5, `門人圓滿完成了「${userData.questName}」，宗門威望大增！`);
       pcData[pcIndex][COL.PC.CONTRIB] = (parseInt(pcData[pcIndex][COL.PC.CONTRIB]) || 0) + gain;
@@ -481,6 +496,11 @@ function actionClaimQuestReward(userData, pcId, sheets) {
 function actionQuests(userData, pcId, sheets) {
   if (!sheets.quest) return JSON.stringify({ success: false, message: "天命表不存在" });
   const data = sheets.quest.getDataRange().getValues();
+  if (checkAndExpireQuests(sheets, pcId, data) && data.length > 0) {
+    const questColCount = Object.keys(COL.QUEST).length;
+    data.forEach(row => { while (row.length < questColCount) row.push(""); });
+    safeWriteSheet(sheets.quest, data);
+  }
   return JSON.stringify({ success: true, data: data.slice(1).filter(r => r[COL.QUEST.PC] == pcId).map(r => ({ name: r[COL.QUEST.NAME], target: r[COL.QUEST.TARGET] || "調查中", status: r[COL.QUEST.STATUS], money: r.length > 4 ? (parseInt(r[COL.QUEST.MONEY]) || 0) : 0, item: r.length > 5 ? (String(r[COL.QUEST.ITEM] || "").trim() || "無") : "無" })) });
 }
 
@@ -1888,6 +1908,7 @@ function actionPlay(userData, pcId, sheets) {
   let itemData = sheets.item ? sheets.item.getDataRange().getValues() : [];
   let relData = sheets.rel ? sheets.rel.getDataRange().getValues() : [];
   let questData = sheets.quest ? sheets.quest.getDataRange().getValues() : [];
+  const questExpiredFlag = sheets.quest ? checkAndExpireQuests(sheets, pcId, questData) : false;
 
   let factionListDesc = "尚無勢力現世。";
   if (sheets.faction) {
@@ -2250,16 +2271,35 @@ ${locOwnershipNote}
 
     if (aiData.events && Array.isArray(aiData.events) && sheets.epic) aiData.events.forEach(ev => { sheets.epic.appendRow([pcId, String(ev).trim(), new Date()]); });
 
+    // 🔴 驗證閘門：只在玩家本回合明確點名該任務並執行任務時，才放行AI把任務狀態改成「進行中」以外的值
+    const isExplicitQuestAction = (qName) =>
+      String(userMsg || "").includes(`「${qName}」`) && String(userMsg || "").includes("執行任務");
+
     if (aiData.quests && Array.isArray(aiData.quests) && sheets.quest) {
       aiData.quests.forEach(q => {
         const qIdx = questData.findIndex(r => r[COL.QUEST.PC] == pcId && r[COL.QUEST.NAME] === String(q.name).trim() && r[COL.QUEST.STATUS] === "進行中");
         if (qIdx !== -1) {
           if (q.target) questData[qIdx][COL.QUEST.TARGET] = q.target;
-          if (q.status) questData[qIdx][COL.QUEST.STATUS] = q.status;
-          if (q.reward_money !== undefined && (!questData[qIdx][COL.QUEST.MONEY] || parseInt(questData[qIdx][COL.QUEST.MONEY]) === 0)) questData[qIdx][COL.QUEST.MONEY] = q.reward_money;
-          if (q.reward_item !== undefined && (!questData[qIdx][COL.QUEST.ITEM] || questData[qIdx][COL.QUEST.ITEM] === "無" || questData[qIdx][COL.QUEST.ITEM] === "")) questData[qIdx][COL.QUEST.ITEM] = q.reward_item;
+          if (q.status && q.status !== "進行中" && isExplicitQuestAction(questData[qIdx][COL.QUEST.NAME])) {
+            // 🔴 不採信AI自訂的結案字串：一律正規化為「已結案」，確保領賞檢查的字串比對永遠可靠
+            questData[qIdx][COL.QUEST.STATUS] = "已結案";
+          }
+          const isRewardLocked = questData[qIdx][COL.QUEST.REWARD_LOCKED] === "Y";
+          if (!isRewardLocked) {
+            if (q.reward_money !== undefined) {
+              questData[qIdx][COL.QUEST.MONEY] = Math.max(0, Math.min(MAX_QUEST_REWARD_MONEY, parseInt(q.reward_money) || 0));
+            }
+            if (q.reward_item !== undefined) {
+              questData[qIdx][COL.QUEST.ITEM] = String(q.reward_item).trim() || "無";
+            }
+            if (q.reward_money !== undefined || q.reward_item !== undefined) questData[qIdx][COL.QUEST.REWARD_LOCKED] = "Y";
+          }
         } else {
-          questData.push([pcId, String(q.name).trim(), (q.target ? String(q.target).trim() : "調查中"), q.status || "進行中", q.reward_money !== undefined ? parseInt(q.reward_money) : Math.floor(Math.random() * 400) + 100, q.reward_item !== undefined ? String(q.reward_item).trim() : "無"]);
+          const rewardMoney = q.reward_money !== undefined ? Math.max(0, Math.min(MAX_QUEST_REWARD_MONEY, parseInt(q.reward_money) || 0)) : Math.floor(Math.random() * 400) + 100;
+          const rewardItem = q.reward_item !== undefined ? (String(q.reward_item).trim() || "無") : "無";
+          const rewardLocked = (q.reward_money !== undefined || q.reward_item !== undefined) ? "Y" : "";
+          const deadlineVal = (q.deadline_days && parseInt(q.deadline_days) > 0) ? (Date.now() + parseInt(q.deadline_days) * 86400000) : "";
+          questData.push([pcId, String(q.name).trim(), (q.target ? String(q.target).trim() : "調查中"), q.status || "進行中", rewardMoney, rewardItem, rewardLocked, deadlineVal]);
           sheets.quest.appendRow(questData[questData.length - 1]);
         }
       });
@@ -2773,7 +2813,7 @@ ${locOwnershipNote}
 
     isRelChanged = isRelChanged || !!(aiData.rel_changes && aiData.rel_changes.length > 0) || !!(aiData.recruited && aiData.recruited.length > 0) || !!dismissedNpc;
     isItemChanged = isItemChanged || !!(aiData.items_gained && aiData.items_gained.length > 0) || verifiedLostNames.length > 0 || verifiedUsedNames.length > 0 || !!(aiData.items_transferred && aiData.items_transferred.length > 0);
-    isQuestChanged = isQuestChanged || !!(aiData.quests && aiData.quests.length > 0);
+    isQuestChanged = isQuestChanged || questExpiredFlag || !!(aiData.quests && aiData.quests.length > 0);
 
     const logSum = aiData.log_summary || {};
     // 相容新結構(subject/object/event)與舊結構(people/event)
