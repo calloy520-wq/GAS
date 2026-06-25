@@ -2750,7 +2750,8 @@ ${locOwnershipNote}
       const sanitizePhysicalState = (rawState, isPlayer = false) => {
         if (!rawState || typeof rawState !== 'object') return {};
         let cleanState = {};
-        const keyMapping = { "陰道": "蜜穴", "陰莖": "肉棒", "屁眼": "菊穴" };
+        // 🔴 AI現在以數字代碼輸出(1~5)，此處解碼回內部真實詞；保留舊文字key作防呆相容
+        const keyMapping = { "陰道": "蜜穴", "陰莖": "肉棒", "屁眼": "菊穴", "1": "蜜穴", "2": "肉棒", "3": "菊穴", "4": "右手", "5": "左手" };
         const allowedKeys = ["蜜穴", "肉棒", "菊穴", "右手", "左手"];
         Object.keys(rawState).forEach(k => {
           let standardKey = keyMapping[k] || k;
