@@ -1663,22 +1663,14 @@ async function handleItemAction(action, itemId, itemName, itemType) {
 
     try {
       const data = await gasRun({ action: "consume_item", pcId: pc.id, itemId: itemId });
-      
+
       if (data.success) {
         // 瞬間更新 UI (面板血量、真氣秒跳動)
-        localStorage.setItem('kyushu_last_status', data.statusString); 
+        localStorage.setItem('kyushu_last_status', data.statusString);
         updateUI(data.statusString.split('§'));
-        
-        // 🔴 徹底拔除 AI 呼叫！直接在對話框渲染 GAS 回傳的丹藥結果
-        story.innerHTML += `
-          <div class="msg-ai" style="border-left: 4px solid #4169e1; background:rgba(65,105,225,0.05);">
-            <b>【服用丹藥】</b><br>
-            你仰頭服下了「${data.itemName}」。<br>
-            霎時間，一股澎湃的藥力自丹田化開，衝擊四肢百骸！<br>
-            ✨ <b>天道因果顯化：</b>${data.effectStr}，你的經脈氣息重新歸於平穩。
-          </div>
-        `;
-        story.scrollTop = story.scrollHeight;
+
+        // 🔴 改走場景敘事：藥效已底層鎖死結算，交由 AI 依當下地點/同行人物寫出貼合情境的服藥場面
+        narrate(data.aiPrompt);
       } else {
         alert(data.message || "服用失敗。");
       }

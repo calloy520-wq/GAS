@@ -254,7 +254,30 @@ function actionConsumeItem(userData, pcId, sheets) {
   while (pcData[pIdx].length < pcColCount) { pcData[pIdx].push(""); }
   sheets.pc.getRange(pIdx + 1, 1, 1, pcColCount).setValues([pcData[pIdx]]);
 
-  return JSON.stringify({ success: true, itemName: itemRow[COL.ITEM.NAME], effectStr: effectStr, statusString: getFreshStatusString(pcId, pIdx, sheets) });
+  // 🔴 補上場景意識：服藥不再是固定罐頭文字，改與 use_item_self 同套手法，
+  // 帶入地點、同行夥伴、在場路人與玩家性格卡，交由 AI 寫出貼合當下情境的敘事，效果已鎖死禁止更改。
+  const pName = pcData[pIdx][COL.PC.NAME];
+  const pLoc = String(pcData[pIdx][COL.PC.LOC]).trim();
+  const pPrefArr = String(pcData[pIdx][COL.PC.PREF] || "").split('、');
+  const pTraitArr = String(pcData[pIdx][COL.PC.TRAIT] || "").split('、');
+  const playerCardStr = `【玩家『${pName}』】性格:[表象]${pPrefArr[0] || "無"} [內裡]${pPrefArr[1] || "無"} | 特徵:${pTraitArr[1] || "無"}\n`;
+
+  const relData = sheets.rel ? sheets.rel.getDataRange().getValues() : [];
+  const partyNames = relData.filter(r => r[COL.REL.PC] === pName && r[COL.REL.IS_PARTY] === "同行").map(r => r[COL.REL.NPC]);
+  const bystanderNames = pcData
+    .filter(r => r[COL.PC.ID] != pcId && !String(r[COL.PC.ID]).startsWith("DEAD_") && String(r[COL.PC.LOC]).trim() === pLoc)
+    .map(r => r[COL.PC.NAME]);
+  const partyHere = bystanderNames.filter(n => partyNames.includes(n));
+  const othersHere = bystanderNames.filter(n => !partyNames.includes(n));
+  let placeStr = "";
+  if (partyHere.length > 0) placeStr += `同行夥伴${partyHere.join("、")}也在場，請合理帶到其反應。`;
+  if (othersHere.length > 0) placeStr += `在場還有：${othersHere.join("、")}，請合理帶到他們的存在或反應，不要視而不見。`;
+  if (!placeStr) placeStr = "現場再無旁人，請勿憑空捏造路人或對話對象。";
+  const sceneStr = pLoc ? `${playerCardStr}【場景】玩家目前位於『${pLoc}』。${placeStr}\n` : playerCardStr;
+
+  const aiPrompt = `${sceneStr}【系統事件·已裁定，嚴禁更改任何結果】玩家服下了「${itemRow[COL.ITEM.NAME]}」，藥效已底層結算完畢：${effectStr}。請生動描寫藥力於經脈間化開的過程、玩家當下的生理反應，以及周圍人物見狀的態度。\n★【鐵律】嚴禁輸出任何 items_used、items_lost、items_gained 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！`;
+
+  return JSON.stringify({ success: true, itemName: itemRow[COL.ITEM.NAME], effectStr: effectStr, aiPrompt: aiPrompt, statusString: getFreshStatusString(pcId, pIdx, sheets) });
 }
 
 // 🟢 對同地 NPC 使用丹藥/恢復道具：補血回滿、或單純解去中毒/媚惑等負面狀態
@@ -3785,7 +3808,7 @@ function actionNarrateOnly(userData, pcId, sheets) {
   const miniSystem = `你是九州說書人。用日系武俠輕小說筆觸、第一人稱「我」、強制台灣繁體中文，依指令生動描寫一小段劇情（150~250字）。
 【鐵律】
 1. 旁白第一人稱「我」，禁用「你」與上帝視角。
-2. 對話用全形「」，格式：角色名：「(動作)台詞」。
+2. 對話格式：角色名：「（動作/神態/眼神/微表情）台詞……（動作/神態/眼神/微表情）台詞（動作/神態/眼神/微表情）」。動作神態【絕對禁止】獨立成段或寫在引號外，一律用全形括號「（）」嵌入台詞開頭/中間/結尾，至少穿插2次以上。
 3. 強制分段：每2~3句插入 <br><br>，整段至少3個 <br><br>，禁止整坨。換行一律用 <br><br>，禁止真實換行，禁止輸出任何 HTML 標籤。
 4. ★這是純敘事補完，系統底層已結算完所有數值，你只負責寫字。
 5. 只輸出 JSON：{"narration":"你的敘述，內含<br><br>分段"}，禁止任何其他欄位、禁止 Markdown。`;
@@ -3825,7 +3848,7 @@ function actionMultiAttackNarrate(userData, pcId, sheets) {
   const miniSystem = `你是九州說書人。用日系武俠輕小說筆觸、第一人稱「我」、強制台灣繁體中文，依指令生動描寫一段交鋒過程（150~250字）。
 【鐵律】
 1. 旁白第一人稱「我」，禁用「你」與上帝視角。
-2. 對話用全形「」，格式：角色名：「(動作)台詞」。
+2. 對話格式：角色名：「（動作/神態/眼神/微表情）台詞……（動作/神態/眼神/微表情）台詞（動作/神態/眼神/微表情）」。動作神態【絕對禁止】獨立成段或寫在引號外，一律用全形括號「（）」嵌入台詞開頭/中間/結尾，至少穿插2次以上。
 3. 強制分段：每2~3句插入 <br><br>，整段至少3個 <br><br>，禁止整坨。換行一律用 <br><br>，禁止真實換行，禁止輸出任何 HTML 標籤。
 4. ★這是純敘事補完，系統底層已結算完所有勝負、傷害與藥效數值，你只負責寫過程的字，禁止更改任何結果。
 5. 敘事務必與提供的【場景】地點、【近期因果】與【參戰者資料】(性格/特徵/關係)一致，禁止憑空換地點或讓角色性格走偏。
