@@ -275,7 +275,10 @@ function actionConsumeItem(userData, pcId, sheets) {
   if (!placeStr) placeStr = "現場再無旁人，請勿憑空捏造路人或對話對象。";
   const sceneStr = pLoc ? `${playerCardStr}【場景】玩家目前位於『${pLoc}』。${placeStr}\n` : playerCardStr;
 
-  const aiPrompt = `${sceneStr}【系統事件·已裁定，嚴禁更改任何結果】玩家服下了「${itemRow[COL.ITEM.NAME]}」，藥效已底層結算完畢：${effectStr}。請生動描寫藥力於經脈間化開的過程、玩家當下的生理反應，以及周圍人物見狀的態度。\n★【鐵律】嚴禁輸出任何 items_used、items_lost、items_gained 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！`;
+  const allLogs = sheets.log ? sheets.log.getDataRange().getValues() : [];
+  const recentLogStr = pickRelevantLogs(allLogs.filter(r => String(r[2]).includes(pName)), 5).map(r => `${r[2]}`).join("\n") || "（尚無相關因果記錄）";
+
+  const aiPrompt = `${sceneStr}【近期因果】(僅供背景參考，純屬回憶，並非當下在場！)\n${recentLogStr}\n【系統事件·已裁定，嚴禁更改任何結果】玩家服下了「${itemRow[COL.ITEM.NAME]}」，藥效已底層結算完畢：${effectStr}。請生動描寫藥力於經脈間化開的過程、玩家當下的生理反應，以及周圍人物見狀的態度。\n★【鐵律】嚴禁輸出任何 items_used、items_lost、items_gained 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！`;
 
   return JSON.stringify({ success: true, itemName: itemRow[COL.ITEM.NAME], effectStr: effectStr, aiPrompt: aiPrompt, statusString: getFreshStatusString(pcId, pIdx, sheets) });
 }
@@ -1034,7 +1037,10 @@ function actionUseItemSelf(userData, pcId, sheets) {
   if (!placeStr) placeStr = "現場再無旁人，請勿憑空捏造路人或對話對象。";
   const sceneStr = pLoc ? `${playerCardStr}【場景】玩家目前位於『${pLoc}』。${placeStr}\n` : playerCardStr;
 
-  const aiPrompt = `${sceneStr}【系統事件·已裁定，嚴禁更改任何結果】玩家將「${actualName}」消耗/施放了，系統底層已將物品扣除完畢。請生動描寫使用的效果與周圍的反應；若是強行食用不可食之物，請描寫滑稽場面。\n★【鐵律】嚴禁輸出任何 items_used、items_lost、items_gained 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！`;
+  const allLogs = sheets.log ? sheets.log.getDataRange().getValues() : [];
+  const recentLogStr = pickRelevantLogs(allLogs.filter(r => String(r[2]).includes(pName)), 5).map(r => `${r[2]}`).join("\n") || "（尚無相關因果記錄）";
+
+  const aiPrompt = `${sceneStr}【近期因果】(僅供背景參考，純屬回憶，並非當下在場！)\n${recentLogStr}\n【系統事件·已裁定，嚴禁更改任何結果】玩家將「${actualName}」消耗/施放了，系統底層已將物品扣除完畢。請生動描寫使用的效果與周圍的反應；若是強行食用不可食之物，請描寫滑稽場面。\n★【鐵律】嚴禁輸出任何 items_used、items_lost、items_gained 或 stat_changes，已結算完畢，重複輸出會導致天道崩塌！`;
   return JSON.stringify({ success: true, aiPrompt, itemName: actualName });
 }
 
@@ -3811,16 +3817,28 @@ function actionNarrateOnly(userData, pcId, sheets) {
 2. 對話格式：角色名：「（動作/神態/眼神/微表情）台詞……（動作/神態/眼神/微表情）台詞（動作/神態/眼神/微表情）」。動作神態【絕對禁止】獨立成段或寫在引號外，一律用全形括號「（）」嵌入台詞開頭/中間/結尾，至少穿插2次以上。
 3. 強制分段：每2~3句插入 <br><br>，整段至少3個 <br><br>，禁止整坨。換行一律用 <br><br>，禁止真實換行，禁止輸出任何 HTML 標籤。
 4. ★這是純敘事補完，系統底層已結算完所有數值，你只負責寫字。
-5. 只輸出 JSON：{"narration":"你的敘述，內含<br><br>分段"}，禁止任何其他欄位、禁止 Markdown。`;
+5. ★對話歷史中的內容是「已經發生並結束」的既定事實，僅供掌握語氣與情緒連貫，禁止把歷史中的動作當成本回合又重演一次；本回合唯一真正發生的新事件，只有當前這句指令提供的內容。
+6. 只輸出 JSON：{"narration":"你的敘述，內含<br><br>分段"}，禁止任何其他欄位、禁止 Markdown。`;
 
-  const raw = callGeminiAPI(promptText, miniSystem, {
+  let aiConfig = {
     temperature: 0.85,
     ignoreLaw: true,            // 不疊規矩表(節慶/天時)
     max_tokens: 700,            // 比 actionPlay 的 2000 砍掉一大半
     model: "google/gemini-3.1-flash-lite",
     isNsfwMode: !!isNsfw        // NSFW 時讓 fallback 文案合理，但不啟用完整慾海規則
-    // 🔴 刻意不傳 chatHistory：省最多 token，孤立事件不需要前文
-  });
+  };
+
+  // 🔴 帶最近2筆歷史維持語氣連貫，避免緊接著前一回合劇情卻完全失憶導致出戲；
+  // miniSystem規則5已明確告知AI：歷史是既定事實，不可被誤認成本回合重演。
+  const recentHistoryRaw = getGameHistoryBatchRaw(pcId, 2);
+  if (recentHistoryRaw && recentHistoryRaw.length > 0) {
+    aiConfig.chatHistory = recentHistoryRaw.map(msg => ({
+      role: msg.speaker === "player" ? "user" : "assistant",
+      content: String(msg.content)
+    }));
+  }
+
+  const raw = callGeminiAPI(promptText, miniSystem, aiConfig);
 
   try {
     const start = raw.indexOf('{');
