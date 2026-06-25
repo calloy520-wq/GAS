@@ -1,5 +1,18 @@
 <script>
   // ==========================================
+  // 🔴 前端 XSS 防護：任何「可能來自其他玩家輸入」的文字，渲染進 innerHTML 前都要過這層轉義
+  //   (自己打的字後端也會清過，但跨玩家可見的內容——飛書內容、傳聞、排行榜暱稱等——多一層保險)
+  // ==========================================
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+  // ==========================================
   // 🔴 核心通訊層：封裝 google.script.run 成 Promise，完美替換 fetch
   // ==========================================
   function gasRun(payload) {
@@ -1016,7 +1029,7 @@ function renderRecentLocs(recents = null) {
 
         return `
           <div class="npc-card" style="${cardStyle}">
-            ${roleTag}<b style="color: ${nameColor};">${n.name}</b> 
+            ${roleTag}<b style="color: ${nameColor};">${escapeHtml(n.name)}</b>
             <span style="font-size:12px; color:#2e8b57; margin-left:8px;">${locText}</span><br>
             <small style="color:#b22222; font-weight:bold;">生命: ${n.hp} | 真氣: ${n.mp}</small><br>
             <small style="color:#666;">狀態：${n.status}</small><br>
@@ -1493,15 +1506,15 @@ function renderRecentLocs(recents = null) {
         titleEl.innerText = "逆天改命 - 修改身世背景";
         fieldsEl.innerHTML = `
             <label style="font-size:13px; color:#332211; font-weight:bold;">身世背景 (字數簡練)</label>
-            <input id="fate-f1" class="std-in" value="${currentVal}">
+            <input id="fate-f1" class="std-in" maxlength="100" value="${escapeHtml(currentVal)}">
         `;
-    } 
+    }
     // 🔴 補上這個紫色的隱秘軟肋分支
     else if (type === 'intent') {
         titleEl.innerText = "逆天改命 - 修改反差軟肋";
         fieldsEl.innerHTML = `
             <label style="font-size:13px; color:#800080; font-weight:bold;">反差軟肋 (可愛弱點/反差萌，如：怕鬼、傲嬌、路痴)</label>
-            <input id="fate-f1" class="std-in" value="${currentVal}">
+            <input id="fate-f1" class="std-in" maxlength="100" value="${escapeHtml(currentVal)}">
         `;
     }
     else if (type === 'trait') {
@@ -1510,13 +1523,13 @@ function renderRecentLocs(recents = null) {
         titleEl.innerText = "逆天改命 - 修改特徵";
         fieldsEl.innerHTML = `
             <label style="font-size:13px; color:#b8860b; font-weight:bold;">1. 外貌</label>
-            <input id="fate-f1" class="std-in" value="${parts[0]}">
+            <input id="fate-f1" class="std-in" maxlength="20" value="${escapeHtml(parts[0])}">
             <label style="font-size:13px; color:#b8860b; font-weight:bold;">2. 氣質舉止</label>
-            <input id="fate-f2" class="std-in" value="${parts[1]}">
+            <input id="fate-f2" class="std-in" maxlength="20" value="${escapeHtml(parts[1])}">
             <label style="font-size:13px; color:#b8860b; font-weight:bold;">3. 偏門技巧</label>
-            <input id="fate-f3" class="std-in" value="${parts[2]}">
+            <input id="fate-f3" class="std-in" maxlength="20" value="${escapeHtml(parts[2])}">
             <label style="font-size:13px; color:#b8860b; font-weight:bold;">4. 床笫之間的反應</label>
-            <input id="fate-f4" class="std-in" value="${parts[3]}">
+            <input id="fate-f4" class="std-in" maxlength="20" value="${escapeHtml(parts[3])}">
         `;
     } else {
         const parts = currentVal.split('、');
@@ -1524,13 +1537,13 @@ function renderRecentLocs(recents = null) {
         titleEl.innerText = "逆天改命 - 修改個性";
         fieldsEl.innerHTML = `
             <label style="font-size:13px; color:#2e8b57; font-weight:bold;">1. 日常表象</label>
-            <input id="fate-f1" class="std-in" value="${parts[0]}">
+            <input id="fate-f1" class="std-in" maxlength="20" value="${escapeHtml(parts[0])}">
             <label style="font-size:13px; color:#2e8b57; font-weight:bold;">2. 真實內裡</label>
-            <input id="fate-f2" class="std-in" value="${parts[1]}">
+            <input id="fate-f2" class="std-in" maxlength="20" value="${escapeHtml(parts[1])}">
             <label style="font-size:13px; color:#2e8b57; font-weight:bold;">3. 喜歡的事物</label>
-            <input id="fate-f3" class="std-in" value="${parts[2]}">
+            <input id="fate-f3" class="std-in" maxlength="20" value="${escapeHtml(parts[2])}">
             <label style="font-size:13px; color:#2e8b57; font-weight:bold;">4. 討厭的事物</label>
-            <input id="fate-f4" class="std-in" value="${parts[3]}">
+            <input id="fate-f4" class="std-in" maxlength="20" value="${escapeHtml(parts[3])}">
         `;
     }
   }
@@ -1964,7 +1977,7 @@ async function checkName(event) {
     
     // 🔴 效能優化：改用 insertAdjacentHTML 避免全畫面重繪
     if (!isSilent && !msg.includes("【系統】")) {
-      story.insertAdjacentHTML('beforeend', `<div class="msg-player"><span class="msg-name">${pc.name}</span><span class="msg-text">${msg}</span></div>`);
+      story.insertAdjacentHTML('beforeend', `<div class="msg-player"><span class="msg-name">${escapeHtml(pc.name)}</span><span class="msg-text">${escapeHtml(msg)}</span></div>`);
       story.scrollTop = story.scrollHeight;
     }
     
@@ -3685,10 +3698,10 @@ async function loadRumors() {
       return `
         <div style="background: rgba(184,134,11,0.05); border: 1px solid rgba(184,134,11,0.2); border-left: 3px solid #b8860b; border-radius: 4px; padding: 10px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-            <span style="font-size:12px; color:#b8860b; font-weight:bold;">${icon} ${r.loc || '江湖'}</span>
+            <span style="font-size:12px; color:#b8860b; font-weight:bold;">${icon} ${escapeHtml(r.loc) || '江湖'}</span>
             <span style="font-size:11px; color:#666;">${timeStr}</span>
           </div>
-          <div style="font-size:13px; color:#332211; line-height:1.6;">${r.content}</div>
+          <div style="font-size:13px; color:#332211; line-height:1.6;">${escapeHtml(r.content)}</div>
           <div style="margin-top:4px; font-size:11px; color:#b8860b; opacity:0.7;">${heatDots}</div>
         </div>`;
     }).join('');
@@ -3730,11 +3743,11 @@ async function loadMails() {
       let attachHtml = "";
       if (m.attachItemId) {
          if (m.status === "已領取") {
-            attachHtml = `<div style="margin-top:8px; font-size:11px; color:#816e54;">📦 附件：${m.attachItemName} (已領取)</div>`;
+            attachHtml = `<div style="margin-top:8px; font-size:11px; color:#816e54;">📦 附件：${escapeHtml(m.attachItemName)} (已領取)</div>`;
          } else {
             attachHtml = `
             <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center; background:rgba(218,165,32,0.1); padding:4px 8px; border-radius:4px; border:1px dashed #daa520;">
-              <span style="font-size:12px; color:#b8860b; font-weight:bold;">📦 附件：${m.attachItemName}</span>
+              <span style="font-size:12px; color:#b8860b; font-weight:bold;">📦 附件：${escapeHtml(m.attachItemName)}</span>
               <button class="btn" style="padding:2px 8px; font-size:11px; border-color:#d4af37; color:#d4af37;" onclick="lockBtn(event, () => claimMailItem('${m.id}'))">領取</button>
             </div>`;
          }
@@ -3744,10 +3757,10 @@ async function loadMails() {
         <div style="background: rgba(30,144,255,0.04); border: 1px solid rgba(30,144,255,0.2); border-left: 3px solid #1e90ff; border-radius: 4px; padding: 10px; margin-bottom:8px; position:relative;">
           ${m.status === "未讀" ? '<div style="position:absolute; top:10px; right:10px; width:8px; height:8px; background:red; border-radius:50%;"></div>' : ''}
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-            <span style="font-size:12px; color:#1e90ff; font-weight:bold;">✉️ 來自『${m.sender}』</span>
+            <span style="font-size:12px; color:#1e90ff; font-weight:bold;">✉️ 來自『${escapeHtml(m.sender)}』</span>
             <span style="font-size:11px; color:#666;">${timeStr}</span>
           </div>
-          <div style="font-size:13px; color:#332211; line-height:1.6;">${m.content}</div>
+          <div style="font-size:13px; color:#332211; line-height:1.6;">${escapeHtml(m.content)}</div>
           ${attachHtml}
           <div style="text-align:right; margin-top:5px;">
              <button class="btn" style="padding:2px 8px; font-size:11px; border-color:#800; color:#800;" onclick="lockBtn(event, () => deleteMail('${m.id}'))">🗑️ 銷毀玉簡</button>
@@ -4003,16 +4016,16 @@ function renderAllFactions(factions) {
     return `
       <div style="background: rgba(51,34,17,0.03); border: 1px solid rgba(51,34,17,0.15); border-left: 3px solid ${powerColor}; border-radius: 4px; padding: 10px; margin-bottom: 8px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <span style="font-size:15px; color:#8b5a2b; font-weight:bold;">${rankLabel} ${f.name}</span>
+          <span style="font-size:15px; color:#8b5a2b; font-weight:bold;">${rankLabel} ${escapeHtml(f.name)}</span>
           <span style="font-size:12px; color:${powerColor}; font-weight:bold;">${statusIcon} ${f.status} (${f.power})</span>
         </div>
         <div style="background:#222; border-radius:3px; height:5px; overflow:hidden; margin-bottom:6px;">
           <div style="background:${powerColor}; height:100%; width:${f.power}%;"></div>
         </div>
         <div style="display:flex; gap:12px; font-size:11px; color:#816e54;">
-          <span>⚔️ ${f.align}</span>
-          <span>📍 ${f.base}</span>
-          <span>👑 ${f.leader}</span>
+          <span>⚔️ ${escapeHtml(f.align)}</span>
+          <span>📍 ${escapeHtml(f.base)}</span>
+          <span>👑 ${escapeHtml(f.leader)}</span>
         </div>
       </div>`;
   }).join('');
@@ -4075,11 +4088,11 @@ async function loadRanking() {
           <div style="font-size:18px; min-width:30px; text-align:center;">${medal}</div>
           <div style="flex:1;">
             <div style="display:flex; align-items:center; margin-bottom:3px;">
-              <span style="font-size:14px; color:#8b5a2b; font-weight:bold;">${r.name}</span>
+              <span style="font-size:14px; color:#8b5a2b; font-weight:bold;">${escapeHtml(r.name)}</span>
               ${playerTag}${meTag}
             </div>
             <div style="font-size:11px; color:#816e54;">
-              ${r.realm} · ${r.faction === "無" ? "散人" : r.faction} · ${r.rank}
+              ${escapeHtml(r.realm)} · ${r.faction === "無" ? "散人" : escapeHtml(r.faction)} · ${escapeHtml(r.rank)}
             </div>
           </div>
           <div style="text-align:right;">

@@ -69,7 +69,7 @@
         <label style="color: #ff6b6b; font-size: 14px; margin-right: 5px; margin-left: 2px; cursor: pointer; display: flex; align-items: center; white-space: nowrap; font-weight: bold;">
           <input type="checkbox" id="nsfw-mode-toggle" style="accent-color: #ff6b6b; margin-right: 3px;">🔥
         </label>
-        <input id="u-in" placeholder="輸入行動..." onkeypress="if(event.key==='Enter')send()">
+        <input id="u-in" maxlength="300" placeholder="輸入行動..." onkeypress="if(event.key==='Enter')send()">
         <button id="send-btn" class="send-trigger" onclick="send()">傳送</button>
       </div>
     </div>
@@ -142,7 +142,7 @@
 
       <div style="margin-bottom: 15px;">
         <label style="color:#d4af37; font-weight:bold; font-size:14px; display:block; margin-bottom:4px;">心中意圖 (你想做什麼？)：</label>
-        <input type="text" id="craft-intent" class="std-in" placeholder="例如：我想把這兩把劍融合成帶毒的暗器..." style="width: 100%; box-sizing:border-box; padding:10px;">
+        <input type="text" id="craft-intent" maxlength="100" class="std-in" placeholder="例如：我想把這兩把劍融合成帶毒的暗器..." style="width: 100%; box-sizing:border-box; padding:10px;">
       </div>
 
       <button class="btn" style="width:100%; background:#e91e63; color:#fff; font-size:16px; border:none; padding:12px; border-radius:4px; font-weight:bold;" onclick="lockBtn(event, executeCraft)">開爐煉製</button>
@@ -308,7 +308,7 @@
 
       <div style="margin-bottom: 15px;">
         <label style="color:#1e90ff; font-weight:bold; font-size:14px; display:block; margin-bottom:4px;">附加要求 (選填)：</label>
-        <input type="text" id="pavilion-intent" class="std-in" placeholder="例如：我想接暗殺、想偷某人的東西..." style="width: 100%; box-sizing:border-box; padding:10px;">
+        <input type="text" id="pavilion-intent" maxlength="100" class="std-in" placeholder="例如：我想接暗殺、想偷某人的東西..." style="width: 100%; box-sizing:border-box; padding:10px;">
       </div>
 
       <button class="btn" style="width:100%; background:#1e90ff; color:#fff; font-size:16px; border:none; padding:12px; border-radius:4px; font-weight:bold;" onclick="lockBtn(event, requestPavilionQuest)">打聽委託</button>
