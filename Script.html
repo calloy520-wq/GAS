@@ -1910,7 +1910,7 @@ async function checkName(event) {
   // 🟢 連擊戰報專用輕量敘事：narrate() 同等成本，但會把同地參戰NPC名字轉成可點擊超連結，
   // 讓玩家能直接點名字繼續連擊，不需要 AI 額外生成 options
   // ==========================================
-  async function narrateCombatResult(promptText, touchedNames) {
+  async function narrateCombatResult(promptText, touchedNames, knockedOut) {
     const story = document.getElementById('story');
     const optContainer = document.getElementById('options-container');
     if (optContainer) optContainer.innerHTML = '';
@@ -1920,7 +1920,7 @@ async function checkName(event) {
 
     try {
       const isNsfw = document.getElementById('nsfw-mode-toggle')?.checked || false;
-      const res = await gasRun({ action: "multi_attack_narrate", pcId: pc.id, promptText: promptText, isNsfw: isNsfw });
+      const res = await gasRun({ action: "multi_attack_narrate", pcId: pc.id, promptText: promptText, isNsfw: isNsfw, touchedNames: touchedNames, knockedOut: knockedOut });
       document.getElementById(loadId)?.remove();
 
       if (res.success && res.text) {
@@ -2304,7 +2304,7 @@ async function handleMultiAttack(rawMsg) {
     input.disabled = false; btn.disabled = false;
 
     // 把已裁定的結果（含玩家自己的招式敘述）餵給 AI 描寫(輕量路徑，帶地點/因果/角色資料)
-    narrateCombatResult(res.aiPrompt, res.touchedNames);
+    narrateCombatResult(res.aiPrompt, res.touchedNames, res.knockedOut);
 
     // 玩家中途被打趴送藥鋪
     if (res.justRevived) {

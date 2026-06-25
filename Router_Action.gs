@@ -3901,7 +3901,7 @@ function actionNarrateOnly(userData, pcId, sheets) {
 // 因為連擊後直接點同地NPC名字(超連結)繼續打即可，不需要選項。
 // ==========================================
 function actionMultiAttackNarrate(userData, pcId, sheets) {
-  const { promptText, isNsfw } = userData;
+  const { promptText, isNsfw, touchedNames, knockedOut } = userData;
 
   const miniSystem = `你是九州說書人。用日系武俠輕小說筆觸、第一人稱「我」、強制台灣繁體中文，依指令生動描寫一段交鋒過程（150~250字）。
 【鐵律】
@@ -3946,13 +3946,19 @@ function actionMultiAttackNarrate(userData, pcId, sheets) {
     ]);
 
     // 🔴 補上因果紀錄：連擊戰報結束後也要寫入「因果」表，否則後續近期因果/play()歷史都看不到這場戰鬥
+    // 改寫結構化短摘要(誰打誰/有無擊倒)取代整段150字花俏旁白，避免擠爆casual配額；有擊倒則標「變故」而非「閒聊」
     if (sheets.log) {
       const pcData = sheets.pc.getDataRange().getValues();
       const pIdx = pcData.findIndex(r => r[COL.PC.ID] == pcId);
       if (pIdx !== -1) {
         const pName = pcData[pIdx][COL.PC.NAME];
         const pLoc = pcData[pIdx][COL.PC.LOC];
-        sheets.log.appendRow([new Date(), pcId, formatCausalityEntry(pLoc, "閒聊", pName, narrationText.replace(/<br\s*\/?>/g, " ").slice(0, 150)), pLoc, "閒聊"]);
+        const targets = Array.isArray(touchedNames) ? [...new Set(touchedNames)].filter(Boolean) : [];
+        const downed = Array.isArray(knockedOut) ? [...new Set(knockedOut)].filter(Boolean) : [];
+        const tag = downed.length > 0 ? "變故" : "閒聊";
+        let summary = targets.length > 0 ? `${pName}與${targets.join("、")}交手` : `${pName}動手交鋒`;
+        if (downed.length > 0) summary += `，擊倒了${downed.join("、")}`;
+        sheets.log.appendRow([new Date(), pcId, formatCausalityEntry(pLoc, tag, pName, summary), pLoc, tag]);
         trimLogRowsByOwner(sheets.log, pcId, 60, 20);
       }
     }
