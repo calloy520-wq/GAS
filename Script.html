@@ -2158,10 +2158,10 @@ let plainTextContext = cleanText;
           html += `<div style="grid-column: span 2; display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:2px; font-size:12px; color:#7b9991;">
             連續次數：<select id="combo-count-select" style="padding:2px 6px; border-radius:4px; border:1px solid #8fa39b; background:#fff; color:#553311;">
               <option value="1">x1</option>
+              <option value="2">x2</option>
               <option value="3">x3</option>
-              <option value="5">x5</option>
-              <option value="10">x10</option>
             </select>
+            <span style="font-size:11px; color:#9a7;">(每回合上限 3)</span>
           </div>`;
           html += `<button class="btn" style="border-color:#a52a2a; color:#a52a2a; font-weight:bold;" onclick="closeInteractMenu(); insertActionTag('攻擊', '${npcName}')">⚔️ 動手</button>`;
           html += `<button class="btn" style="border-color:#8fa39b; color:#8fa39b;" onclick="closeInteractMenu(); insertActionTag('下毒', '${npcName}')">🧪 下毒</button>`;

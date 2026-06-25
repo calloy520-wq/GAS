@@ -3497,6 +3497,15 @@ function actionMultiAttack(userData, pcId, sheets) {
     return JSON.stringify({ success: false, message: "未偵測到攻擊指令" });
   }
 
+  // 🔴 戰鬥硬上限：每次對話最多結算 3 個動作（攻擊/下毒/媚藥合計）。
+  //   後端強制截斷，不信任前端，玩家手打塞再多標籤也只前 3 個生效。
+  const MAX_COMBO = 3;
+  let comboTrimmed = 0;
+  if (segments.length > MAX_COMBO) {
+    comboTrimmed = segments.length - MAX_COMBO;
+    segments = segments.slice(0, MAX_COMBO);
+  }
+
   const pTotal = getCharacterTotalStats(pcId, sheets, pcData);
   let results = [];
   let knockedOutAll = [];
@@ -3783,6 +3792,7 @@ function actionMultiAttack(userData, pcId, sheets) {
   const aiPrompt = `【場景】玩家『${pName}』目前位於『${pLoc}』。\n【近期因果】(僅供背景參考，純屬回憶，並非當下在場！)\n${recentLogStr}${npcCardsStr}\n\n` +
     `【系統戰報·已裁定，嚴禁更改任何勝負、傷害或藥效判定】玩家『${pName}』展開連續動作：\n\n` +
     aiPromptParts.join("\n\n") + `\n\n` +
+    (comboTrimmed > 0 ? `★【系統】玩家本想一氣呵成更多招，但連續出手 3 次後招式已用老、氣力難繼，餘下 ${comboTrimmed} 次動作未能施展，請在敘述收尾帶到玩家後繼乏力、不得不暫歇的窘態，且這些未施展的動作完全不結算任何數值。\n\n` : "") +
     `★請依此結果，並參照上方地點、近期因果與參戰者性格資料，將以上每一段交手依序串接成一段流暢生動的描寫，可參考玩家自己描述的招式、語氣與下藥手法。\n` +
     `★【在場驗證】本回合在場者僅有${presentStr}，可合理帶到其存在或反應；近期因果中提到的其他姓名均不在場，嚴禁讓其登場、插話或互動！\n` +
     `★【鐵律】任何被擊倒者最多只是重傷昏迷倒地，【絕對禁止】描寫死亡、斷氣、隕落或屍體！生死由玩家後續定奪。\n` +
