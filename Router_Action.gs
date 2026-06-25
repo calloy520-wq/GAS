@@ -2783,8 +2783,9 @@ ${locOwnershipNote}
         if (!rawState || typeof rawState !== 'object') return {};
         let cleanState = {};
         // 🔴 AI現在以數字代碼輸出(1~5)，此處解碼回內部真實詞；保留舊文字key作防呆相容
-        const keyMapping = { "陰道": "蜜穴", "陰莖": "肉棒", "屁眼": "菊穴", "1": "蜜穴", "2": "肉棒", "3": "菊穴", "4": "右手", "5": "左手" };
-        const allowedKeys = ["蜜穴", "肉棒", "菊穴", "右手", "左手"];
+        // 🔴 雙手已由右手/左手兩格合併為單一「雙手」；舊代碼5與舊文字key右手/左手一律映射回雙手相容
+        const keyMapping = { "陰道": "蜜穴", "陰莖": "肉棒", "屁眼": "菊穴", "1": "蜜穴", "2": "肉棒", "3": "菊穴", "4": "雙手", "5": "雙手", "右手": "雙手", "左手": "雙手" };
+        const allowedKeys = ["蜜穴", "肉棒", "菊穴", "雙手"];
         Object.keys(rawState).forEach(k => {
           let standardKey = keyMapping[k] || k;
           let val = String(rawState[k]).trim();
