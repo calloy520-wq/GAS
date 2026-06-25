@@ -241,7 +241,13 @@ function callGeminiAPI(prompt, systemOverride = null, config = {}) {
     try {
       const res = UrlFetchApp.fetch(MODEL_URL, options);
       const result = JSON.parse(res.getContentText());
-      if (result.error) throw new Error(result.error.message || "API 內部錯誤");
+      if (result.error) {
+        // 🔴 Gemini審查攔截(如PROHIBITED_CONTENT)走error物件回來，格式跟finish_reason那條不同，
+        // 統一改丟"Triggered_NSFW_Filter"才能吃到下面的降階重試與柔和提示，不然會直接洩漏原始錯誤訊息給玩家
+        const errMsg = result.error.message || "API 內部錯誤";
+        if (/PROHIBITED_CONTENT|SAFETY/i.test(errMsg)) throw new Error("Triggered_NSFW_Filter");
+        throw new Error(errMsg);
+      }
       if (result.choices && result.choices.length > 0) {
         let choice = result.choices[0];
         if (choice.finish_reason === "content_filter" || choice.finish_reason === "SAFETY" || (choice.message && !choice.message.content)) {
@@ -270,7 +276,7 @@ function callGeminiAPI(prompt, systemOverride = null, config = {}) {
 
   const isBlocked = lastErrorMessage.includes("Triggered_NSFW_Filter") || lastErrorMessage.includes("safety");
   const fallbackNarration = isBlocked
-    ? "🌸【天道結界觸發】妳的舉動牽動了天地間最古老的雙修禁制，導致此處天機暫時被屏蔽。"
+    ? "🌸【天道結界觸發】妳的舉動牽動了天地間最古老的雙修禁制，導致此處天機暫時被屏蔽，請再度嘗試。"
     : `⚡【天機斷絕】連線失敗：${lastErrorMessage}`;
 
   return JSON.stringify({
