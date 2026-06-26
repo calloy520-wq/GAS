@@ -105,6 +105,15 @@ const REALM_LIMITS = _RC.REALM_LIMITS || {"凡人":20, "引氣":25, "凝罡":30,
         return;
       }
 
+      // 🟢 攔截物品連結點擊：等同行囊內的「🔍 端詳」
+      const itemTarget = e.target.closest('[data-item]');
+      if (itemTarget) {
+        const itName = itemTarget.getAttribute('data-item');
+        const itType = itemTarget.getAttribute('data-itemtype') || '雜物';
+        handleItemAction('inspect', itName, itName, itType);
+        return;
+      }
+
       const locTarget = e.target.closest('[data-loc]');
       if (locTarget) {
         const locName = locTarget.getAttribute('data-loc');
@@ -2062,6 +2071,18 @@ const data = await gasRun({ action: "play", pcId: pc.id, message: msg, combatDat
               // 🌟 狀態 3：虛無之人 (資料庫完全沒有) -> 顯示為藍色，觸發登入眾生
               pushCandidate(name, `<span class="npc-link" style="color:#4682b4; border-bottom:1px dashed #4682b4; cursor:pointer;" data-register="${name}" data-context="${contextSnap}">${name}</span>`);
             }
+          }
+        });
+      }
+
+      // 🟢 物品連結：AI 提及且玩家行囊真實持有的物品 → 綠色可點，點擊＝端詳
+      if (data.mentionedItems && data.mentionedItems.length > 0 && data.myItemNames && data.myItemNames.length > 0) {
+        data.mentionedItems.forEach(itName => {
+          if (!itName || itName.length < 2) return;
+          const owned = data.myItemNames.find(it => it.name === itName);
+          if (owned) {
+            const safeType = String(owned.type || '雜物').replace(/"/g, '&quot;');
+            pushCandidate(itName, `<span class="item-link" style="color:#2e8b57; border-bottom:1px dashed #2e8b57; cursor:pointer;" data-item="${itName}" data-itemtype="${safeType}">${itName}</span>`);
           }
         });
       }
