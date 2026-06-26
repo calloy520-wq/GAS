@@ -91,6 +91,9 @@ const ActionRouter = {
 function sanitizeUserData_(userData) {
   // 名稱類欄位禁用 HTML/JS 斷字字元，避免在前端各處 innerHTML/onclick 拼接時被拿來做標籤或屬性逃脫
   const STRICT_NAME_FIELDS = new Set(["name", "npcName", "targetName", "factionName", "newRelName", "shopName"]);
+  // 🔴 只在「建立角色/登記NPC」的姓名欄位強制純中文(去英數/符號/空白)；
+  //   參照既有角色的欄位(targetName/newRelName 等)不清洗，以免破壞改版前可能存在的非中文名查找。
+  const CHINESE_NAME_FIELDS = new Set(["name", "npcName"]);
   const NAME_MAX = 20;
   const GLOBAL_MAX = 2000; // 一般自由文字欄位(訊息/敘述/意圖等)的最終上限，各 handler 仍可再收更緊
 
@@ -102,7 +105,9 @@ function sanitizeUserData_(userData) {
   for (const key in userData) {
     if (typeof userData[key] !== "string") continue;
     let v = userData[key].replace(CONTROL_RE, "").replace(FORMULA_LEAD_RE, "");
-    if (STRICT_NAME_FIELDS.has(key)) {
+    if (CHINESE_NAME_FIELDS.has(key)) {
+      v = cleanChineseName(v);
+    } else if (STRICT_NAME_FIELDS.has(key)) {
       v = v.replace(/[<>&"'`]/g, "").slice(0, NAME_MAX);
     } else {
       v = v.slice(0, GLOBAL_MAX);
@@ -110,6 +115,43 @@ function sanitizeUserData_(userData) {
     userData[key] = v;
   }
   return userData;
+}
+
+// 🔴 AI 輸出防呆：JSON.parse 之後、任何欄位被拿去寫入試算表之前，先在此夾住明顯異常值，
+//   避免 AI 偶發幻覺(天文數字賞金、爆表好感、型別跑掉、結構非物件)默默污染資料表。
+//   只夾「會被寫進表」且「範圍明確」的數值欄位；敘事等自由文字不動。
+function sanitizeAiData_(aiData) {
+  if (!aiData || typeof aiData !== "object" || Array.isArray(aiData)) {
+    throw new Error("AI 回傳結構異常（非物件），已攔截避免污染資料。");
+  }
+  const clampInt = (v, lo, hi, dflt) => {
+    const n = parseInt(v);
+    if (isNaN(n)) return dflt;
+    return Math.max(lo, Math.min(hi, n));
+  };
+
+  // 好感變動：單回合限 -100 ~ +100
+  if (Array.isArray(aiData.rel_changes)) {
+    aiData.rel_changes.forEach(rc => {
+      if (rc && rc.fav_change !== undefined) rc.fav_change = clampInt(rc.fav_change, -100, 100, 0);
+    });
+  }
+  // 銀兩轉移：金額限 0 ~ 1億(方向由 from/to 決定，amount 永遠為正)，非數字者剔除
+  if (Array.isArray(aiData.money_transferred)) {
+    aiData.money_transferred = aiData.money_transferred.filter(m => m && m.amount !== undefined && !isNaN(parseInt(m.amount)));
+    aiData.money_transferred.forEach(m => { m.amount = clampInt(m.amount, 0, 100000000, 0); });
+  }
+  // 天命賞金與時限：賞金 0 ~ 1億；deadline_days 為整數天數時限 0 ~ 365
+  if (Array.isArray(aiData.quests)) {
+    aiData.quests.forEach(q => {
+      if (!q) return;
+      if (q.reward_money !== undefined) q.reward_money = clampInt(q.reward_money, 0, 100000000, 0);
+      if (q.deadline_days !== undefined && q.deadline_days !== "" && !isNaN(parseInt(q.deadline_days))) {
+        q.deadline_days = clampInt(q.deadline_days, 0, 365, "");
+      }
+    });
+  }
+  return aiData;
 }
 
 function handleGameAction(userData) {
@@ -148,6 +190,10 @@ function handleGameAction(userData) {
 // ==========================================
 
 function actionCheckName(userData, pcId, sheets) {
+  // 🔴 userData.name 已在 sanitizeUserData_ 清成純中文；若清洗後為空，代表玩家輸入含非中文(英數/符號)，直接擋下
+  if (!userData.name) {
+    return JSON.stringify({ invalidName: true, message: "名號僅限中文字，不可使用英文、數字或符號。" });
+  }
   const pcRows = sheets.pc.getDataRange().getValues();
   const found = pcRows.find(r => r[COL.PC.NAME] === userData.name && !String(r[COL.PC.ID]).startsWith("DEAD_"));
   return JSON.stringify({ exists: !!found, pcId: found ? found[COL.PC.ID] : null, sex: found ? found[COL.PC.SEX] : "未知" });
@@ -1397,6 +1443,11 @@ function actionManualNpc(userData, pcId, sheets) {
   const finalName = isCreate ? name : npcName;
   const finalSex = isCreate ? sex : (npcSex || "異");
 
+  // 🔴 姓名已在 sanitizeUserData_ 清成純中文；若為空代表含非中文字元，直接擋下不寫表
+  if (!finalName) {
+    return JSON.stringify({ success: false, message: "名號僅限中文字，不可使用英文、數字或符號。" });
+  }
+
   if (!isCreate) {
     const pcRows = sheets.pc.getDataRange().getValues();
     if (pcRows.find(r => r[COL.PC.NAME] === finalName && !String(r[COL.PC.ID]).startsWith("DEAD_"))) return JSON.stringify({ success: false, message: "此人已在名錄。" });
@@ -2315,7 +2366,7 @@ ${locOwnershipNote}
     const start = aiResponseRaw.indexOf('{');
     const end = aiResponseRaw.lastIndexOf('}');
     const cleanJson = aiResponseRaw.substring(start, end + 1);
-    const aiData = JSON.parse(cleanJson);
+    const aiData = sanitizeAiData_(JSON.parse(cleanJson));
 
 
 

@@ -17,8 +17,9 @@
       style="color:var(--gold-accent); letter-spacing:10px; text-shadow: 0 0 10px var(--gold-accent); font-size: 32px; margin-bottom: 30px;">
       九州江湖</h1>
     <div id="step-name" style="width:280px;">
-      <input id="s-name" class="std-in" style="width:100%; box-sizing:border-box;" placeholder="輸入名號..." maxlength="10">
-      <button id="start-btn" class="btn" style="width:100%; margin-top:20px;" onclick="lockBtn(event, () => checkName(event))">啟程</button>
+      <input id="s-name" class="std-in" style="width:100%; box-sizing:border-box;" placeholder="輸入名號（限中文）..." maxlength="10">
+      <p style="text-align:center; color:#9a7b4f; font-size:12px; margin:8px 0 0;">※ 名號僅限中文字，不可使用英文、數字或符號。</p>
+      <button id="start-btn" class="btn" style="width:100%; margin-top:16px;" onclick="lockBtn(event, () => checkName(event))">啟程</button>
     </div>
     <div id="step-detail" style="display:none; width:280px;">
       <p style="text-align:center; color:#816e54; font-size:14px; margin-bottom: 20px;">此地無此名號，請定命格：</p>

@@ -113,6 +113,12 @@ function detectItemType(name, fallbackType, hasStatBonus) {
 // ★ 階段二：通用輔助模組 (Helper Functions)
 // ==========================================
 
+// 🟢 姓名限定純中文：移除所有非中日韓統一表意文字(CJK 含擴展A)的字元——英數、符號、空白、emoji 全部濾除。
+// 全系統唯一真實來源；前端只做提示與即時擋字，後端此函式才是最終防線。回傳清洗後字串(上限10字)。
+function cleanChineseName(s) {
+  return String(s == null ? "" : s).replace(/[^㐀-䶿一-鿿]/g, "").slice(0, 10);
+}
+
 // 🟢 屬性上限計算器
 function calculateMaxStats(realm, con, int) {
   const rMod = REALM_MODIFIERS[realm || "凡人"] || 1.0;
