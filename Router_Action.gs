@@ -3074,6 +3074,10 @@ ${locOwnershipNote}
       options: aiData.options,
       knockedOut: knockedOutList,
       mentionedNames: aiData.mentioned_names || [],
+      // 🟢 物品連結(純前端)：回傳玩家隨身行囊清單，由前端掃描敘事文字、命中即做成綠色連結(不依賴AI標記)
+      myItemNames: itemData.filter(r => r[COL.ITEM.OWNER] == pcId && String(r[COL.ITEM.LOC2]).trim() !== "倉庫")
+        .map(r => ({ id: String(r[COL.ITEM.ID] || r[COL.ITEM.NAME]).trim(), name: String(r[COL.ITEM.NAME]).trim(), type: String(r[COL.ITEM.TYPE] || "雜物"), desc: String(r[COL.ITEM.DESC] || "") }))
+        .filter(it => it.name.length >= 2),
       justRevived: justRevived,
       allMapNames: memoryMapData.slice(1).map(m => String(m[COL.MAP.NAME]).trim()).filter(n => n.length >= 2),
       // 🔴 新增：將全九州活著的眾生名單傳給前端，用於三段式判定

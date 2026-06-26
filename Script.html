@@ -42,6 +42,7 @@
   let currentStatusTargetId = pc ? pc.id : ""; 
   let currentStatusTargetName = pc ? pc.name : "";
   let localNPCs = [];
+  let localItems = []; // 🟢 玩家當前隨身行囊(供敘事中物品連結點擊時查 desc/id/type)
   let nearbyLocations = []; 
   let giftTargetNPC = null;
   let useItemTargetNPC = null;
@@ -102,6 +103,13 @@ const REALM_LIMITS = _RC.REALM_LIMITS || {"凡人":20, "引氣":25, "凝罡":30,
         const npcName = registerTarget.getAttribute('data-register');
         const npcContext = registerTarget.getAttribute('data-context') || '';
         showRegisterNpcModal(npcName, npcContext);
+        return;
+      }
+
+      // 🟢 攔截物品連結點擊：跳出小選單(顯示敘述 + 端詳/使用)
+      const itemTarget = e.target.closest('[data-item]');
+      if (itemTarget) {
+        openItemMenu(itemTarget.getAttribute('data-item'));
         return;
       }
 
@@ -1993,7 +2001,8 @@ const data = await gasRun({ action: "play", pcId: pc.id, message: msg, combatDat
       
 
       document.getElementById(loadId)?.remove();
-      localNPCs = data.people || []; nearbyLocations = data.locations || []; 
+      localNPCs = data.people || []; nearbyLocations = data.locations || [];
+      localItems = data.myItemNames || [];
       console.log("🔴AI原始文字:", JSON.stringify(data.text));
 
       // 🔴 直接接收後端傳來的狀態字串，不再依賴 AI 的文字解析
@@ -2062,6 +2071,17 @@ const data = await gasRun({ action: "play", pcId: pc.id, message: msg, combatDat
               // 🌟 狀態 3：虛無之人 (資料庫完全沒有) -> 顯示為藍色，觸發登入眾生
               pushCandidate(name, `<span class="npc-link" style="color:#4682b4; border-bottom:1px dashed #4682b4; cursor:pointer;" data-register="${name}" data-context="${contextSnap}">${name}</span>`);
             }
+          }
+        });
+      }
+
+      // 🟢 物品連結(純前端)：玩家行囊真實持有的物品名，凡出現在敘事中即自動變綠可點。
+      // 候選清單本身就只有玩家真有的物品，「是否持有」天然由前端把關，完全不依賴 AI 標記。
+      if (data.myItemNames && data.myItemNames.length > 0) {
+        data.myItemNames.forEach(it => {
+          if (it.name && it.name.length >= 2 && displayText.includes(it.name)) {
+            const safeType = String(it.type || '雜物').replace(/"/g, '&quot;');
+            pushCandidate(it.name, `<span class="item-link" style="color:#2e8b57; border-bottom:1px dashed #2e8b57; cursor:pointer;" data-item="${it.name}" data-itemtype="${safeType}">${it.name}</span>`);
           }
         });
       }
@@ -2189,6 +2209,24 @@ let plainTextContext = cleanText;
 
   function closeInteractMenu() {
       document.getElementById('interact-modal').style.display = 'none';
+  }
+
+  // 🟢 敘事中物品連結 → 小選單：先看敘述文字，再選端詳或使用
+  function openItemMenu(itemName) {
+      const it = (localItems || []).find(i => i.name === itemName);
+      if (!it) { handleItemAction('inspect', itemName, itemName, '雜物'); return; }
+      const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const jsName = it.name.replace(/'/g, "\\'");
+      const jsType = String(it.type || '雜物').replace(/'/g, "\\'");
+      const jsId = String(it.id || it.name).replace(/'/g, "\\'");
+      document.getElementById('interact-title').innerText = `行囊：「${it.name}」`;
+      let html = '';
+      html += `<div style="grid-column: span 2; font-size:12px; margin-bottom:4px;"><span style="color:#2e8b57; font-weight:bold;">(${esc(it.type || '雜物')})</span></div>`;
+      html += `<div style="grid-column: span 2; font-size:13px; color:#553311; line-height:1.6; background:rgba(46,139,87,0.05); border:1px dashed rgba(46,139,87,0.3); border-radius:4px; padding:8px; margin-bottom:8px;">${esc(it.desc) || '（暫無描述）'}</div>`;
+      html += `<button class="btn" style="border-color:#4682b4; color:#4682b4;" onclick="closeInteractMenu(); handleItemAction('inspect', '${jsId}', '${jsName}', '${jsType}')">🔍 端詳</button>`;
+      html += `<button class="btn" style="border-color:#e91e63; color:#e91e63;" onclick="closeInteractMenu(); handleItemAction('consume', '${jsId}', '${jsName}', '${jsType}')">💥 使用</button>`;
+      document.getElementById('interact-dynamic-buttons').innerHTML = html;
+      document.getElementById('interact-modal').style.display = 'flex';
   }
 
 // 🔮 遠端人物互動 (打聽 / 移動 / 飛書)
