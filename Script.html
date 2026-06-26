@@ -1787,15 +1787,22 @@ async function handleItemAction(action, itemId, itemName, itemType) {
 // ==========================================
 async function checkName(event) {
   const name = document.getElementById('s-name').value.trim();
-  
+
   if (!name) {
     alert("請輸入大俠名號！");
     return;
   }
-  
+
+  // 🔴 名號限定純中文：擋英文、數字、符號、空白(後端 sanitizeUserData_ 仍會再擋一次)
+  if (/[^㐀-䶿一-鿿]/.test(name)) {
+    alert("名號僅限中文字，不可使用英文、數字、符號或空白。");
+    return;
+  }
+
   try {
     // 呼叫後端驗證名號
     const res = await gasRun({ action: "check_name", name: name });
+    if (res.invalidName) { alert(res.message || "名號僅限中文字。"); return; }
     
 
 
