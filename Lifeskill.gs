@@ -109,7 +109,7 @@ function playLifeskillGather(pcId, skillName, rollCount, sheets, COL) {
     const r = pcData[pIdx];
     r[COL.PC.MP] = mp;
     const freshItemData = sheets.item ? sheets.item.getDataRange().getValues() : [];
-    const statusString = buildPlayerStatusString(r, getCharacterTotalStats(pcId, sheets, pcData), freshItemData);
+    const statusString = buildPlayerStatusString(r, getCharacterTotalStats(pcId, sheets, pcData, freshItemData), freshItemData);
 
     return JSON.stringify({
       success: true,

@@ -1093,8 +1093,8 @@ function actionStealNpcItem(userData, pcId, sheets) {
     return JSON.stringify({ success: false, message: `「${itemName}」正裝備在「${npcName}」身上，無法下手。` });
   }
 
-  const pTotal = getCharacterTotalStats(pcId, sheets, pcData);
-  const nTotal = getCharacterTotalStats(npcRow[COL.PC.ID], sheets, pcData);
+  const pTotal = getCharacterTotalStats(pcId, sheets, pcData, itemData);
+  const nTotal = getCharacterTotalStats(npcRow[COL.PC.ID], sheets, pcData, itemData);
   const pRoll = rollD20(), nRoll = rollD20();
   const pMod = Math.round(((pTotal.AGI || 0) + (pTotal.LUK || 0)) / 6);
   const nMod = Math.round(((nTotal.AGI || 0) + (nTotal.INT || 0)) / 6);
@@ -3067,7 +3067,7 @@ ${locOwnershipNote}
 
     return JSON.stringify({
       text: finalResponseText,
-      statusString: buildPlayerStatusString(pcData[pcIndex], getCharacterTotalStats(pcId, sheets, pcData), itemData),
+      statusString: buildPlayerStatusString(pcData[pcIndex], getCharacterTotalStats(pcId, sheets, pcData, itemData), itemData),
       people: localPeopleList,
       locations: getNearbyLocations(curL, memoryMapData),
       recruited: newlyRecruited,
@@ -3402,6 +3402,7 @@ function actionSpareNpc(userData, pcId, sheets) {
 function actionAttackNpc(userData, pcId, sheets) {
   const { npcName, skillName } = userData;
   let pcData = sheets.pc.getDataRange().getValues();
+  const itemData = sheets.item ? sheets.item.getDataRange().getValues() : []; // 讀一次共用，避免下面算戰力時各自重讀
   const pIdx = pcData.findIndex(r => r[COL.PC.ID] == pcId);
   const nIdx = pcData.findIndex(r => r[COL.PC.NAME] === npcName && !String(r[COL.PC.ID]).startsWith("DEAD_"));
   if (pIdx === -1 || nIdx === -1) return JSON.stringify({ success: false, message: "查無此人" });
@@ -3412,8 +3413,8 @@ function actionAttackNpc(userData, pcId, sheets) {
   }
 
   const pName = pcData[pIdx][COL.PC.NAME];
-  const pTotal = getCharacterTotalStats(pcId, sheets, pcData);
-  const nTotal = getCharacterTotalStats(pcData[nIdx][COL.PC.ID], sheets, pcData);
+  const pTotal = getCharacterTotalStats(pcId, sheets, pcData, itemData);
+  const nTotal = getCharacterTotalStats(pcData[nIdx][COL.PC.ID], sheets, pcData, itemData);
 
   // d20
   const pRoll = Math.floor(Math.random() * 20) + 1;
@@ -3545,7 +3546,7 @@ function actionMultiAttack(userData, pcId, sheets) {
     segments = segments.slice(0, MAX_COMBO);
   }
 
-  const pTotal = getCharacterTotalStats(pcId, sheets, pcData);
+  const pTotal = getCharacterTotalStats(pcId, sheets, pcData, itemData);
   let results = [];
   let knockedOutAll = [];
   let justRevived = false;
@@ -3582,7 +3583,7 @@ function actionMultiAttack(userData, pcId, sheets) {
       sheets.item.deleteRow(itIdx + 1);
       itemData.splice(itIdx, 1);
 
-      const nTotal = getCharacterTotalStats(pcData[nIdx][COL.PC.ID], sheets, pcData);
+      const nTotal = getCharacterTotalStats(pcData[nIdx][COL.PC.ID], sheets, pcData, itemData);
       const pRoll = Math.floor(Math.random() * 20) + 1;
       const nRoll = Math.floor(Math.random() * 20) + 1;
       const pMod = Math.round(((pTotal.INT || 0) + (pTotal.LUK || 0)) / 6);
@@ -3649,7 +3650,7 @@ function actionMultiAttack(userData, pcId, sheets) {
       continue;
     }
 
-    const nTotal = getCharacterTotalStats(pcData[nIdx][COL.PC.ID], sheets, pcData);
+    const nTotal = getCharacterTotalStats(pcData[nIdx][COL.PC.ID], sheets, pcData, itemData);
     const pRoll = Math.floor(Math.random() * 20) + 1;
     const nRoll = Math.floor(Math.random() * 20) + 1;
     const pMod = Math.round(((pTotal.STR || 0) + (pTotal.AGI || 0)) / 6);
