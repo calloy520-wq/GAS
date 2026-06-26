@@ -3077,7 +3077,7 @@ ${locOwnershipNote}
       // 🟢 物品連結：AI 提及的物品名 + 玩家實際持有清單(名稱/類型)，由前端比對後把「玩家真有的」做成綠色端詳連結
       mentionedItems: aiData.mentioned_items || [],
       myItemNames: itemData.filter(r => r[COL.ITEM.OWNER] == pcId && String(r[COL.ITEM.LOC2]).trim() !== "倉庫")
-        .map(r => ({ name: String(r[COL.ITEM.NAME]).trim(), type: String(r[COL.ITEM.TYPE] || "雜物") }))
+        .map(r => ({ id: String(r[COL.ITEM.ID] || r[COL.ITEM.NAME]).trim(), name: String(r[COL.ITEM.NAME]).trim(), type: String(r[COL.ITEM.TYPE] || "雜物"), desc: String(r[COL.ITEM.DESC] || "") }))
         .filter(it => it.name.length >= 2),
       justRevived: justRevived,
       allMapNames: memoryMapData.slice(1).map(m => String(m[COL.MAP.NAME]).trim()).filter(n => n.length >= 2),
