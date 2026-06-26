@@ -3074,8 +3074,7 @@ ${locOwnershipNote}
       options: aiData.options,
       knockedOut: knockedOutList,
       mentionedNames: aiData.mentioned_names || [],
-      // 🟢 物品連結：AI 提及的物品名 + 玩家實際持有清單(名稱/類型)，由前端比對後把「玩家真有的」做成綠色端詳連結
-      mentionedItems: aiData.mentioned_items || [],
+      // 🟢 物品連結(純前端)：回傳玩家隨身行囊清單，由前端掃描敘事文字、命中即做成綠色連結(不依賴AI標記)
       myItemNames: itemData.filter(r => r[COL.ITEM.OWNER] == pcId && String(r[COL.ITEM.LOC2]).trim() !== "倉庫")
         .map(r => ({ id: String(r[COL.ITEM.ID] || r[COL.ITEM.NAME]).trim(), name: String(r[COL.ITEM.NAME]).trim(), type: String(r[COL.ITEM.TYPE] || "雜物"), desc: String(r[COL.ITEM.DESC] || "") }))
         .filter(it => it.name.length >= 2),

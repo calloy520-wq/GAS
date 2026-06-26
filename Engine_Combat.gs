@@ -13,7 +13,6 @@ function buildDefaultSystemPrompt(isNsfwMode, backLocked) {
     ],
     "rel_changes": [{ "target": "NPC名", "fav_change": 3, "tag": "無", "major_event": "無" }],
     "mentioned_names": ["劇情中出現的具名角色名字，不含玩家自己"],
-    "mentioned_items": ["劇情中實際出現、且【玩家命格行囊真實持有】的物品名(供前端做端詳連結用；背景雜物、場景擺設、他人之物一律不填，無則[])"],
     "new_factions": [],
     "items_gained": [
       { "owner": "自己", "name": "碎銀", "type": "貨幣", "desc": "幾兩碎銀，沉甸甸的。" }
