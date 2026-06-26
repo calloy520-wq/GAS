@@ -62,7 +62,7 @@ function playDiceGame(pcId, betType, betAmount, sheets, COL) {
     const r = pcData[pIdx];
     r[COL.PC.MONEY] = newMoney;
     const freshItemData = sheets.item ? sheets.item.getDataRange().getValues() : [];
-    const statusString = buildPlayerStatusString(r, getCharacterTotalStats(pcId, sheets, pcData), freshItemData);
+    const statusString = buildPlayerStatusString(r, getCharacterTotalStats(pcId, sheets, pcData, freshItemData), freshItemData);
 
     // 8. 回傳給前端播放動畫
     return JSON.stringify({
@@ -173,7 +173,7 @@ function playHorseRaceGame(pcId, horseId, betAmount, sheets, COL) {
     const r = pcData[pIdx];
     r[COL.PC.MONEY] = newMoney;
     const freshItemData = sheets.item ? sheets.item.getDataRange().getValues() : [];
-    const statusString = buildPlayerStatusString(r, getCharacterTotalStats(pcId, sheets, pcData), freshItemData);
+    const statusString = buildPlayerStatusString(r, getCharacterTotalStats(pcId, sheets, pcData, freshItemData), freshItemData);
 
     const rankingText = ranking.map((h, i) => `${i + 1}. ${h.name}(${h.position}步)`).join("、");
     const raceSystem = `你是九州「天馬競速」場的賭場說書人。一場賽馬剛剛結束，最終名次：${rankingText}。冠軍是「${winnerHorse.name}」(${winnerHorse.tier})。
