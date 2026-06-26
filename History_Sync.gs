@@ -44,6 +44,18 @@ function trimLogRowsByOwner(sheet, pcId, keepCount, importantCap) {
 }
 
 // 🔴 取歷史時優先保留承諾/秘密/變故，剩餘額度才依recency填閒聊，避免重要事被擠出視窗
+// 🔴 只讀因果表最後 maxRows 筆(從表尾倒讀)，避免歷史成長後每回合全表讀取拖慢。
+// pickRelevantLogs 永遠只取最近數筆，故近窗口在語意上等價，但成本固定不隨總歷史量膨脹。
+// ⚠️ 僅用於「只需近期因果」的場景；需要完整生涯統計的地方(如成就面板)請勿改用此函式。
+function readRecentLogRows(logSheet, maxRows) {
+  if (!logSheet) return [];
+  const lastRow = logSheet.getLastRow();
+  if (lastRow < 2) return [];
+  const want = Math.min(maxRows || 2000, lastRow - 1); // 扣除表頭
+  const numCols = logSheet.getLastColumn();
+  return logSheet.getRange(lastRow - want + 1, 1, want, numCols).getValues();
+}
+
 function pickRelevantLogs(rows, limit) {
   const important = rows.filter(r => IMPORTANT_LOG_TAGS.has(String(r[4] || "")));
   const casual = rows.filter(r => !IMPORTANT_LOG_TAGS.has(String(r[4] || "")));
@@ -75,7 +87,7 @@ function pickNsfwCausalityEvent(tag) {
 // 避免consume_item/use_item_self/贈禮/連擊等多處各自重複一份、未來改動容易漏改。
 function getRecentCausalityStr(sheets, pName, npcName, limit) {
   if (!sheets.log) return "（尚無相關因果記錄）";
-  const allLogs = sheets.log.getDataRange().getValues();
+  const allLogs = readRecentLogRows(sheets.log, 2000);
   const filtered = allLogs.filter(r =>
     String(r[2]).includes(pName) || (npcName && String(r[2]).includes(npcName))
   );

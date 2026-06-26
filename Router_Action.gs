@@ -2052,8 +2052,8 @@ function actionPlay(userData, pcId, sheets) {
 
 
 
-  // 🔴 只讀一次 log，後面兩處共用
-  const allLogs = sheets.log.getDataRange().getValues();
+  // 🔴 只讀一次 log，後面兩處共用；改為只讀最近2000筆，避免歷史成長後每回合全表讀取拖慢
+  const allLogs = readRecentLogRows(sheets.log, 2000);
 
   const history = pickRelevantLogs(allLogs.filter(r => String(r[2]).includes(pcName)), 12).map(r => r[2]).join("\n");
   const pTotal = getCharacterTotalStats(pcId, sheets, pcData, itemData);
