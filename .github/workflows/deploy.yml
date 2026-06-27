@@ -23,14 +23,17 @@ jobs:
         env:
           CLASPRC: ${{ secrets.CLASPRC_JSON }}
 
-      - name: Push to Apps Script
+      - name: Push & deploy
         env:
           NODE_OPTIONS: --dns-result-order=ipv4first
+          DEPLOY_ID: AKfycbzFRQhKpbPeWDlkjm5nTbv4ngYQOG7Q6QJMw_1B-3BrCWSiFexZbjI6l5bvV-Q0glBf   # 既有網頁部署（/exec 網址不變，僅更新版本）
         run: |
-          for i in 1 2 3 4 5; do
-            echo "── push attempt $i ──"
-            clasp push -f && exit 0
-            echo "attempt $i failed; retrying in 5s..."
-            sleep 5
-          done
-          echo "all attempts failed"; exit 1
+          retry() {
+            for i in 1 2 3 4 5; do
+              "$@" && return 0
+              echo "  ↳ attempt $i failed; retry in 5s..."; sleep 5
+            done
+            return 1
+          }
+          echo "── clasp push ──";   retry clasp push -f
+          echo "── clasp deploy ──"; retry clasp deploy --deploymentId "$DEPLOY_ID" --description "auto-deploy"
