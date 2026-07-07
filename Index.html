@@ -171,11 +171,23 @@ function uLabel(u){return VIEW.unitLabel[u]||u;}
 function terInc(t){return t.income+(t.market||0)*VIEW.rules.MARKET_INCOME;}
 function terMax(t){return t.maxTroops+(t.barracks||0)*VIEW.rules.BARRACKS_MAX;}
 
-// 向量動漫 Q 版頭像 v2（純 SVG，零 API）。線稿描邊+瀏海投影+呆毛+臥蠶反光。
-// ★ 向量動漫 Q 版頭像 v2（純 SVG，零 API）。線稿描邊+瀏海投影+呆毛+臥蠶反光；傳說女將(id 以 L 開頭)加金光暈+星芒+寶石王冠。
-// 之後要換真立繪，只要把這個函式改成回傳 <img src=...> 即可。
+// ★★ 立繪烘焙接口（PORTRAITS）★★
+//   把「角色 ID → 圖片」填進下面即可換上真立繪（資料 URI 或圖片網址皆可）。
+//   之後有 AI 生圖/手繪立繪時，離線做好一套圖，填進這裡就無縫替換；遊戲執行仍然零 AI。
+//   留空(預設)則使用下方純 SVG 向量頭像當占位。
+//   範例：
+//     'C1': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...',
+//     'L2': 'https://your-cdn.example/legend_hishizuku.webp',
+//   角色 ID：具名女將 C1~C13、路人 R1~R12、傳說 L1~L3（可用「角色卡」或存檔試算表查 ID）。
+var PORTRAITS = {
+  // 'C1': '在這裡貼上亞瑟莉亞的立繪圖片URL或data URI',
+};
+
+// 向量動漫 Q 版頭像 v2（純 SVG，零 API）。線稿描邊+瀏海投影+呆毛+臥蠶反光；傳說女將(id 以 L 開頭)加金光暈+星芒+寶石王冠。
 function pixelAvatar(id, unit, px){
-  id=String(id); var h=0,i; for(i=0;i<id.length;i++) h=(h*131+id.charCodeAt(i))>>>0;
+  id=String(id);
+  if(PORTRAITS[id]) return '<img src="'+PORTRAITS[id]+'" width="'+px+'" height="'+px+'" alt="" style="display:block;object-fit:cover;border-radius:8px"/>'; // 有立繪就用立繪
+  var h=0,i; for(i=0;i<id.length;i++) h=(h*131+id.charCodeAt(i))>>>0;
   function rnd(n){ h=(h*1103515245+12345)>>>0; return Math.floor(h/65536)%n; }
   var uid='av'+(h%997);
   var HAIR=[['#7a5236','#9c6f4a','#5a3a22'],['#33303e','#4a4658','#201e2a'],['#e6c260','#f4dc8e','#c89a34'],
