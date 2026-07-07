@@ -132,22 +132,54 @@ function skName(k){ return (VIEW.skills[k]||{}).name||'—'; }
 function avatarEmoji(u){ return ({infantry:'🗡️',cavalry:'🐎',archer:'🏹',mage:'🔮',ninja:'🥷'})[u]||'⚔️'; }
 function dunOf(terId){ return (VIEW.dungeons||[]).filter(function(d){return d.ter===terId;})[0]; }
 
-// 純 SVG 像素頭像（占位圖）。依角色 ID 生成專屬髮色/瞳色，兵種決定髮飾色。
+// 升級版程序化像素頭像（純 SVG，零 API）。16x16 網格，多髮型/瀏海/側髮/表情/配件，
+// 依角色 ID 穩定生成專屬長相（同一角色永遠同一張臉，被俘虜也不變）。
 // 之後要換真立繪，只要把這個函式改成回傳 <img src=...> 即可。
-var AV_TPL=[
-  "....HHHH....","..HHHHHHHH..",".HHHHHHHHHH.",".HAHHHHHHAH.",
-  ".HHSSSSSSHH.",".HHSSSSSSHH.",".HSEESSEESH.",".HSEESSEESH.",
-  ".HBSSSSSSBH.",".HSSSMMSSSH.","..SSSSSSSS..","...SSSSSS..."];
-function pixelAvatar(id,unit,px){
-  var h=0,i; id=String(id); for(i=0;i<id.length;i++) h=(h*31+id.charCodeAt(i))>>>0;
-  var hair=['#5b3a29','#2b2b3a','#caa24a','#c0455b','#3a6ea5','#7a4fa0','#d98cae','#5aa06a','#e8e8ee'][h%9];
-  var eye=['#7a4fa0','#3a6ea5','#5aa06a','#c0455b','#caa24a','#40405a'][(Math.floor(h/9))%6];
-  var acc=({infantry:'#9aa7b5',cavalry:'#e6b64c',archer:'#6fd98a',mage:'#b06fe0',ninja:'#5566aa'})[unit]||'#e6b64c';
-  var col={H:hair,A:acc,S:'#f6c8a0',E:eye,M:'#c85a72',B:'#f39ab0'};
-  var r='',y,x;
-  for(y=0;y<AV_TPL.length;y++){ var row=AV_TPL[y]; for(x=0;x<row.length;x++){ var c=row.charAt(x); if(c==='.')continue;
-    r+='<rect x="'+x+'" y="'+y+'" width="1.03" height="1.03" fill="'+col[c]+'"/>'; } }
-  return '<svg width="'+px+'" height="'+px+'" viewBox="0 0 12 12" shape-rendering="crispEdges" style="display:block">'+r+'</svg>';
+function pixelAvatar(id, unit, px){
+  id=String(id); var h=0,i; for(i=0;i<id.length;i++) h=(h*131+id.charCodeAt(i))>>>0;
+  function rnd(n){ h=(h*1103515245+12345)>>>0; return Math.floor(h/65536)%n; }
+  var HAIR=['#5b3a29','#2b2b3a','#caa24a','#c0455b','#3a6ea5','#7a4fa0','#d98cae','#5aa06a','#e8e8ee','#e0743a','#4a8f8f'];
+  var EYE=['#7a4fa0','#3a6ea5','#5aa06a','#c0455b','#caa24a','#40405a','#c85a2e'];
+  var SKIN=['#f6c8a0','#f1bd93','#ffd9b8'];
+  var hair=HAIR[rnd(HAIR.length)], eye=EYE[rnd(EYE.length)], skin=SKIN[rnd(SKIN.length)];
+  var hairLen=[3,5,8,11][rnd(4)], bangs=rnd(3), side=rnd(4), eyeStyle=rnd(4), mouth=rnd(3), blush=rnd(2);
+  var accPool = unit==='ninja' ? ['headband','mask','none']
+              : unit==='mage' ? ['hat','hairpin','tiara','ribbon']
+              : ['none','ribbon','hairpin','tiara','ears','goggles','none'];
+  var acc=accPool[rnd(accPool.length)];
+  var G={};
+  function set(x,y,c){ if(x>=0&&x<16&&y>=0&&y<16&&c) G[x+','+y]=c; }
+  function rw(y,x0,x1,c){ for(var x=x0;x<=x1;x++) set(x,y,c); }
+  var MC='#c85a72';
+  var face={3:[5,10],4:[4,11],5:[4,11],6:[4,11],7:[4,11],8:[4,11],9:[4,11],10:[5,10],11:[6,9],12:[7,8]};
+  rw(1,4,11,hair); rw(2,3,12,hair); rw(3,3,12,hair); rw(4,3,12,hair);
+  for(var yy=4; yy<=4+hairLen && yy<=13; yy++){ set(3,yy,hair); set(12,yy,hair);
+    if(hairLen>=8 && yy>=8){ set(2,yy,hair); set(13,yy,hair); } }
+  if(side===1){ for(var t=5;t<=9;t++){ set(1,t,hair);set(2,t,hair);set(13,t,hair);set(14,t,hair);} }
+  else if(side===2){ for(var p=3;p<=11;p++){ set(13,p,hair);set(14,p,hair);} }
+  else if(side===3){ set(2,10,hair);set(13,10,hair);set(2,11,hair);set(13,11,hair); }
+  for(var fy in face){ rw(Number(fy), face[fy][0], face[fy][1], skin); }
+  if(bangs===0){ rw(4,4,11,hair); }
+  else if(bangs===1){ set(4,4,hair);set(5,4,hair);set(10,4,hair);set(11,4,hair); }
+  else { rw(4,4,9,hair); set(4,5,hair); }
+  function eyeAt(ex,y){ set(ex,y,'#ffffff'); set(ex+1,y,eye); }
+  if(eyeStyle===3){ set(5,7,eye);set(6,6,eye);set(9,6,eye);set(10,7,eye); }
+  else { eyeAt(5,7); eyeAt(9,7); if(eyeStyle===1){ eyeAt(5,6); eyeAt(9,6); } }
+  if(blush){ set(4,9,'#f39ab0'); set(11,9,'#f39ab0'); }
+  if(mouth===0){ set(7,10,MC); set(8,10,MC); }
+  else if(mouth===1){ set(8,10,MC); }
+  else { set(7,10,MC); set(8,10,MC); set(7,11,'#a83a52'); }
+  if(acc==='headband'){ rw(4,3,12,'#c0455b'); set(3,4,'#8f2e40'); set(12,4,'#8f2e40'); }
+  else if(acc==='mask'){ rw(9,4,11,'#3a4a63'); rw(10,5,10,'#3a4a63'); }
+  else if(acc==='ears'){ set(3,0,hair);set(3,1,hair);set(4,1,hair);set(4,0,hair); set(12,0,hair);set(12,1,hair);set(11,1,hair);set(11,0,hair); }
+  else if(acc==='goggles'){ rw(6,4,11,'#8a6d3a'); set(6,6,'#7fd4e0'); set(9,6,'#7fd4e0'); }
+  else if(acc==='hat'){ set(7,0,'#3a2b5a');set(8,0,'#3a2b5a'); rw(1,6,9,'#3a2b5a'); rw(2,5,10,'#4a3a6a'); rw(3,3,12,'#3a2b5a'); }
+  else if(acc==='tiara'){ set(6,2,'#e6b64c');set(7,1,'#e6b64c');set(8,1,'#e6b64c');set(9,2,'#e6b64c'); set(7,2,'#fff6cc'); }
+  else if(acc==='hairpin'){ set(4,4,'#e6b64c'); set(4,5,'#ffd76a'); }
+  else if(acc==='ribbon'){ set(1,5,'#e878a8');set(2,5,'#e878a8');set(1,6,'#e878a8');set(2,6,'#c85a8a'); }
+  var r='',k,xy;
+  for(k in G){ xy=k.split(','); r+='<rect x="'+xy[0]+'" y="'+xy[1]+'" width="1.03" height="1.03" fill="'+G[k]+'"/>'; }
+  return '<svg width="'+px+'" height="'+px+'" viewBox="0 0 16 16" shape-rendering="crispEdges" style="display:block">'+r+'</svg>';
 }
 
 function render(){
