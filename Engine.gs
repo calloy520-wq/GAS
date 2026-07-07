@@ -179,15 +179,19 @@ function dungeonExplore_(game, ch, dun) {
     hero *= (1 + boost);
     notes.push('✨發動「' + sk.name + '」');
   }
-  // 怪物戰力：隨樓層遞增
-  const monster = dun.monster * (1 + (floor - 1) * 0.45);
+  // 最終層為頭目戰（戰力更高）
+  const isBoss = (floor >= dun.floors);
+  const boss = DUNGEON_BOSS[dun.id];
+  const monster = dun.monster * (1 + (floor - 1) * 0.45) * (isBoss ? 1.5 : 1);
 
-  let log = '🗿 ' + ch.name + ' 探索【' + dun.name + '】第 ' + floor + '/' + dun.floors + ' 層。' +
+  let log = '🗿 ' + ch.name + ' 探索【' + dun.name + '】第 ' + floor + '/' + dun.floors + ' 層' +
+            (isBoss && boss ? '，頭目【' + boss.name + '】現身！' : '') + '。' +
             (notes.length ? notes.join('') + '。' : '');
   ch.acted = true;
 
   if (hero <= monster) {
-    log += ' 👾 遭遇強敵，' + ch.name + ' 負傷撤退，未能前進（下回合可再挑戰）。';
+    log += (isBoss && boss ? ' 👹 頭目【' + boss.name + '】太強，' : ' 👾 遭遇強敵，') +
+           ch.name + ' 負傷撤退，未能前進（下回合可再挑戰）。';
     return log;
   }
 
@@ -206,8 +210,19 @@ function dungeonExplore_(game, ch, dun) {
       const it = findItem(game, dun.rewardItem);
       if (it && it.owner === 'LOCKED') { it.owner = ''; log += '、寶物【' + it.name + '】入寶庫'; }
     }
-    // 招募深處在野女將
-    if (dun.recruit) {
+    // 擊敗頭目 → 策反傳說女將
+    const bd = DUNGEON_BOSS[dun.id];
+    let recruited = false;
+    if (bd) {
+      const lg = findChar(game, bd.legend);
+      if (lg && lg.owner === 'LOCKED') {
+        lg.owner = ch.owner; lg.loc = ch.loc; lg.loyalty = 45; lg.acted = true;
+        log += '，擊敗頭目【' + bd.name + '】！🌟【傳說女將 ' + lg.name + '｜' + UNIT_LABEL[lg.unit] + '】認可妳的實力，加入麾下！';
+        recruited = true;
+      }
+    }
+    // 後備：若無傳說可招（已招過），改救在野女將
+    if (!recruited && dun.recruit) {
       const pool = game.chars.filter(function (c) { return c.alive && c.owner === 'F0' && !c.loc; });
       if (pool.length) {
         const r = pool[Math.floor(Math.random() * pool.length)];

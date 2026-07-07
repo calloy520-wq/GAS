@@ -48,7 +48,7 @@ function errorResp_(msg) { return { ok: false, message: msg }; }
 function buildView_(game) {
   const player = playerFaction(game);
   // 附上每個角色的有效三圍與裝備，方便前端顯示
-  const chars = game.chars.filter(function (c) { return c.alive; }).map(function (c) {
+  const chars = game.chars.filter(function (c) { return c.alive && c.owner !== 'LOCKED'; }).map(function (c) {
     const eff = effStats(game, c);
     return {
       id: c.id, name: c.name, owner: c.owner, unit: c.unit, level: c.level, exp: c.exp,

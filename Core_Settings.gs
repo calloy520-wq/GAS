@@ -218,6 +218,28 @@ function SEED_DUNGEONS() {
   ];
 }
 
+// 迷宮最終層頭目 + 通關可策反的傳說女將
+const DUNGEON_BOSS = {
+  D1: { name: '冥獄魔將', legend: 'L1' },
+  D2: { name: '古龍巴哈姆', legend: 'L2' },
+  D3: { name: '墜星之王', legend: 'L3' }
+};
+
+// 傳說女將（owner=LOCKED 藏起，通關頭目才策反；id 以 L 開頭 → 頭像華麗特效）
+function SEED_LEGENDS() {
+  return [
+    ['L1', '沙夜', 'LOCKED', 'ninja', 6, 0, 104, 110, 96, 'shadow', '', 0, 1, 0, '',
+      '封印於幽獄的暗夜刀神，冷冽孤高，力量深不可測。', '古老而簡短，帶著威壓。', '月蝕、寂靜；厭惡背信。',
+      '「解開封印者……可有承受吾力之覺悟？」', '上古被封印的刀神，等待夠格的主人。'],
+    ['L2', '緋雫', 'LOCKED', 'cavalry', 6, 0, 110, 114, 90, 'charge', '', 0, 1, 0, '',
+      '龍族末裔的緋色龍姬，驕傲熾烈，只認強者為伴。', '高傲霸氣，自稱「本龍」。', '火焰、寶物、強敵；討厭懦弱。',
+      '「哼，能讓本龍認可，妳算第一個。」', '沉睡龍巢的龍之公主。'],
+    ['L3', '露娜', 'LOCKED', 'mage', 6, 0, 100, 96, 118, 'firestorm', '', 0, 1, 0, '',
+      '自星海降臨的占星巫女，飄渺神秘，洞悉命運。', '空靈飄忽，像在對星星說話。', '星空、預言、靜謐；厭惡殺戮。',
+      '「群星為妳指引……去吧，命定之人。」', '墜星深淵中沉眠的星之巫女。']
+  ];
+}
+
 function SEED_DIPLO() { return []; } // 開局全員互為戰爭狀態
 
 // ------------------------------------------
@@ -273,7 +295,7 @@ function initGame() {
   writeSheet_(ss, SHEETS.CHAR,
     ['ID', 'NAME', 'OWNER', 'UNIT', 'LEVEL', 'EXP', 'LEAD', 'WAR', 'INT', 'SKILL',
      'LOC', 'ACTED', 'ALIVE', 'LOYALTY', 'EQUIP', 'PERSONA', 'SPEECH', 'LIKES', 'CATCH', 'BIO', 'CHARGE'],
-    SEED_CHARS().concat(genRandomChars_()).map(function (r) { return r.concat([randInt_(0, 66)]); }));
+    SEED_CHARS().concat(genRandomChars_()).concat(SEED_LEGENDS()).map(function (r) { return r.concat([randInt_(0, 66)]); }));
 
   writeSheet_(ss, SHEETS.ITEM,
     ['ID', 'NAME', 'TYPE', 'WAR', 'LEAD', 'INT', 'OWNER', 'DESC'], SEED_ITEMS());
