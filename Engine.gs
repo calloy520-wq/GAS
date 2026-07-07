@@ -131,6 +131,66 @@ function gainExp_(game, ch, amount, onLog) {
 }
 
 // ------------------------------------------
+// ★ 迷宮探索（單人闖關，不動用領地兵力）
+//   一次探索 = 挑戰下一層。回傳結算敘述字串，直接改動 game。
+// ------------------------------------------
+function dungeonExplore_(game, ch, dun) {
+  const eff = effStats(game, ch);
+  const player = findFaction(game, ch.owner);
+  const floor = dun.progress + 1;
+
+  // 女將戰力（含裝備），必殺可觸發加成
+  let hero = (eff.war * 4 + eff.lead + eff.int) * randFactor_(0.85, 1.15);
+  let notes = [];
+  if (skillFires_(game, ch)) {
+    const sk = SKILLS[ch.skill];
+    const boost = sk.type === 'guard' ? sk.power * 0.5 : sk.power;
+    hero *= (1 + boost);
+    notes.push('✨發動「' + sk.name + '」');
+  }
+  // 怪物戰力：隨樓層遞增
+  const monster = dun.monster * (1 + (floor - 1) * 0.45);
+
+  let log = '🗿 ' + ch.name + ' 探索【' + dun.name + '】第 ' + floor + '/' + dun.floors + ' 層。' +
+            (notes.length ? notes.join('') + '。' : '');
+  ch.acted = true;
+
+  if (hero <= monster) {
+    log += ' 👾 遭遇強敵，' + ch.name + ' 負傷撤退，未能前進（下回合可再挑戰）。';
+    return log;
+  }
+
+  // 通關這一層
+  dun.progress = floor;
+  player.gold += RULES.DUNGEON_FLOOR_GOLD;
+  gainExp_(game, ch, RULES.DUNGEON_FLOOR_EXP, function (m) { log += ' ' + m; });
+  log += ' 🗡️擊破守關怪物，銀兩+' + RULES.DUNGEON_FLOOR_GOLD + '。';
+
+  if (dun.progress >= dun.floors) {
+    dun.cleared = true;
+    player.gold += dun.rewardGold;
+    log += ' 🏆【通關】' + dun.name + '！獲得寶藏 ' + dun.rewardGold + ' 銀兩';
+    // 寶物入寶庫
+    if (dun.rewardItem) {
+      const it = findItem(game, dun.rewardItem);
+      if (it && it.owner === 'LOCKED') { it.owner = ''; log += '、寶物【' + it.name + '】入寶庫'; }
+    }
+    // 招募深處在野女將
+    if (dun.recruit) {
+      const pool = game.chars.filter(function (c) { return c.alive && c.owner === 'F0' && !c.loc; });
+      if (pool.length) {
+        const r = pool[Math.floor(Math.random() * pool.length)];
+        r.owner = ch.owner; r.loc = ch.loc; r.loyalty = 40;
+        log += '，並救出被困的在野女將【' + r.name + '｜' + UNIT_LABEL[r.unit] + '】加入！';
+      }
+    }
+    log += '。';
+    gainExp_(game, ch, RULES.DUNGEON_FLOOR_EXP * 2, function (m) { log += ' ' + m; });
+  }
+  return log;
+}
+
+// ------------------------------------------
 // ★ 經濟：收入 + 兵力回補
 // ------------------------------------------
 function economyPhase_(game) {

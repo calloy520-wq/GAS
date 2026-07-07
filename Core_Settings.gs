@@ -12,7 +12,8 @@ const SHEETS = {
   FACTION:   'Factions',
   TERRITORY: 'Territories',
   CHAR:      'Characters',
-  ITEM:      'Items'
+  ITEM:      'Items',
+  DUNGEON:   'Dungeons'
 };
 
 // GameState：單列
@@ -32,8 +33,12 @@ const C_CHAR = {
   PERSONA: 15, SPEECH: 16, LIKES: 17, CATCH: 18, BIO: 19
 };
 
-// Items：裝備（owner = 角色ID 表示已裝備；空字串表示在寶庫可自由裝配）
+// Items：裝備（owner = 角色ID 表示已裝備；空字串=寶庫可自由裝配；LOCKED=尚未取得的迷宮寶物）
 const C_ITEM = { ID: 0, NAME: 1, TYPE: 2, WAR: 3, LEAD: 4, INT: 5, OWNER: 6, DESC: 7 };
+
+// Dungeons：迷宮（單人闖關）。TER=所在領地；PROGRESS=已通關樓層；MONSTER=首層怪物戰力
+const C_DUN = { ID: 0, NAME: 1, TER: 2, LEVEL: 3, FLOORS: 4, PROGRESS: 5, CLEARED: 6,
+                MONSTER: 7, REWARD_GOLD: 8, REWARD_ITEM: 9, RECRUIT: 10 };
 
 // ------------------------------------------
 // ★ 平衡數值
@@ -58,6 +63,9 @@ const RULES = {
   // 好感 / 搜索
   TALK_LOYALTY_GAIN: 12,
   SEARCH_COST_GOLD: 250,
+  // 迷宮
+  DUNGEON_FLOOR_GOLD: 120,   // 每通過一層的即時獎勵
+  DUNGEON_FLOOR_EXP: 45,     // 每通過一層的經驗
   // 技能發動基礎率
   SKILL_BASE_CHANCE: 0.30,
   SKILL_CHANCE_CAP: 0.65,
@@ -216,7 +224,18 @@ function SEED_ITEMS() {
     ['IT3', '賢者之書',   'accessory',  0, 0, 14, 'C2', '智慧結晶，智謀大增'],
     ['IT4', '龍鱗長槍',   'weapon',    16, 3, 0, '', '屠龍之槍，威力驚人'],
     ['IT5', '疾風之靴',   'accessory',  2, 9, 0, '', '風之加護，行軍如飛'],
-    ['IT6', '秘銀護符',   'accessory',  0, 0, 16, '', '蘊含秘法，智謀提升']
+    ['IT6', '秘銀護符',   'accessory',  0, 0, 16, '', '蘊含秘法，智謀提升'],
+    // ↓ 迷宮寶物，owner=LOCKED 表示尚未取得，通關後才會進寶庫
+    ['IT7', '暗影短刃',   'weapon',    13, 0, 4, 'LOCKED', '幽暗地穴深處的凶器'],
+    ['IT8', '龍血重鎧',   'armor',      4, 16, 0, 'LOCKED', '以龍血淬煉的無雙重鎧']
+  ];
+}
+
+// 迷宮種子。ID,NAME,TER,LEVEL,FLOORS,PROGRESS,CLEARED,MONSTER,REWARD_GOLD,REWARD_ITEM,RECRUIT
+function SEED_DUNGEONS() {
+  return [
+    ['D1', '幽暗地穴', 'T8', 1, 3, 0, 0, 300, 500,  'IT7', 1],
+    ['D2', '龍之巢穴', 'T5', 2, 4, 0, 0, 520, 1000, 'IT8', 1]
   ];
 }
 
@@ -246,6 +265,10 @@ function initGame() {
   writeSheet_(ss, SHEETS.ITEM,
     ['ID', 'NAME', 'TYPE', 'WAR', 'LEAD', 'INT', 'OWNER', 'DESC'],
     SEED_ITEMS());
+
+  writeSheet_(ss, SHEETS.DUNGEON,
+    ['ID', 'NAME', 'TER', 'LEVEL', 'FLOORS', 'PROGRESS', 'CLEARED', 'MONSTER', 'REWARD_GOLD', 'REWARD_ITEM', 'RECRUIT'],
+    SEED_DUNGEONS());
 
   return '✅ 遊戲已初始化，試算表 ID：' + ss.getId();
 }

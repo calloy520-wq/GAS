@@ -124,6 +124,25 @@ function isMine(fid){ return fid===VIEW.playerFactionId; }
 function uLabel(u){ return VIEW.unitLabel[u]||u; }
 function skName(k){ return (VIEW.skills[k]||{}).name||'—'; }
 function avatarEmoji(u){ return ({infantry:'🗡️',cavalry:'🐎',archer:'🏹',mage:'🔮',ninja:'🥷'})[u]||'⚔️'; }
+function dunOf(terId){ return (VIEW.dungeons||[]).filter(function(d){return d.ter===terId;})[0]; }
+
+// 純 SVG 像素頭像（占位圖）。依角色 ID 生成專屬髮色/瞳色，兵種決定髮飾色。
+// 之後要換真立繪，只要把這個函式改成回傳 <img src=...> 即可。
+var AV_TPL=[
+  "....HHHH....","..HHHHHHHH..",".HHHHHHHHHH.",".HAHHHHHHAH.",
+  ".HHSSSSSSHH.",".HHSSSSSSHH.",".HSEESSEESH.",".HSEESSEESH.",
+  ".HBSSSSSSBH.",".HSSSMMSSSH.","..SSSSSSSS..","...SSSSSS..."];
+function pixelAvatar(id,unit,px){
+  var h=0,i; id=String(id); for(i=0;i<id.length;i++) h=(h*31+id.charCodeAt(i))>>>0;
+  var hair=['#5b3a29','#2b2b3a','#caa24a','#c0455b','#3a6ea5','#7a4fa0','#d98cae','#5aa06a','#e8e8ee'][h%9];
+  var eye=['#7a4fa0','#3a6ea5','#5aa06a','#c0455b','#caa24a','#40405a'][(Math.floor(h/9))%6];
+  var acc=({infantry:'#9aa7b5',cavalry:'#e6b64c',archer:'#6fd98a',mage:'#b06fe0',ninja:'#5566aa'})[unit]||'#e6b64c';
+  var col={H:hair,A:acc,S:'#f6c8a0',E:eye,M:'#c85a72',B:'#f39ab0'};
+  var r='',y,x;
+  for(y=0;y<AV_TPL.length;y++){ var row=AV_TPL[y]; for(x=0;x<row.length;x++){ var c=row.charAt(x); if(c==='.')continue;
+    r+='<rect x="'+x+'" y="'+y+'" width="1.03" height="1.03" fill="'+col[c]+'"/>'; } }
+  return '<svg width="'+px+'" height="'+px+'" viewBox="0 0 12 12" shape-rendering="crispEdges" style="display:block">'+r+'</svg>';
+}
 
 function render(){
   document.getElementById('turn').textContent=VIEW.turn;
@@ -160,11 +179,15 @@ function renderMap(){
   (VIEW.territories||[]).forEach(function(t){
     var f=facOf(t.owner)||{color:'#888'};
     var gens=(VIEW.chars||[]).filter(function(c){return c.loc===t.id;});
-    var gf=gens.length?'<div class="gf">'+gens.map(function(g){return avatarEmoji(g.unit)+g.name;}).join(' ')+'</div>':'';
+    var gf=gens.length?'<div class="gf">'+gens.map(function(g){
+        return '<span style="display:inline-flex;align-items:center;gap:1px">'+pixelAvatar(g.id,g.unit,14)+g.name+'</span>';
+      }).join(' ')+'</div>':'';
+    var dg=dunOf(t.id);
+    var dgm=dg?'<div class="gf">'+(dg.cleared?'✅'+dg.name:'🗿'+dg.name+' '+dg.progress+'/'+dg.floors)+'</div>':'';
     var el=document.createElement('div');
     el.className='ter'+(selTargetId===t.id?' target':'');
     el.style.left=t.x+'%'; el.style.top=t.y+'%'; el.style.background=f.color;
-    el.innerHTML='<b>'+t.name+'</b><div class="tr">🛡'+t.troops+'</div>'+gf;
+    el.innerHTML='<b>'+t.name+'</b><div class="tr">🛡'+t.troops+'</div>'+dgm+gf;
     el.onclick=function(){ onTerritoryClick(t.id); };
     map.appendChild(el);
   });
@@ -178,7 +201,7 @@ function renderChars(){
     var soulOpen=openSoul[c.id]?' show':'';
     var eff=c.eff;
     return '<div class="card'+(c.id===selCharId?' sel':'')+(c.acted?' acted':'')+'" onclick="selectChar(\''+c.id+'\')">'+
-      '<div><span class="avatar" style="background:'+ (facOf(c.owner)||{}).color +'">'+avatarEmoji(c.unit)+'</span>'+
+      '<div><span class="avatar" style="background:'+ (facOf(c.owner)||{}).color +'">'+pixelAvatar(c.id,c.unit,30)+'</span>'+
         '<span class="nm">'+c.name+'</span><span class="ut">'+uLabel(c.unit)+'</span> '+(c.acted?'<span class="tag">✔已行動</span>':'')+'</div>'+
       '<small>Lv.'+c.level+' · 統'+eff.lead+' 武'+eff.war+' 智'+eff.int+' · 必殺「'+(sk.name||'—')+'」</small><br>'+
       '<small>📍'+(loc?loc.name:'在野')+'</small>'+
@@ -186,6 +209,7 @@ function renderChars(){
       '<div class="tag">經驗 '+c.exp+'/'+c.expNext+'</div><div class="bar xp"><i style="width:'+xpPct+'%"></i></div>'+
       '<button onclick="event.stopPropagation();toggleSoul(\''+c.id+'\')" style="margin-top:4px;padding:3px 8px;font-size:12px">角色卡 ▾</button>'+
       '<div class="soul'+soulOpen+'">'+
+        '<div style="float:left;margin:0 8px 4px 0;border:1px solid var(--line);border-radius:6px;overflow:hidden">'+pixelAvatar(c.id,c.unit,64)+'</div>'+
         '<b>性格</b>：'+c.persona+'<br><b>說話</b>：'+c.speech+'<br><b>喜好</b>：'+c.likes+
         '<br><b>口頭禪</b>：'+c.catch+'<br><b>背景</b>：'+c.bio+
         '<br><span class="tag">↑ 這份「靈魂」現在驅動事件文字，未來就是 AI 的人設。</span></div>'+
@@ -218,6 +242,10 @@ function renderActions(){
   h+='<button onclick="call(\'recruit\',{charId:selCharId})"'+(onOwn&&pf.gold>=VIEW.rules.RECRUIT_COST_PER_TROOP?'':' disabled')+'>🪖 徵兵</button>';
   h+='<button onclick="call(\'develop\',{charId:selCharId})"'+(onOwn&&pf.gold>=VIEW.rules.DEVELOP_COST?'':' disabled')+'>🏗️ 開發('+VIEW.rules.DEVELOP_COST+')</button>';
   h+='<button class="pink" onclick="call(\'search\',{charId:selCharId})"'+(onOwn&&pf.gold>=VIEW.rules.SEARCH_COST_GOLD?'':' disabled')+'>🔍 搜索在野('+VIEW.rules.SEARCH_COST_GOLD+')</button>';
+  var dg=here?dunOf(here.id):null;
+  if(dg && !dg.cleared && onOwn){
+    h+='<button class="pink" onclick="call(\'explore\',{charId:selCharId})">🗿 探索'+dg.name+'（'+dg.progress+'/'+dg.floors+'層）</button>';
+  }
   h+='</div>';
   h+=talkBtn(c);
   body.innerHTML=h;

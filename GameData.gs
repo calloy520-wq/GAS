@@ -11,6 +11,7 @@ function loadGame() {
   const terRows   = readSheet_(ss, SHEETS.TERRITORY);
   const chRows    = readSheet_(ss, SHEETS.CHAR);
   const itRows    = readSheet_(ss, SHEETS.ITEM);
+  const dunRows   = readSheet_(ss, SHEETS.DUNGEON);
 
   const s = stateRows[0] || [1, 'PLAYER', '', ''];
   const state = {
@@ -81,7 +82,22 @@ function loadGame() {
     };
   });
 
-  return { state: state, factions: factions, territories: territories, chars: chars, items: items };
+  const dungeons = dunRows.map(function (r) {
+    return {
+      id: String(r[C_DUN.ID]), name: String(r[C_DUN.NAME]), ter: String(r[C_DUN.TER]),
+      level: Number(r[C_DUN.LEVEL]) || 1,
+      floors: Number(r[C_DUN.FLOORS]) || 1,
+      progress: Number(r[C_DUN.PROGRESS]) || 0,
+      cleared: Number(r[C_DUN.CLEARED]) === 1,
+      monster: Number(r[C_DUN.MONSTER]) || 0,
+      rewardGold: Number(r[C_DUN.REWARD_GOLD]) || 0,
+      rewardItem: String(r[C_DUN.REWARD_ITEM] || ''),
+      recruit: Number(r[C_DUN.RECRUIT]) === 1
+    };
+  });
+
+  return { state: state, factions: factions, territories: territories,
+           chars: chars, items: items, dungeons: dungeons };
 }
 
 function saveGame(game) {
@@ -117,6 +133,13 @@ function saveGame(game) {
     game.items.map(function (i) {
       return [i.id, i.name, i.type, i.war, i.lead, i.int, i.owner, i.desc];
     }));
+
+  writeSheet_(ss, SHEETS.DUNGEON,
+    ['ID', 'NAME', 'TER', 'LEVEL', 'FLOORS', 'PROGRESS', 'CLEARED', 'MONSTER', 'REWARD_GOLD', 'REWARD_ITEM', 'RECRUIT'],
+    (game.dungeons || []).map(function (d) {
+      return [d.id, d.name, d.ter, d.level, d.floors, d.progress, d.cleared ? 1 : 0,
+              d.monster, d.rewardGold, d.rewardItem, d.recruit ? 1 : 0];
+    }));
 }
 
 function readSheet_(ss, name) {
@@ -133,6 +156,8 @@ function findTerritory(game, id) { return game.territories.filter(function (t) {
 function findChar(game, id)      { return game.chars.filter(function (c) { return c.id === id; })[0] || null; }
 function findFaction(game, id)   { return game.factions.filter(function (f) { return f.id === id; })[0] || null; }
 function findItem(game, id)      { return game.items.filter(function (i) { return i.id === id; })[0] || null; }
+function findDungeon(game, id)   { return (game.dungeons || []).filter(function (d) { return d.id === id; })[0] || null; }
+function dungeonAt(game, terId)  { return (game.dungeons || []).filter(function (d) { return d.ter === terId; })[0] || null; }
 function playerFaction(game)     { return game.factions.filter(function (f) { return f.isPlayer; })[0] || null; }
 function territoriesOf(game, facId) { return game.territories.filter(function (t) { return t.owner === facId; }); }
 // 某領地上、指定勢力仍存活的守將

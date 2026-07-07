@@ -16,6 +16,7 @@ const ACTION_ROUTER = {
   'develop':   actionDevelop,
   'move':      actionMove,
   'search':    actionSearch,
+  'explore':   actionExplore,
   'talk':      actionTalk,
   'equip':     actionEquip,
   'unequip':   actionUnequip,
@@ -59,7 +60,9 @@ function buildView_(game) {
     playerFactionId: player ? player.id : 'F1',
     ap: player ? player.ap : 0,
     rules: RULES, unitLabel: UNIT_LABEL, unitAdv: UNIT_ADV, skills: SKILLS, abilities: ABILITIES,
-    factions: game.factions, territories: game.territories, chars: chars, items: game.items
+    factions: game.factions, territories: game.territories, chars: chars,
+    items: game.items.filter(function (i) { return i.owner !== 'LOCKED'; }), // 未取得的迷宮寶物不外顯
+    dungeons: game.dungeons || []
   };
 }
 
@@ -201,6 +204,25 @@ function actionSearch(p) {
   saveGame(game);
   return okResp_(game, '🌟 ' + ch.name + ' 在 ' + ter.name + ' 尋得在野女將【' + recruit.name + '｜' +
     UNIT_LABEL[recruit.unit] + '】！她說：' + recruit.catch + '　（已加入，駐於 ' + ter.name + '）');
+}
+
+// ------------------------------------------
+// 探索 { charId } — 1 AP，挑戰角色所在領地的迷宮下一層
+// ------------------------------------------
+function actionExplore(p) {
+  const game = loadGame(); requireNotOver_(game); requireAP_(game, 1);
+  const ctx = requirePlayerChar_(game, p.charId); requireUnacted_(ctx.ch);
+  const ch = ctx.ch;
+  const ter = findTerritory(game, ch.loc);
+  if (!ter || ter.owner !== ctx.player.id) return errorResp_('只能在自己領地的迷宮探索。');
+  const dun = dungeonAt(game, ch.loc);
+  if (!dun) return errorResp_('這裡沒有迷宮。');
+  if (dun.cleared) return errorResp_(dun.name + ' 已通關。');
+
+  spendAP_(game, 1);
+  const log = dungeonExplore_(game, ch, dun);
+  saveGame(game);
+  return okResp_(game, log);
 }
 
 // ------------------------------------------
