@@ -170,19 +170,21 @@ function dungeonExplore_(game, ch, dun) {
   const player = findFaction(game, ch.owner);
   const floor = dun.progress + 1;
 
-  // 女將戰力（含裝備），必殺可觸發加成
+  // 女將戰力（含裝備）；蓄力全滿→必殺保證發動且強化，否則智謀機率
   let hero = (eff.war * 4 + eff.lead + eff.int) * randFactor_(0.85, 1.15);
   let notes = [];
-  if (skillFires_(game, ch)) {
-    const sk = SKILLS[ch.skill];
-    const boost = sk.type === 'guard' ? sk.power * 0.5 : sk.power;
-    hero *= (1 + boost);
-    notes.push('✨發動「' + sk.name + '」');
+  const sk = SKILLS[ch.skill];
+  const full = (ch.charge || 0) >= RULES.CHARGE_MAX;
+  if (sk && (full || skillFires_(game, ch))) {
+    const base = (sk.type === 'guard' ? sk.power * 0.5 : sk.power);
+    hero *= (1 + base * (full ? RULES.CHARGE_SKILL_MULT : 1));
+    notes.push((full ? '⚡蓄力全滿！' : '✨') + '發動「' + sk.name + '」');
+    if (full) ch.charge = 0;
   }
-  // 最終層為頭目戰（戰力更高）
+  // 最終層為頭目戰（戰力更高）；樓層倍率放緩，Boss ×1.3
   const isBoss = (floor >= dun.floors);
   const boss = DUNGEON_BOSS[dun.id];
-  const monster = dun.monster * (1 + (floor - 1) * 0.45) * (isBoss ? 1.5 : 1);
+  const monster = dun.monster * (1 + (floor - 1) * 0.28) * (isBoss ? 1.3 : 1);
 
   let log = '🗿 ' + ch.name + ' 探索【' + dun.name + '】第 ' + floor + '/' + dun.floors + ' 層' +
             (isBoss && boss ? '，頭目【' + boss.name + '】現身！' : '') + '。' +
