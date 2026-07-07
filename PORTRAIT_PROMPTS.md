@@ -51,10 +51,10 @@ masterpiece, best quality, anime visual-novel character portrait, single cute gi
 ```
 
 ### 森亞露露卡　`L4`
-- **對齊頭像**：短藍髮・內彎鮑伯・紫瞳
+- **對齊頭像**：金長直＋粉紫漸變髮尾・兩根呆毛・交叉劉海・紫瞳吊眼・黑蝴蝶結髮箍・哥德魔法少女裝
 
 ```
-masterpiece, best quality, anime visual-novel character portrait, single cute girl, bust shot (head and shoulders), facing viewer, soft cel shading, clean lineart, large detailed expressive eyes, plain soft-gradient background, centered composition, game character icon, a girl named 森亞露露卡 — short blue hair styled as an inward-curled bob with side-swept bangs, violet eyes, a playful wink; gentle forest bow-maiden, elven ears, green leaf-and-vine ornaments, luminous world-tree longbow, glowing forest spirits; holding an ornate bow with a quiver, light armor; personality: gentle, serene, childlike wonder, communes with spirits, legendary rare heroine, ornate golden crown/tiara, radiant golden halo aura, floating sparkles, premium gacha splash art. Negative: lowres, bad anatomy, bad hands, extra fingers, extra limbs, deformed, text, watermark, signature, multiple girls, nsfw, photorealistic, 3d render
+masterpiece, best quality, anime visual-novel character portrait, single cute girl, bust shot (head and shoulders), facing viewer, soft cel shading, clean lineart, large detailed expressive eyes, plain soft-gradient background, centered composition, game character icon, a girl named 森亞露露卡 — very long straight blonde hair with pink-and-purple gradient tips, two ahoge stray strands, crossed parted bangs, sharp upturned violet eyes (tsurime), fair skin, expressionless gentle kuudere face; wearing a black bow hairband, a gothic-cute magical-girl dress in black-white-and-purple with teardrop-shaped jewels and gold trim, a cape and pendant, black thigh-high tights (zettai ryouiki) and over-knee boots, holding a teardrop-shaped arcana magic wand; a mysterious phantom-thief genius detective, cool and aloof yet secretly warm, arcana/mystery theme; legendary rare heroine, ornate golden accents, radiant aura, floating sparkles, premium gacha splash art. Negative: lowres, bad anatomy, bad hands, extra fingers, extra limbs, deformed, text, watermark, signature, multiple girls, nsfw, photorealistic, 3d render
 ```
 
 ## 具名女將（13）
