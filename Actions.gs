@@ -14,6 +14,7 @@ const ACTION_ROUTER = {
   'attack':    actionAttack,
   'recruit':   actionRecruit,
   'develop':   actionDevelop,
+  'build':     actionBuild,
   'move':      actionMove,
   'search':    actionSearch,
   'explore':   actionExplore,
@@ -73,6 +74,7 @@ function buildView_(game) {
     playerFactionId: player ? player.id : 'F1',
     ap: player ? player.ap : 0,
     rules: RULES, unitLabel: UNIT_LABEL, unitAdv: UNIT_ADV, skills: SKILLS, abilities: ABILITIES,
+    buildTypes: BUILD_TYPES, buildKeys: BUILD_KEYS,
     factions: game.factions, territories: game.territories, chars: chars,
     items: game.items.filter(function (i) { return i.owner !== 'LOCKED'; }), // 未取得的迷宮寶物不外顯
     dungeons: game.dungeons || [], relations: relations
@@ -143,8 +145,9 @@ function actionRecruit(p) {
   const ch = ctx.ch, player = ctx.player;
   const ter = findTerritory(game, ch.loc);
   if (!ter || ter.owner !== player.id) return errorResp_('只能在自己的領地徵兵。');
-  if (ter.troops >= ter.maxTroops) return errorResp_(ter.name + ' 兵力已達上限。');
-  const add = Math.min(RULES.RECRUIT_BATCH, ter.maxTroops - ter.troops);
+  const cap = terMaxTroops(ter);
+  if (ter.troops >= cap) return errorResp_(ter.name + ' 兵力已達上限。');
+  const add = Math.min(RULES.RECRUIT_BATCH, cap - ter.troops);
   const cost = add * RULES.RECRUIT_COST_PER_TROOP;
   if (player.gold < cost) return errorResp_('銀兩不足，需要 ' + cost + '。');
 
@@ -172,6 +175,31 @@ function actionDevelop(p) {
   saveGame(game);
   return okResp_(game, '🏗️ ' + ch.name + ' 開發 ' + ter.name +
     '（收入+' + RULES.DEVELOP_INCOME_GAIN + '，兵上限+' + RULES.DEVELOP_MAXTROOPS_GAIN + '）。');
+}
+
+// ------------------------------------------
+// 建設 { charId, building } — 1 AP，升級角色所在領地的施設
+// ------------------------------------------
+function actionBuild(p) {
+  const game = loadGame(); requireNotOver_(game); requireAP_(game, 1);
+  const ctx = requirePlayerChar_(game, p.charId); requireUnacted_(ctx.ch);
+  const ch = ctx.ch, player = ctx.player;
+  const ter = findTerritory(game, ch.loc);
+  if (!ter || ter.owner !== player.id) return errorResp_('只能在自己的領地建設。');
+  const key = String(p.building || '');
+  if (BUILD_KEYS.indexOf(key) < 0) return errorResp_('未知的建築。');
+  const cur = ter[key] || 0;
+  if (cur >= RULES.BUILD_MAX_LEVEL) return errorResp_(BUILD_TYPES[key].name + ' 已達最高等級。');
+  const cost = RULES.BUILD_BASE_COST * (cur + 1);
+  if (player.gold < cost) return errorResp_('銀兩不足，需要 ' + cost + '。');
+
+  spendAP_(game, 1);
+  player.gold -= cost;
+  ter[key] = cur + 1;
+  ch.acted = true;
+  saveGame(game);
+  return okResp_(game, '🏗️ ' + ch.name + ' 於 ' + ter.name + ' 興建【' + BUILD_TYPES[key].name +
+    '】至 Lv.' + ter[key] + '（' + BUILD_TYPES[key].desc + '，花費 ' + cost + '）。');
 }
 
 // ------------------------------------------

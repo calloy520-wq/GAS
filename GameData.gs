@@ -43,7 +43,11 @@ function loadGame() {
       income: Number(r[C_TER.INCOME]) || 0,
       dev: Number(r[C_TER.DEV]) || 0,
       x: Number(r[C_TER.X]) || 0, y: Number(r[C_TER.Y]) || 0,
-      adj: String(r[C_TER.ADJ] || '').split(',').map(function (a) { return a.trim(); }).filter(String)
+      adj: String(r[C_TER.ADJ] || '').split(',').map(function (a) { return a.trim(); }).filter(String),
+      market: Number(r[C_TER.MARKET]) || 0,
+      barracks: Number(r[C_TER.BARRACKS]) || 0,
+      wall: Number(r[C_TER.WALL]) || 0,
+      tower: Number(r[C_TER.TOWER]) || 0
     };
   });
 
@@ -123,9 +127,10 @@ function saveGame(game) {
     }));
 
   writeSheet_(ss, SHEETS.TERRITORY,
-    ['ID', 'NAME', 'OWNER', 'TROOPS', 'MAX_TROOPS', 'INCOME', 'DEV', 'X', 'Y', 'ADJ'],
+    ['ID', 'NAME', 'OWNER', 'TROOPS', 'MAX_TROOPS', 'INCOME', 'DEV', 'X', 'Y', 'ADJ', 'MARKET', 'BARRACKS', 'WALL', 'TOWER'],
     game.territories.map(function (t) {
-      return [t.id, t.name, t.owner, Math.round(t.troops), t.maxTroops, t.income, t.dev, t.x, t.y, t.adj.join(',')];
+      return [t.id, t.name, t.owner, Math.round(t.troops), t.maxTroops, t.income, t.dev, t.x, t.y, t.adj.join(','),
+              t.market, t.barracks, t.wall, t.tower];
     }));
 
   writeSheet_(ss, SHEETS.CHAR,
@@ -192,6 +197,9 @@ function setRel(game, a, b, status, expire) {
   if (status !== 'war') game.diplo.push({ a: a, b: b, status: status, expire: expire || 0 });
 }
 function playerFaction(game)     { return game.factions.filter(function (f) { return f.isPlayer; })[0] || null; }
+// 施設加成後的有效收入 / 兵力上限
+function terIncome(t)    { return t.income + (t.market || 0) * RULES.MARKET_INCOME; }
+function terMaxTroops(t) { return t.maxTroops + (t.barracks || 0) * RULES.BARRACKS_MAX; }
 function territoriesOf(game, facId) { return game.territories.filter(function (t) { return t.owner === facId; }); }
 // 某領地上、指定勢力仍存活的守將
 function charAt(game, terId, facId) {

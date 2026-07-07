@@ -3,366 +3,378 @@
 <head>
 <meta charset="utf-8">
 <style>
-  :root { --bg:#11141b; --panel:#1b2030; --panel2:#242b3d; --line:#39415a; --gold:#e6b64c;
-          --text:#e8ecf5; --muted:#96a0ba; --pink:#e878a8; --green:#6fd98a; }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
-         background:var(--bg); color:var(--text); font-size:14px; }
-  #app { max-width:1040px; margin:0 auto; padding:10px; }
-  h1 { font-size:18px; margin:4px 0 8px; letter-spacing:3px; }
-  .topbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:var(--panel);
-            border:1px solid var(--line); border-radius:8px; padding:8px 12px; margin-bottom:8px; }
-  .stat { font-weight:700; } .stat span { color:var(--gold); }
-  .ap { color:var(--green); }
-  .muted { color:var(--muted); } .hint { color:var(--muted); font-size:12px; }
-  .banner { text-align:center; font-size:20px; font-weight:800; padding:10px; border-radius:8px; margin-bottom:8px; }
-  .banner.win { background:#1f3a24; color:#8ff0a4; } .banner.lose { background:#3a1f1f; color:#f08f8f; }
-  #mapWrap { position:relative; width:100%; padding-top:54%; background:var(--panel);
-             border:1px solid var(--line); border-radius:8px; overflow:hidden; }
-  #map { position:absolute; inset:0; } #lines { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
-  .ter { position:absolute; transform:translate(-50%,-50%); min-width:60px; text-align:center; cursor:pointer;
-         border:2px solid #0006; border-radius:8px; padding:3px 6px; font-size:12px; line-height:1.25;
-         box-shadow:0 2px 6px #0007; transition:transform .08s; user-select:none; }
-  .ter:hover { transform:translate(-50%,-50%) scale(1.06); }
-  .ter b { display:block; font-size:12.5px; } .ter .tr { font-size:11px; }
-  .ter .gf { font-size:10px; opacity:.95; }
-  .ter.target { outline:3px dashed #fff; }
-  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px; margin-top:8px; }
-  .sect { font-weight:700; margin-bottom:6px; letter-spacing:1px; }
-  .row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:8px; }
-  .card { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; cursor:pointer; position:relative; }
-  .card.sel { outline:2px solid var(--gold); }
-  .card.acted { opacity:.5; }
-  .card .nm { font-weight:700; font-size:15px; }
-  .card .ut { font-size:11px; padding:1px 6px; border-radius:10px; background:#0006; margin-left:4px; }
-  .card small { color:var(--muted); }
-  .bar { height:6px; background:#0007; border-radius:4px; overflow:hidden; margin:3px 0; }
-  .bar > i { display:block; height:100%; }
-  .loy > i { background:var(--pink); } .xp > i { background:var(--green); }
-  button { background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:6px;
-           padding:7px 11px; font-size:13px; cursor:pointer; }
-  button:hover:not(:disabled) { border-color:var(--gold); }
-  button:disabled { opacity:.4; cursor:not-allowed; }
-  button.primary { background:var(--gold); color:#1a1500; font-weight:700; border-color:var(--gold); }
-  button.pink { border-color:var(--pink); }
-  #log { min-height:44px; background:#0c0e14; border:1px solid var(--line); border-radius:6px;
-         padding:8px 10px; margin-top:8px; line-height:1.55; }
-  input[type=range] { flex:1; min-width:120px; }
-  .legend { display:flex; gap:10px; flex-wrap:wrap; font-size:12px; }
-  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:3px; vertical-align:-1px; }
-  .soul { font-size:12px; color:#cbd3e6; background:#0c0e14; border:1px dashed var(--line);
-          border-radius:6px; padding:6px 8px; margin-top:6px; line-height:1.5; display:none; }
-  .soul.show { display:block; }
-  .soul b { color:var(--gold); }
-  .avatar { width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
-            font-size:18px; margin-right:6px; vertical-align:middle; }
-  .itemcard { background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:12px; }
-  .tag { font-size:11px; color:var(--muted); }
+  :root{
+    --bg:#0e1017; --panel:#171c29; --panel2:#1f2536; --card:#232a3d;
+    --line:#2c3446; --line2:#3a4459; --text:#e9edf7; --muted:#8b95af;
+    --gold:#e8b84b; --blue:#4a90e2; --green:#5fcf80; --pink:#e878a8; --red:#e5675a; --purple:#a986e0;
+    --sp:10px; --r:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:
+      radial-gradient(1200px 600px at 50% -10%, #1a2133 0%, var(--bg) 60%);
+    color:var(--text);font-size:14px;line-height:1.5;
+    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;}
+  #app{max-width:1080px;margin:0 auto;padding:12px;}
+  .muted{color:var(--muted)} .tag{font-size:11px;color:var(--muted)}
+
+  /* Header */
+  .hd{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+      background:linear-gradient(180deg,#1c2334,#161b28);border:1px solid var(--line);
+      border-radius:var(--r);padding:10px 14px;margin-bottom:10px;box-shadow:0 4px 18px #0006;}
+  .hd .logo{font-size:18px;font-weight:800;letter-spacing:3px;}
+  .hd .logo small{font-size:11px;font-weight:400;color:var(--muted);letter-spacing:1px;margin-left:6px}
+  .kpi{display:flex;flex-direction:column;line-height:1.1}
+  .kpi b{font-size:17px} .kpi span{font-size:10px;color:var(--muted);letter-spacing:1px}
+  .kpi .g{color:var(--gold)} .kpi .ap{color:var(--green)}
+  .turnbar{flex:1;min-width:140px}
+  .turnbar .trk{height:8px;background:#0007;border-radius:5px;overflow:hidden;border:1px solid var(--line)}
+  .turnbar .trk>i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--gold))}
+  .spacer{flex:1}
+
+  /* Buttons */
+  .btn{background:var(--panel2);color:var(--text);border:1px solid var(--line2);border-radius:8px;
+       padding:7px 12px;font-size:13px;cursor:pointer;transition:.12s;white-space:nowrap;font-family:inherit}
+  .btn:hover:not(:disabled){border-color:var(--gold);transform:translateY(-1px)}
+  .btn:disabled{opacity:.38;cursor:not-allowed}
+  .btn.primary{background:linear-gradient(180deg,#f0c65e,#e0a838);color:#231a00;font-weight:800;border-color:#f0c65e}
+  .btn.accent{border-color:var(--pink)} .btn.sm{padding:4px 9px;font-size:12px}
+  .btn.on{outline:2px solid var(--gold)}
+
+  /* Panels */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+         padding:12px 14px;margin-bottom:10px;box-shadow:0 2px 10px #0004}
+  .ptitle{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:1px;margin-bottom:8px}
+  .ptitle .i{font-size:16px} .ptitle .sub{font-size:11px;color:var(--muted);font-weight:400}
+  .grid{display:grid;gap:8px}
+  .g-char{grid-template-columns:repeat(auto-fill,minmax(232px,1fr))}
+  .g-fac{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+  .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+
+  /* Banner */
+  .banner{text-align:center;font-size:20px;font-weight:800;padding:12px;border-radius:var(--r);margin-bottom:10px}
+  .banner.win{background:linear-gradient(180deg,#1f3f2a,#16301f);color:#9af0b0;border:1px solid #2f6b45}
+  .banner.lose{background:linear-gradient(180deg,#3f1f22,#301619);color:#f3a0a0;border:1px solid #6b3030}
+
+  /* Map */
+  #mapWrap{position:relative;width:100%;padding-top:52%;
+    background:radial-gradient(700px 380px at 50% 40%,#1c2436 0%,#131826 72%);
+    border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+  #map{position:absolute;inset:0} #lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .ter{position:absolute;transform:translate(-50%,-50%);min-width:66px;text-align:center;cursor:pointer;
+       background:var(--panel2);border:1px solid var(--line2);border-top:3px solid #888;border-radius:9px;
+       padding:3px 6px 4px;box-shadow:0 3px 8px #0008;transition:.1s;user-select:none}
+  .ter:hover{transform:translate(-50%,-50%) scale(1.07);z-index:5}
+  .ter b{display:block;font-size:12px;line-height:1.2}
+  .ter .tr{font-size:10.5px;color:#cfd6e6}
+  .ter .bld{font-size:9px;letter-spacing:-.5px}
+  .ter .gs{display:flex;justify-content:center;gap:1px;margin-top:1px}
+  .ter.sel{outline:2px solid var(--gold)} .ter.target{outline:2px dashed #fff}
+  .ter .dg{font-size:9px;color:var(--gold)}
+
+  /* Cards */
+  .card{background:var(--card);border:1px solid var(--line2);border-radius:10px;padding:9px 10px}
+  .card.sel{outline:2px solid var(--gold)} .card.acted{opacity:.5}
+  .chead{display:flex;align-items:center;gap:8px}
+  .av{border-radius:7px;overflow:hidden;background:#0c0e14;flex:none}
+  .nm{font-weight:700;font-size:15px}
+  .ulab{font-size:10px;padding:1px 7px;border-radius:10px;color:#0a0d14;font-weight:700}
+  .stat{font-size:12px;color:#cfd6e6;margin-top:2px}
+  .bar{height:6px;background:#0007;border-radius:4px;overflow:hidden;margin:2px 0}
+  .bar>i{display:block;height:100%}
+  .loy>i{background:linear-gradient(90deg,#e878a8,#f0a0c0)} .xp>i{background:linear-gradient(90deg,#5fcf80,#a0e0b0)}
+  .soul{font-size:12px;color:#cbd3e6;background:#10141e;border:1px dashed var(--line2);border-radius:8px;
+        padding:8px;margin-top:7px;line-height:1.55;display:none}
+  .soul.show{display:block} .soul b{color:var(--gold)}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;align-items:center}
+
+  /* Actions */
+  .cmdgrp{border:1px solid var(--line);border-radius:9px;padding:8px;margin-top:8px;background:#10141e}
+  .cmdgrp .lab{font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:5px}
+  input[type=range]{flex:1;min-width:120px;accent-color:var(--gold)}
+  .lvdots{display:inline-flex;gap:2px;margin-left:4px}
+  .lvdots i{width:6px;height:6px;border-radius:50%;background:#0009;display:inline-block}
+  .lvdots i.on{background:var(--gold)}
+  #log{background:#0b0e15;border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;line-height:1.6;min-height:44px}
+  .itemcard{background:var(--card);border:1px solid var(--line2);border-radius:9px;padding:7px 9px;font-size:12px;min-width:150px}
 </style>
 </head>
 <body>
 <div id="app">
-  <h1>⚔️ 諸國爭霸 <span class="hint">— 動漫女將 · 地圖征服 SLG（純 GAS · 零 AI）</span></h1>
+  <div class="hd">
+    <div class="logo">⚔️ 諸國爭霸 <small>戰略 SLG · 純 GAS</small></div>
+    <div class="turnbar">
+      <div class="tag" id="turnlab">回合 - / -</div>
+      <div class="trk"><i id="turnfill" style="width:0%"></i></div>
+    </div>
+    <div class="kpi"><b class="g" id="gold">-</b><span>銀兩</span></div>
+    <div class="kpi"><b class="ap" id="ap">-</b><span>行動點</span></div>
+    <button class="btn primary" id="btnEnd" onclick="endTurn()">結束回合 ▶</button>
+    <button class="btn" onclick="newGame()">重開</button>
+  </div>
+
   <div id="bannerSlot"></div>
-
-  <div class="topbar">
-    <div class="stat">回合 <span id="turn">-</span></div>
-    <div class="stat">銀兩 <span id="gold">-</span></div>
-    <div class="stat">行動點 <span class="ap" id="ap">-</span></div>
-    <div class="legend" id="legend"></div>
-    <div style="flex:1"></div>
-    <button class="primary" id="btnEnd" onclick="endTurn()">結束回合 ▶</button>
-    <button id="btnNew" onclick="newGame()">重開新局</button>
-  </div>
-
-  <div id="mapWrap"><svg id="lines"></svg><div id="map"></div></div>
+  <div id="log">載入中…</div>
 
   <div class="panel">
-    <div class="sect">① 妳的女將（點卡片選取，點「角色卡」看她的靈魂）</div>
-    <div class="grid" id="charList"></div>
+    <div class="ptitle"><span class="i">🗺️</span>戰況地圖<span class="sub" id="mapsub"></span>
+      <div class="spacer"></div><div class="legend" id="legend"></div></div>
+    <div id="mapWrap"><svg id="lines"></svg><div id="map"></div></div>
   </div>
 
   <div class="panel">
-    <div class="sect">② 下令</div>
-    <div class="hint" id="actHint">先選一位女將。攻擊/移動需再點地圖上的目標領地。</div>
-    <div id="actBody" style="margin-top:6px;"></div>
+    <div class="ptitle"><span class="i">🎴</span>女將<span class="sub">點卡片選取，點「角色卡」看她的靈魂</span></div>
+    <div class="grid g-char" id="charList"></div>
   </div>
 
   <div class="panel">
-    <div class="sect">🤝 外交（不耗行動點）</div>
-    <div class="hint">與 AI 勢力結盟／停戰可避免多線作戰；但 AI 不願與獨大者結盟。</div>
-    <div class="grid" id="diploList" style="margin-top:6px;"></div>
+    <div class="ptitle"><span class="i">🎯</span>指令<span class="sub" id="actHint"></span></div>
+    <div id="actBody"></div>
   </div>
 
   <div class="panel">
-    <div class="sect">🗡️ 寶庫 / 裝備（裝備不耗行動點）</div>
+    <div class="ptitle"><span class="i">🤝</span>外交<span class="sub">結盟／停戰避免多線作戰；AI 不與獨大者結盟</span></div>
+    <div class="grid g-fac" id="diploList"></div>
+  </div>
+
+  <div class="panel">
+    <div class="ptitle"><span class="i">🗡️</span>寶庫 · 裝備<span class="sub">裝備不耗行動點</span></div>
     <div class="row" id="itemList"></div>
   </div>
-
-  <div id="log">載入中…</div>
 </div>
 
 <script>
 var VIEW=null, selCharId=null, selTargetId=null, busy=false, openSoul={};
+var UCOL={infantry:'#9aa7b5',cavalry:'#e8b84b',archer:'#5fcf80',mage:'#a986e0',ninja:'#6f86d6'};
 
-function call(action, params){
+function call(action,params){
   if(busy) return; busy=true;
-  document.getElementById('log').textContent='⏳ 處理中…';
+  var el=document.getElementById('log'); el.style.opacity=.5;
   google.script.run
-    .withSuccessHandler(function(resp){
-      busy=false;
-      if(!resp||!resp.ok){ document.getElementById('log').textContent='⚠️ '+((resp&&resp.message)||'未知錯誤'); return; }
-      VIEW=resp.view; render();
-    })
-    .withFailureHandler(function(err){
-      busy=false;
-      document.getElementById('log').textContent='❌ 連線錯誤：'+err.message+'（若第一次使用，請先在 Apps Script 編輯器手動執行一次 initGame）';
-    })
-    .handleAction(Object.assign({action:action}, params||{}));
+    .withSuccessHandler(function(resp){ busy=false; el.style.opacity=1;
+      if(!resp||!resp.ok){ el.textContent='⚠️ '+((resp&&resp.message)||'未知錯誤'); return; }
+      VIEW=resp.view; render(); })
+    .withFailureHandler(function(err){ busy=false; el.style.opacity=1;
+      el.textContent='❌ 連線錯誤：'+err.message+'（第一次使用請先在 Apps Script 編輯器手動執行一次 initGame）'; })
+    .handleAction(Object.assign({action:action},params||{}));
 }
+function facOf(id){return (VIEW.factions||[]).filter(function(f){return f.id===id;})[0];}
+function terOf(id){return (VIEW.territories||[]).filter(function(t){return t.id===id;})[0];}
+function chOf(id){return (VIEW.chars||[]).filter(function(c){return c.id===id;})[0];}
+function dunOf(id){return (VIEW.dungeons||[]).filter(function(d){return d.ter===id;})[0];}
+function isMine(f){return f===VIEW.playerFactionId;}
+function uLabel(u){return VIEW.unitLabel[u]||u;}
+function terInc(t){return t.income+(t.market||0)*VIEW.rules.MARKET_INCOME;}
+function terMax(t){return t.maxTroops+(t.barracks||0)*VIEW.rules.BARRACKS_MAX;}
 
-function facOf(id){ return (VIEW.factions||[]).filter(function(f){return f.id===id;})[0]; }
-function terOf(id){ return (VIEW.territories||[]).filter(function(t){return t.id===id;})[0]; }
-function chOf(id){ return (VIEW.chars||[]).filter(function(c){return c.id===id;})[0]; }
-function itOf(id){ return (VIEW.items||[]).filter(function(i){return i.id===id;})[0]; }
-function isMine(fid){ return fid===VIEW.playerFactionId; }
-function uLabel(u){ return VIEW.unitLabel[u]||u; }
-function skName(k){ return (VIEW.skills[k]||{}).name||'—'; }
-function avatarEmoji(u){ return ({infantry:'🗡️',cavalry:'🐎',archer:'🏹',mage:'🔮',ninja:'🥷'})[u]||'⚔️'; }
-function dunOf(terId){ return (VIEW.dungeons||[]).filter(function(d){return d.ter===terId;})[0]; }
-
-// 升級版程序化像素頭像（純 SVG，零 API）。16x16 網格，多髮型/瀏海/側髮/表情/配件，
-// 依角色 ID 穩定生成專屬長相（同一角色永遠同一張臉，被俘虜也不變）。
-// 之後要換真立繪，只要把這個函式改成回傳 <img src=...> 即可。
-function pixelAvatar(id, unit, px){
-  id=String(id); var h=0,i; for(i=0;i<id.length;i++) h=(h*131+id.charCodeAt(i))>>>0;
-  function rnd(n){ h=(h*1103515245+12345)>>>0; return Math.floor(h/65536)%n; }
+// ★ 升級版程序化像素頭像（16x16，多髮型/表情/配件，依 ID 穩定生成）
+function pixelAvatar(id,unit,px){
+  id=String(id);var h=0,i;for(i=0;i<id.length;i++)h=(h*131+id.charCodeAt(i))>>>0;
+  function rnd(n){h=(h*1103515245+12345)>>>0;return Math.floor(h/65536)%n;}
   var HAIR=['#5b3a29','#2b2b3a','#caa24a','#c0455b','#3a6ea5','#7a4fa0','#d98cae','#5aa06a','#e8e8ee','#e0743a','#4a8f8f'];
-  var EYE=['#7a4fa0','#3a6ea5','#5aa06a','#c0455b','#caa24a','#40405a','#c85a2e'];
-  var SKIN=['#f6c8a0','#f1bd93','#ffd9b8'];
-  var hair=HAIR[rnd(HAIR.length)], eye=EYE[rnd(EYE.length)], skin=SKIN[rnd(SKIN.length)];
-  var hairLen=[3,5,8,11][rnd(4)], bangs=rnd(3), side=rnd(4), eyeStyle=rnd(4), mouth=rnd(3), blush=rnd(2);
-  var accPool = unit==='ninja' ? ['headband','mask','none']
-              : unit==='mage' ? ['hat','hairpin','tiara','ribbon']
-              : ['none','ribbon','hairpin','tiara','ears','goggles','none'];
-  var acc=accPool[rnd(accPool.length)];
-  var G={};
-  function set(x,y,c){ if(x>=0&&x<16&&y>=0&&y<16&&c) G[x+','+y]=c; }
-  function rw(y,x0,x1,c){ for(var x=x0;x<=x1;x++) set(x,y,c); }
-  var MC='#c85a72';
+  var EYE=['#7a4fa0','#3a6ea5','#5aa06a','#c0455b','#caa24a','#40405a','#c85a2e'];var SKIN=['#f6c8a0','#f1bd93','#ffd9b8'];
+  var hair=HAIR[rnd(HAIR.length)],eye=EYE[rnd(EYE.length)],skin=SKIN[rnd(SKIN.length)];
+  var hairLen=[3,5,8,11][rnd(4)],bangs=rnd(3),side=rnd(4),eyeStyle=rnd(4),mouth=rnd(3),blush=rnd(2);
+  var accPool=unit==='ninja'?['headband','mask','none']:unit==='mage'?['hat','hairpin','tiara','ribbon']:['none','ribbon','hairpin','tiara','ears','goggles','none'];
+  var acc=accPool[rnd(accPool.length)];var G={};
+  function set(x,y,c){if(x>=0&&x<16&&y>=0&&y<16&&c)G[x+','+y]=c;}
+  function rw(y,x0,x1,c){for(var x=x0;x<=x1;x++)set(x,y,c);}var MC='#c85a72';
   var face={3:[5,10],4:[4,11],5:[4,11],6:[4,11],7:[4,11],8:[4,11],9:[4,11],10:[5,10],11:[6,9],12:[7,8]};
-  rw(1,4,11,hair); rw(2,3,12,hair); rw(3,3,12,hair); rw(4,3,12,hair);
-  for(var yy=4; yy<=4+hairLen && yy<=13; yy++){ set(3,yy,hair); set(12,yy,hair);
-    if(hairLen>=8 && yy>=8){ set(2,yy,hair); set(13,yy,hair); } }
-  if(side===1){ for(var t=5;t<=9;t++){ set(1,t,hair);set(2,t,hair);set(13,t,hair);set(14,t,hair);} }
-  else if(side===2){ for(var p=3;p<=11;p++){ set(13,p,hair);set(14,p,hair);} }
-  else if(side===3){ set(2,10,hair);set(13,10,hair);set(2,11,hair);set(13,11,hair); }
-  for(var fy in face){ rw(Number(fy), face[fy][0], face[fy][1], skin); }
-  if(bangs===0){ rw(4,4,11,hair); }
-  else if(bangs===1){ set(4,4,hair);set(5,4,hair);set(10,4,hair);set(11,4,hair); }
-  else { rw(4,4,9,hair); set(4,5,hair); }
-  function eyeAt(ex,y){ set(ex,y,'#ffffff'); set(ex+1,y,eye); }
-  if(eyeStyle===3){ set(5,7,eye);set(6,6,eye);set(9,6,eye);set(10,7,eye); }
-  else { eyeAt(5,7); eyeAt(9,7); if(eyeStyle===1){ eyeAt(5,6); eyeAt(9,6); } }
-  if(blush){ set(4,9,'#f39ab0'); set(11,9,'#f39ab0'); }
-  if(mouth===0){ set(7,10,MC); set(8,10,MC); }
-  else if(mouth===1){ set(8,10,MC); }
-  else { set(7,10,MC); set(8,10,MC); set(7,11,'#a83a52'); }
-  if(acc==='headband'){ rw(4,3,12,'#c0455b'); set(3,4,'#8f2e40'); set(12,4,'#8f2e40'); }
-  else if(acc==='mask'){ rw(9,4,11,'#3a4a63'); rw(10,5,10,'#3a4a63'); }
-  else if(acc==='ears'){ set(3,0,hair);set(3,1,hair);set(4,1,hair);set(4,0,hair); set(12,0,hair);set(12,1,hair);set(11,1,hair);set(11,0,hair); }
-  else if(acc==='goggles'){ rw(6,4,11,'#8a6d3a'); set(6,6,'#7fd4e0'); set(9,6,'#7fd4e0'); }
-  else if(acc==='hat'){ set(7,0,'#3a2b5a');set(8,0,'#3a2b5a'); rw(1,6,9,'#3a2b5a'); rw(2,5,10,'#4a3a6a'); rw(3,3,12,'#3a2b5a'); }
-  else if(acc==='tiara'){ set(6,2,'#e6b64c');set(7,1,'#e6b64c');set(8,1,'#e6b64c');set(9,2,'#e6b64c'); set(7,2,'#fff6cc'); }
-  else if(acc==='hairpin'){ set(4,4,'#e6b64c'); set(4,5,'#ffd76a'); }
-  else if(acc==='ribbon'){ set(1,5,'#e878a8');set(2,5,'#e878a8');set(1,6,'#e878a8');set(2,6,'#c85a8a'); }
-  var r='',k,xy;
-  for(k in G){ xy=k.split(','); r+='<rect x="'+xy[0]+'" y="'+xy[1]+'" width="1.03" height="1.03" fill="'+G[k]+'"/>'; }
+  rw(1,4,11,hair);rw(2,3,12,hair);rw(3,3,12,hair);rw(4,3,12,hair);
+  for(var yy=4;yy<=4+hairLen&&yy<=13;yy++){set(3,yy,hair);set(12,yy,hair);if(hairLen>=8&&yy>=8){set(2,yy,hair);set(13,yy,hair);}}
+  if(side===1){for(var t=5;t<=9;t++){set(1,t,hair);set(2,t,hair);set(13,t,hair);set(14,t,hair);}}
+  else if(side===2){for(var p=3;p<=11;p++){set(13,p,hair);set(14,p,hair);}}
+  else if(side===3){set(2,10,hair);set(13,10,hair);set(2,11,hair);set(13,11,hair);}
+  for(var fy in face){rw(Number(fy),face[fy][0],face[fy][1],skin);}
+  if(bangs===0){rw(4,4,11,hair);}else if(bangs===1){set(4,4,hair);set(5,4,hair);set(10,4,hair);set(11,4,hair);}else{rw(4,4,9,hair);set(4,5,hair);}
+  function eyeAt(ex,y){set(ex,y,'#ffffff');set(ex+1,y,eye);}
+  if(eyeStyle===3){set(5,7,eye);set(6,6,eye);set(9,6,eye);set(10,7,eye);}else{eyeAt(5,7);eyeAt(9,7);if(eyeStyle===1){eyeAt(5,6);eyeAt(9,6);}}
+  if(blush){set(4,9,'#f39ab0');set(11,9,'#f39ab0');}
+  if(mouth===0){set(7,10,MC);set(8,10,MC);}else if(mouth===1){set(8,10,MC);}else{set(7,10,MC);set(8,10,MC);set(7,11,'#a83a52');}
+  if(acc==='headband'){rw(4,3,12,'#c0455b');set(3,4,'#8f2e40');set(12,4,'#8f2e40');}
+  else if(acc==='mask'){rw(9,4,11,'#3a4a63');rw(10,5,10,'#3a4a63');}
+  else if(acc==='ears'){set(3,0,hair);set(3,1,hair);set(4,1,hair);set(4,0,hair);set(12,0,hair);set(12,1,hair);set(11,1,hair);set(11,0,hair);}
+  else if(acc==='goggles'){rw(6,4,11,'#8a6d3a');set(6,6,'#7fd4e0');set(9,6,'#7fd4e0');}
+  else if(acc==='hat'){set(7,0,'#3a2b5a');set(8,0,'#3a2b5a');rw(1,6,9,'#3a2b5a');rw(2,5,10,'#4a3a6a');rw(3,3,12,'#3a2b5a');}
+  else if(acc==='tiara'){set(6,2,'#e6b64c');set(7,1,'#e6b64c');set(8,1,'#e6b64c');set(9,2,'#e6b64c');set(7,2,'#fff6cc');}
+  else if(acc==='hairpin'){set(4,4,'#e6b64c');set(4,5,'#ffd76a');}
+  else if(acc==='ribbon'){set(1,5,'#e878a8');set(2,5,'#e878a8');set(1,6,'#e878a8');set(2,6,'#c85a8a');}
+  var r='',k,xy;for(k in G){xy=k.split(',');r+='<rect x="'+xy[0]+'" y="'+xy[1]+'" width="1.03" height="1.03" fill="'+G[k]+'"/>';}
   return '<svg width="'+px+'" height="'+px+'" viewBox="0 0 16 16" shape-rendering="crispEdges" style="display:block">'+r+'</svg>';
 }
 
 function render(){
-  document.getElementById('turn').textContent=VIEW.turn+' / '+VIEW.turnLimit;
   var pf=facOf(VIEW.playerFactionId);
   document.getElementById('gold').textContent=pf?pf.gold:'-';
   document.getElementById('ap').textContent=VIEW.ap;
+  document.getElementById('turnlab').textContent='回合 '+VIEW.turn+' / '+VIEW.turnLimit;
+  document.getElementById('turnfill').style.width=Math.min(100,VIEW.turn/VIEW.turnLimit*100)+'%';
   document.getElementById('log').textContent=VIEW.log||'';
-  renderLegend(); renderBanner(); renderMap(); renderChars(); renderActions(); renderItems(); renderDiplo();
+  var mine=(VIEW.chars||[]).filter(function(c){return isMine(c.owner);}).length;
+  var cities=(VIEW.territories||[]).filter(function(t){return t.owner===VIEW.playerFactionId;}).length;
+  document.getElementById('mapsub').textContent='　'+cities+' 城 · '+mine+' 女將';
+  renderLegend();renderBanner();renderMap();renderChars();renderActions();renderDiplo();renderItems();
   document.getElementById('btnEnd').disabled=!!VIEW.winner;
 }
-
 function renderLegend(){
   document.getElementById('legend').innerHTML=(VIEW.factions||[]).filter(function(f){return f.id!=='F0';})
-    .map(function(f){ return '<span><span class="dot" style="background:'+f.color+'"></span>'+f.name+
-      (f.ability?'<span class="tag">('+(VIEW.abilities[f.ability]||{}).name+')</span>':'')+'</span>'; }).join('')
+    .map(function(f){return '<span><span class="dot" style="background:'+f.color+'"></span>'+f.name+'</span>';}).join('')
     +'<span><span class="dot" style="background:#9e9e9e"></span>中立</span>';
 }
 function renderBanner(){
-  var s=document.getElementById('bannerSlot');
-  if(VIEW.winner==='WIN') s.innerHTML='<div class="banner win">🎉 天下一統，霸業已成！</div>';
-  else if(VIEW.winner==='TIMEUP_A') s.innerHTML='<div class="banner win">🏯 時限已至 — 群雄之首，一方霸主！</div>';
-  else if(VIEW.winner==='TIMEUP_B') s.innerHTML='<div class="banner lose">🏳️ 時限已至 — 割據求存，未能問鼎天下</div>';
-  else if(VIEW.winner==='LOSE') s.innerHTML='<div class="banner lose">💀 勢力覆滅，再接再厲</div>';
+  var s=document.getElementById('bannerSlot');var w=VIEW.winner;
+  if(w==='WIN')s.innerHTML='<div class="banner win">🎉 天下一統，霸業已成！</div>';
+  else if(w==='TIMEUP_A')s.innerHTML='<div class="banner win">🏯 時限已至 — 群雄之首，一方霸主！</div>';
+  else if(w==='TIMEUP_B')s.innerHTML='<div class="banner lose">🏳️ 時限已至 — 割據求存，未能問鼎天下</div>';
+  else if(w==='LOSE')s.innerHTML='<div class="banner lose">💀 勢力覆滅，再接再厲</div>';
   else s.innerHTML='';
 }
-
 function renderMap(){
-  var map=document.getElementById('map'), svg=document.getElementById('lines');
-  map.innerHTML=''; var seen={}, lines='';
-  (VIEW.territories||[]).forEach(function(t){ (t.adj||[]).forEach(function(nid){
-    var k=[t.id,nid].sort().join('-'); if(seen[k])return; seen[k]=1;
-    var n=terOf(nid); if(!n)return;
-    lines+='<line x1="'+t.x+'%" y1="'+t.y+'%" x2="'+n.x+'%" y2="'+n.y+'%" stroke="#39415a" stroke-width="2"/>';
-  });});
-  svg.innerHTML=lines;
+  var map=document.getElementById('map'),svg=document.getElementById('lines');map.innerHTML='';
+  var seen={},lines='';
+  (VIEW.territories||[]).forEach(function(t){(t.adj||[]).forEach(function(nid){
+    var k=[t.id,nid].sort().join('-');if(seen[k])return;seen[k]=1;var n=terOf(nid);if(!n)return;
+    lines+='<line x1="'+t.x+'%" y1="'+t.y+'%" x2="'+n.x+'%" y2="'+n.y+'%" stroke="#2c3446" stroke-width="2"/>';
+  });});svg.innerHTML=lines;
   (VIEW.territories||[]).forEach(function(t){
     var f=facOf(t.owner)||{color:'#888'};
     var gens=(VIEW.chars||[]).filter(function(c){return c.loc===t.id;});
-    var gf=gens.length?'<div class="gf">'+gens.map(function(g){
-        return '<span style="display:inline-flex;align-items:center;gap:1px">'+pixelAvatar(g.id,g.unit,14)+g.name+'</span>';
-      }).join(' ')+'</div>':'';
-    var dg=dunOf(t.id);
-    var dgm=dg?'<div class="gf">'+(dg.cleared?'✅'+dg.name:'🗿'+dg.name+' '+dg.progress+'/'+dg.floors)+'</div>':'';
+    var gs=gens.length?'<div class="gs">'+gens.slice(0,3).map(function(g){return pixelAvatar(g.id,g.unit,16);}).join('')+'</div>':'';
+    var bld='';['market','barracks','wall','tower'].forEach(function(b){if(t[b])bld+=VIEW.buildTypes[b].icon+t[b]+' ';});
+    var bldm=bld?'<div class="bld">'+bld+'</div>':'';
+    var dg=dunOf(t.id);var dgm=dg?'<div class="dg">'+(dg.cleared?'✅':'🗿'+dg.progress+'/'+dg.floors)+'</div>':'';
     var el=document.createElement('div');
-    el.className='ter'+(selTargetId===t.id?' target':'');
-    el.style.left=t.x+'%'; el.style.top=t.y+'%'; el.style.background=f.color;
-    el.innerHTML='<b>'+t.name+'</b><div class="tr">🛡'+t.troops+'</div>'+dgm+gf;
-    el.onclick=function(){ onTerritoryClick(t.id); };
-    map.appendChild(el);
+    el.className='ter'+(selTargetId===t.id?' target':'')+(selCharId&&chOf(selCharId)&&chOf(selCharId).loc===t.id?' sel':'');
+    el.style.left=t.x+'%';el.style.top=t.y+'%';el.style.borderTopColor=f.color;
+    el.style.background='linear-gradient(180deg,'+hexA(f.color,.18)+',var(--panel2))';
+    el.innerHTML='<b>'+t.name+'</b><div class="tr">🛡'+t.troops+'</div>'+bldm+dgm+gs;
+    el.onclick=function(){onTerritoryClick(t.id);};map.appendChild(el);
   });
 }
+function hexA(hex,a){var h=hex.replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  var n=parseInt(h,16);return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';}
 
 function renderChars(){
   var mine=(VIEW.chars||[]).filter(function(c){return isMine(c.owner);});
-  document.getElementById('charList').innerHTML = mine.map(function(c){
-    var loc=terOf(c.loc); var sk=VIEW.skills[c.skill]||{};
-    var loyPct=c.loyalty, xpPct=Math.min(100,Math.round(c.exp/c.expNext*100));
-    var soulOpen=openSoul[c.id]?' show':'';
-    var eff=c.eff;
+  document.getElementById('charList').innerHTML=mine.map(function(c){
+    var loc=terOf(c.loc),sk=VIEW.skills[c.skill]||{},eff=c.eff;
+    var loy=c.loyalty,xp=Math.min(100,Math.round(c.exp/c.expNext*100)),so=openSoul[c.id]?' show':'';
     return '<div class="card'+(c.id===selCharId?' sel':'')+(c.acted?' acted':'')+'" onclick="selectChar(\''+c.id+'\')">'+
-      '<div><span class="avatar" style="background:'+ (facOf(c.owner)||{}).color +'">'+pixelAvatar(c.id,c.unit,30)+'</span>'+
-        '<span class="nm">'+c.name+'</span><span class="ut">'+uLabel(c.unit)+'</span> '+(c.acted?'<span class="tag">✔已行動</span>':'')+'</div>'+
-      '<small>Lv.'+c.level+' · 統'+eff.lead+' 武'+eff.war+' 智'+eff.int+' · 必殺「'+(sk.name||'—')+'」</small><br>'+
-      '<small>📍'+(loc?loc.name:'在野')+'</small>'+
-      '<div class="tag">好感 '+c.loyalty+'/100</div><div class="bar loy"><i style="width:'+loyPct+'%"></i></div>'+
-      '<div class="tag">經驗 '+c.exp+'/'+c.expNext+'</div><div class="bar xp"><i style="width:'+xpPct+'%"></i></div>'+
-      '<button onclick="event.stopPropagation();toggleSoul(\''+c.id+'\')" style="margin-top:4px;padding:3px 8px;font-size:12px">角色卡 ▾</button>'+
-      '<div class="soul'+soulOpen+'">'+
-        '<div style="float:left;margin:0 8px 4px 0;border:1px solid var(--line);border-radius:6px;overflow:hidden">'+pixelAvatar(c.id,c.unit,64)+'</div>'+
-        '<b>性格</b>：'+c.persona+'<br><b>說話</b>：'+c.speech+'<br><b>喜好</b>：'+c.likes+
-        '<br><b>口頭禪</b>：'+c.catch+'<br><b>背景</b>：'+c.bio+
-        '<br><span class="tag">↑ 這份「靈魂」現在驅動事件文字，未來就是 AI 的人設。</span></div>'+
+      '<div class="chead"><div class="av">'+pixelAvatar(c.id,c.unit,40)+'</div>'+
+        '<div><div><span class="nm">'+c.name+'</span> <span class="ulab" style="background:'+UCOL[c.unit]+'">'+uLabel(c.unit)+'</span></div>'+
+        '<div class="stat">Lv.'+c.level+(c.acted?' · <span class="tag">✔已行動</span>':'')+' · 📍'+(loc?loc.name:'在野')+'</div></div></div>'+
+      '<div class="stat">統 '+eff.lead+' · 武 '+eff.war+' · 智 '+eff.int+' · 必殺「'+(sk.name||'—')+'」</div>'+
+      '<div class="tag">好感 '+loy+'/100</div><div class="bar loy"><i style="width:'+loy+'%"></i></div>'+
+      '<div class="tag">經驗 '+c.exp+'/'+c.expNext+'</div><div class="bar xp"><i style="width:'+xp+'%"></i></div>'+
+      '<button class="btn sm" style="margin-top:6px" onclick="event.stopPropagation();toggleSoul(\''+c.id+'\')">角色卡 ▾</button>'+
+      '<div class="soul'+so+'"><div style="float:left;margin:0 8px 4px 0;border:1px solid var(--line2);border-radius:7px;overflow:hidden">'+pixelAvatar(c.id,c.unit,64)+'</div>'+
+        '<b>性格</b>：'+c.persona+'<br><b>說話</b>：'+c.speech+'<br><b>喜好</b>：'+c.likes+'<br><b>口頭禪</b>：'+c.catch+'<br><b>背景</b>：'+c.bio+
+        '<br><span class="tag">↑ 這份靈魂現在驅動事件，未來就是 AI 人設。</span></div>'+
     '</div>';
-  }).join('') || '<span class="hint">妳已無女將。</span>';
+  }).join('')||'<span class="muted">妳已無女將。</span>';
 }
 
 function renderActions(){
-  var body=document.getElementById('actBody'), hint=document.getElementById('actHint');
-  if(!selCharId){ body.innerHTML=''; hint.textContent='先選一位女將。攻擊/移動需再點地圖上的目標領地。'; return; }
-  var c=chOf(selCharId); if(!c){ selCharId=null; body.innerHTML=''; return; }
-  var here=terOf(c.loc), pf=facOf(VIEW.playerFactionId), tgt=terOf(selTargetId);
-  hint.innerHTML='選取：<b>'+c.name+'</b>（'+uLabel(c.unit)+'，駐 '+(here?here.name:'在野')+
-                 (here?('，守軍 '+here.troops):'')+'）　行動點剩 '+VIEW.ap;
+  var body=document.getElementById('actBody'),hint=document.getElementById('actHint');
+  if(!selCharId){body.innerHTML='<div class="muted">先選一位女將；攻擊／移動需再點地圖上的目標領地。</div>';hint.textContent='';return;}
+  var c=chOf(selCharId);if(!c){selCharId=null;body.innerHTML='';return;}
+  var here=terOf(c.loc),pf=facOf(VIEW.playerFactionId),tgt=terOf(selTargetId),onOwn=here&&here.owner===pf.id;
+  hint.innerHTML='';
+  var head='<div class="chead" style="margin-bottom:6px"><div class="av">'+pixelAvatar(c.id,c.unit,36)+'</div>'+
+    '<div><div><span class="nm">'+c.name+'</span> <span class="ulab" style="background:'+UCOL[c.unit]+'">'+uLabel(c.unit)+'</span></div>'+
+    '<div class="stat">駐 '+(here?here.name:'在野')+(here?'（守軍 '+here.troops+'）':'')+' · 行動點剩 '+VIEW.ap+'</div></div></div>';
 
-  if(c.acted){ body.innerHTML='<div class="hint">此女將本回合已行動。（談話仍可，若還有行動點）</div>'+talkBtn(c); return; }
-  if(VIEW.ap<=0){ body.innerHTML='<div class="hint">行動點用盡，請結束回合。</div>'; return; }
+  if(c.acted){ body.innerHTML=head+'<div class="muted">此女將本回合已行動。</div>'+talkGrp(c); return; }
+  if(VIEW.ap<=0){ body.innerHTML=head+'<div class="muted">行動點用盡，請結束回合。</div>'; return; }
 
-  var maxM=here?here.troops:0, def=Math.max(1,Math.floor(maxM*0.7));
-  var tgtRel = tgt && VIEW.relations[tgt.owner] ? VIEW.relations[tgt.owner].status : 'war';
-  var pactBlocked = (tgtRel==='ally'||tgtRel==='ceasefire');
-  var canAtk = tgt && here && here.adj.indexOf(tgt.id)>=0 && tgt.owner!==pf.id && !pactBlocked;
-  var canMove= tgt && here && here.adj.indexOf(tgt.id)>=0 && tgt.owner===pf.id;
-  var onOwn = here && here.owner===pf.id;
+  var maxM=here?here.troops:0,def=Math.max(1,Math.floor(maxM*0.7));
+  var rel=tgt&&VIEW.relations[tgt.owner]?VIEW.relations[tgt.owner].status:'war';
+  var blocked=(rel==='ally'||rel==='ceasefire');
+  var canAtk=tgt&&here&&here.adj.indexOf(tgt.id)>=0&&tgt.owner!==pf.id&&!blocked;
+  var canMove=tgt&&here&&here.adj.indexOf(tgt.id)>=0&&tgt.owner===pf.id;
 
-  var h='';
-  h+='<div class="row">出征兵力 <input type="range" id="march" min="1" max="'+Math.max(1,maxM)+'" value="'+def+'" oninput="document.getElementById(\'mv\').textContent=this.value"><b id="mv">'+def+'</b></div>';
-  h+='<div class="hint" style="margin:4px 0">目標：'+(tgt?('<b>'+tgt.name+'</b>'+(pactBlocked?'（'+(tgtRel==='ally'?'盟友':'停戰中')+'，需先毀約）':'')):'（點地圖選一格）')+'　兵種相剋：'+advHint(c,tgt)+'</div>';
-  h+='<div class="row">';
-  h+='<button class="primary" onclick="doAttack()"'+(canAtk?'':' disabled')+'>⚔️ 進攻'+(tgt&&canAtk?' → '+tgt.name:'')+'</button>';
-  h+='<button onclick="doMove()"'+(canMove?'':' disabled')+'>🐎 移動'+(tgt&&canMove?' → '+tgt.name:'')+'</button>';
-  h+='<button onclick="call(\'recruit\',{charId:selCharId})"'+(onOwn&&pf.gold>=VIEW.rules.RECRUIT_COST_PER_TROOP?'':' disabled')+'>🪖 徵兵</button>';
-  h+='<button onclick="call(\'develop\',{charId:selCharId})"'+(onOwn&&pf.gold>=VIEW.rules.DEVELOP_COST?'':' disabled')+'>🏗️ 開發('+VIEW.rules.DEVELOP_COST+')</button>';
-  h+='<button class="pink" onclick="call(\'search\',{charId:selCharId})"'+(onOwn&&pf.gold>=VIEW.rules.SEARCH_COST_GOLD?'':' disabled')+'>🔍 搜索在野('+VIEW.rules.SEARCH_COST_GOLD+')</button>';
-  var dg=here?dunOf(here.id):null;
-  if(dg && !dg.cleared && onOwn){
-    h+='<button class="pink" onclick="call(\'explore\',{charId:selCharId})">🗿 探索'+dg.name+'（'+dg.progress+'/'+dg.floors+'層）</button>';
+  // 軍事
+  var mil='<div class="cmdgrp"><div class="lab">⚔️ 軍事</div>'+
+    '<div class="row" style="margin-bottom:6px">出征兵力 <input type="range" id="march" min="1" max="'+Math.max(1,maxM)+'" value="'+def+'" oninput="document.getElementById(\'mv\').textContent=this.value"><b id="mv">'+def+'</b></div>'+
+    '<div class="tag" style="margin-bottom:6px">目標：'+(tgt?('<b>'+tgt.name+'</b>'+(blocked?'（'+(rel==='ally'?'盟友':'停戰中')+'，需先毀約）':'')):'（點地圖選一格）')+'　'+advHint(c,tgt)+'</div>'+
+    '<div class="row">'+
+      '<button class="btn primary" onclick="doAttack()"'+(canAtk?'':' disabled')+'>⚔️ 進攻'+(canAtk?' → '+tgt.name:'')+'</button>'+
+      '<button class="btn" onclick="doMove()"'+(canMove?'':' disabled')+'>🐎 移動'+(canMove?' → '+tgt.name:'')+'</button>'+
+      '<button class="btn" onclick="call(\'recruit\',{charId:selCharId})"'+(onOwn&&pf.gold>=VIEW.rules.RECRUIT_COST_PER_TROOP?'':' disabled')+'>🪖 徵兵</button>'+
+      '<button class="btn accent" onclick="call(\'search\',{charId:selCharId})"'+(onOwn&&pf.gold>=VIEW.rules.SEARCH_COST_GOLD?'':' disabled')+'>🔍 搜索('+VIEW.rules.SEARCH_COST_GOLD+')</button>'+
+      dgBtn(here,onOwn)+
+    '</div></div>';
+
+  // 內政
+  var pol='';
+  if(onOwn){
+    pol='<div class="cmdgrp"><div class="lab">🏛️ 內政建設（'+here.name+'）</div><div class="row">'+
+      VIEW.buildKeys.map(function(b){
+        var bt=VIEW.buildTypes[b],lv=here[b]||0,cost=VIEW.rules.BUILD_BASE_COST*(lv+1),mx=lv>=VIEW.rules.BUILD_MAX_LEVEL;
+        return '<button class="btn" onclick="call(\'build\',{charId:selCharId,building:\''+b+'\'})"'+((mx||pf.gold<cost)?' disabled':'')+' title="'+bt.desc+'">'+
+          bt.icon+bt.name+lvDots(lv)+(mx?' MAX':' '+cost)+'</button>';
+      }).join('')+
+      '</div><div class="tag" style="margin-top:5px">收入 '+terInc(here)+' · 兵力上限 '+terMax(here)+' · 城牆Lv'+(here.wall||0)+' · 塔Lv'+(here.tower||0)+'</div></div>';
   }
-  h+='</div>';
-  h+=talkBtn(c);
-  body.innerHTML=h;
+  body.innerHTML=head+mil+pol+talkGrp(c);
 }
-function talkBtn(c){
-  return '<div class="row" style="margin-top:6px"><button class="pink" onclick="call(\'talk\',{charId:\''+c.id+'\'})"'+(VIEW.ap<=0?' disabled':'')+'>💬 談話／安撫（好感+，1行動點）</button></div>';
-}
+function lvDots(lv){var s='<span class="lvdots">';for(var i=0;i<VIEW.rules.BUILD_MAX_LEVEL;i++)s+='<i class="'+(i<lv?'on':'')+'"></i>';return s+'</span>';}
+function dgBtn(here,onOwn){var dg=here?dunOf(here.id):null;
+  if(dg&&!dg.cleared&&onOwn)return '<button class="btn accent" onclick="call(\'explore\',{charId:selCharId})">🗿 探索'+dg.name+'('+dg.progress+'/'+dg.floors+')</button>';return '';}
+function talkGrp(c){return '<div class="cmdgrp"><div class="lab">💬 互動</div><button class="btn accent" onclick="call(\'talk\',{charId:\''+c.id+'\'})"'+(VIEW.ap<=0?' disabled':'')+'>💬 談話／安撫（好感+，1行動點）</button></div>';}
 function advHint(c,tgt){
-  if(!tgt) return '—';
-  var g=(VIEW.chars||[]).filter(function(x){return x.loc===tgt.id;})[0];
-  if(!g) return '守城無將';
-  var adv=VIEW.unitAdv[c.unit]||[], dadv=VIEW.unitAdv[g.unit]||[];
-  if(adv.indexOf(g.unit)>=0) return '<span style="color:var(--green)">我克'+uLabel(g.unit)+'（+30%）</span>';
-  if(dadv.indexOf(c.unit)>=0) return '<span style="color:#f08f8f">被'+uLabel(g.unit)+'剋（-20%）</span>';
-  return '守將'+uLabel(g.unit)+'（無相剋）';
-}
-
-function renderItems(){
-  document.getElementById('itemList').innerHTML=(VIEW.items||[]).map(function(i){
-    var holder=i.owner?chOf(i.owner):null;
-    var owned = holder && isMine(holder.owner);
-    var bonus=[]; if(i.war)bonus.push('武+'+i.war); if(i.lead)bonus.push('統+'+i.lead); if(i.int)bonus.push('智+'+i.int);
-    var status = holder? (owned?('裝備於 '+holder.name):('（'+ (facOf(holder.owner)||{}).name +'持有）')) : '寶庫';
-    var btn='';
-    if(!holder || owned){
-      if(holder) btn='<button style="padding:3px 8px;font-size:12px" onclick="call(\'unequip\',{itemId:\''+i.id+'\'})">卸下</button>';
-      else if(selCharId) btn='<button style="padding:3px 8px;font-size:12px" onclick="call(\'equip\',{charId:selCharId,itemId:\''+i.id+'\'})">裝備給'+ (chOf(selCharId)||{}).name +'</button>';
-    }
-    return '<div class="itemcard"><b>'+i.name+'</b> <span class="tag">'+bonus.join(' ')+'</span><br><span class="tag">'+i.desc+' · '+status+'</span><br>'+btn+'</div>';
-  }).join('');
+  if(!tgt)return '';var g=(VIEW.chars||[]).filter(function(x){return x.loc===tgt.id;})[0];
+  if(!g)return '<span class="tag">守城無將</span>';
+  var adv=VIEW.unitAdv[c.unit]||[],dadv=VIEW.unitAdv[g.unit]||[];
+  if(adv.indexOf(g.unit)>=0)return '<span style="color:var(--green)">兵種克制 +30%</span>';
+  if(dadv.indexOf(c.unit)>=0)return '<span style="color:var(--red)">兵種被剋 -20%</span>';
+  return '<span class="tag">守將'+uLabel(g.unit)+'</span>';
 }
 
 function renderDiplo(){
   var pf=facOf(VIEW.playerFactionId);
-  var others=(VIEW.factions||[]).filter(function(f){return f.id!=='F0'&&!f.isPlayer;});
-  document.getElementById('diploList').innerHTML=others.map(function(f){
-    var rel=(VIEW.relations[f.id]||{status:'war',expire:0});
+  document.getElementById('diploList').innerHTML=(VIEW.factions||[]).filter(function(f){return f.id!=='F0'&&!f.isPlayer;}).map(function(f){
+    var rel=VIEW.relations[f.id]||{status:'war',expire:0};
     var terr=(VIEW.territories||[]).filter(function(t){return t.owner===f.id;}).length;
-    var statusTxt, statusCol;
-    if(!f.alive){ statusTxt='已滅亡'; statusCol='var(--muted)'; }
-    else if(rel.status==='ally'){ statusTxt='🤝 同盟'; statusCol='var(--green)'; }
-    else if(rel.status==='ceasefire'){ statusTxt='🕊️ 停戰(至第'+rel.expire+'回)'; statusCol='var(--gold)'; }
-    else { statusTxt='⚔️ 戰爭'; statusCol='#f08f8f'; }
-    var ab=VIEW.abilities[f.ability]||{};
-    var btns='';
-    if(f.alive && !VIEW.winner){
-      if(rel.status!=='ally') btns+='<button style="padding:4px 8px;font-size:12px" onclick="call(\'ally\',{factionId:\''+f.id+'\'})"'+(pf.gold<VIEW.rules.ALLY_COST?' disabled':'')+'>結盟('+VIEW.rules.ALLY_COST+')</button> ';
-      if(rel.status==='war') btns+='<button style="padding:4px 8px;font-size:12px" onclick="call(\'ceasefire\',{factionId:\''+f.id+'\'})"'+(pf.gold<VIEW.rules.CEASEFIRE_COST?' disabled':'')+'>停戰('+VIEW.rules.CEASEFIRE_COST+')</button> ';
-      if(rel.status!=='war') btns+='<button class="pink" style="padding:4px 8px;font-size:12px" onclick="if(confirm(\'確定毀約開戰？\'))call(\'break_pact\',{factionId:\''+f.id+'\'})">毀約</button>';
+    var st,col;
+    if(!f.alive){st='已滅亡';col='var(--muted)';}
+    else if(rel.status==='ally'){st='🤝 同盟';col='var(--green)';}
+    else if(rel.status==='ceasefire'){st='🕊️ 停戰(至第'+rel.expire+'回)';col='var(--gold)';}
+    else{st='⚔️ 戰爭';col='var(--red)';}
+    var ab=VIEW.abilities[f.ability]||{},btns='';
+    if(f.alive&&!VIEW.winner){
+      if(rel.status!=='ally')btns+='<button class="btn sm" onclick="call(\'ally\',{factionId:\''+f.id+'\'})"'+(pf.gold<VIEW.rules.ALLY_COST?' disabled':'')+'>結盟('+VIEW.rules.ALLY_COST+')</button> ';
+      if(rel.status==='war')btns+='<button class="btn sm" onclick="call(\'ceasefire\',{factionId:\''+f.id+'\'})"'+(pf.gold<VIEW.rules.CEASEFIRE_COST?' disabled':'')+'>停戰('+VIEW.rules.CEASEFIRE_COST+')</button> ';
+      if(rel.status!=='war')btns+='<button class="btn sm accent" onclick="if(confirm(\'確定毀約開戰？\'))call(\'break_pact\',{factionId:\''+f.id+'\'})">毀約</button>';
     }
-    return '<div class="card" style="cursor:default"><div><span class="dot" style="background:'+f.color+'"></span><b>'+f.name+'</b> <span class="tag">'+terr+'城</span></div>'+
-      '<div style="color:'+statusCol+';font-weight:700;margin:2px 0">'+statusTxt+'</div>'+
+    return '<div class="card"><div><span class="dot" style="background:'+f.color+'"></span><b>'+f.name+'</b> <span class="tag">'+terr+'城</span></div>'+
+      '<div style="color:'+col+';font-weight:700;margin:3px 0">'+st+'</div>'+
       '<div class="tag">特色：'+(ab.name||'—')+'（'+(ab.desc||'')+'）</div>'+
-      '<div style="margin-top:5px">'+(btns||'<span class="tag">—</span>')+'</div></div>';
+      '<div style="margin-top:6px">'+(btns||'<span class="tag">—</span>')+'</div></div>';
+  }).join('');
+}
+function renderItems(){
+  document.getElementById('itemList').innerHTML=(VIEW.items||[]).map(function(i){
+    var holder=i.owner?chOf(i.owner):null,owned=holder&&isMine(holder.owner);
+    var b=[];if(i.war)b.push('武+'+i.war);if(i.lead)b.push('統+'+i.lead);if(i.int)b.push('智+'+i.int);
+    var status=holder?(owned?('裝備於 '+holder.name):('（'+(facOf(holder.owner)||{}).name+'持有）')):'寶庫';
+    var btn='';
+    if(!holder||owned){ if(holder)btn='<button class="btn sm" onclick="call(\'unequip\',{itemId:\''+i.id+'\'})">卸下</button>';
+      else if(selCharId)btn='<button class="btn sm" onclick="call(\'equip\',{charId:selCharId,itemId:\''+i.id+'\'})">裝備給'+(chOf(selCharId)||{}).name+'</button>';}
+    return '<div class="itemcard"><b>'+i.name+'</b> <span class="tag">'+b.join(' ')+'</span><br><span class="tag">'+i.desc+' · '+status+'</span><br>'+btn+'</div>';
   }).join('');
 }
 
-function toggleSoul(id){ openSoul[id]=!openSoul[id]; renderChars(); }
-function selectChar(id){ selCharId=id; selTargetId=null; render(); }
+function toggleSoul(id){openSoul[id]=!openSoul[id];renderChars();}
+function selectChar(id){selCharId=id;selTargetId=null;render();}
 function onTerritoryClick(id){
-  if(!selCharId){
-    var g=(VIEW.chars||[]).filter(function(c){return c.loc===id&&isMine(c.owner)&&!c.acted;})[0];
-    if(g) selectChar(g.id); return;
-  }
-  selTargetId=(selTargetId===id?null:id); render();
+  if(!selCharId){var g=(VIEW.chars||[]).filter(function(c){return c.loc===id&&isMine(c.owner)&&!c.acted;})[0];if(g)selectChar(g.id);return;}
+  selTargetId=(selTargetId===id?null:id);render();
 }
-function doAttack(){
-  if(!selCharId||!selTargetId) return;
-  var m=document.getElementById('march'); var march=m?parseInt(m.value,10):0;
-  var t=selTargetId; selTargetId=null;
-  call('attack',{charId:selCharId,targetId:t,marchTroops:march});
-}
-function doMove(){ if(!selCharId||!selTargetId)return; var t=selTargetId; selTargetId=null; call('move',{charId:selCharId,targetId:t}); }
-function endTurn(){ selCharId=null; selTargetId=null; call('end_turn'); }
-function newGame(){ if(!confirm('確定重開新局？現有進度將重置。'))return; selCharId=null; selTargetId=null; openSoul={}; call('new_game'); }
+function doAttack(){if(!selCharId||!selTargetId)return;var m=document.getElementById('march');var march=m?parseInt(m.value,10):0;var t=selTargetId;selTargetId=null;call('attack',{charId:selCharId,targetId:t,marchTroops:march});}
+function doMove(){if(!selCharId||!selTargetId)return;var t=selTargetId;selTargetId=null;call('move',{charId:selCharId,targetId:t});}
+function endTurn(){selCharId=null;selTargetId=null;call('end_turn');}
+function newGame(){if(!confirm('確定重開新局？現有進度將重置。'))return;selCharId=null;selTargetId=null;openSoul={};call('new_game');}
 
 call('get_state');
 </script>

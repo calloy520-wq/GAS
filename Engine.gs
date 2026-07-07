@@ -13,10 +13,10 @@ function unitMult_(atkUnit, defUnit) {
 }
 
 // 技能是否發動：基礎率 + 智謀/1000，陣營「魔導共鳴」再 +15%
-function skillFires_(game, ch) {
+function skillFires_(game, ch, extra) {
   if (!ch || !ch.skill || !SKILLS[ch.skill]) return false;
   const fac = findFaction(game, ch.owner);
-  let chance = RULES.SKILL_BASE_CHANCE + effStats(game, ch).int / 1000;
+  let chance = RULES.SKILL_BASE_CHANCE + effStats(game, ch).int / 1000 + (extra || 0);
   if (fac && fac.ability === 'arcana') chance += 0.15;
   chance = Math.min(RULES.SKILL_CHANCE_CAP, chance);
   return Math.random() < chance;
@@ -61,8 +61,10 @@ function resolveBattle_(game, attacker, fromTer, toTer, marchTroops) {
   // 守方戰力
   let defBonus = defExtra + cityBonus;
   if (defFac && defFac.ability === 'fortress' && toTer.owner !== 'F0') defBonus += 15;
-  // 守方技能（鐵壁）
-  if (defGen && skillFires_(game, defGen)) {
+  if (toTer.wall) { defBonus += toTer.wall * RULES.WALL_DEF; notes.push('🧱城牆Lv' + toTer.wall); } // 城牆
+  // 守方技能（鐵壁），魔導塔提升發動率
+  const towerBonus = (toTer.tower || 0) * RULES.TOWER_SKILL;
+  if (defGen && skillFires_(game, defGen, towerBonus)) {
     const dsk = SKILLS[defGen.skill];
     if (dsk.type === 'guard') { defBonus += dsk.power * 100; notes.push('🛡' + defGen.name + '發動「' + dsk.name + '」'); }
   }
@@ -200,8 +202,8 @@ function economyPhase_(game) {
     if (f.id === 'F0' || !f.alive) return;
     let inc = 0;
     territoriesOf(game, f.id).forEach(function (t) {
-      inc += t.income;
-      t.troops = Math.min(t.maxTroops, t.troops + RULES.TROOP_REGEN);
+      inc += terIncome(t);
+      t.troops = Math.min(terMaxTroops(t), t.troops + RULES.TROOP_REGEN);
     });
     if (f.ability === 'wealth') inc = Math.round(inc * (1 + RULES.WEALTH_BONUS)); // 蒼海貿易
     f.gold += inc;

@@ -19,7 +19,8 @@ const SHEETS = {
 
 const C_STATE = { TURN: 0, PHASE: 1, WINNER: 2, LOG: 3 };
 const C_FAC   = { ID: 0, NAME: 1, IS_PLAYER: 2, GOLD: 3, COLOR: 4, ALIVE: 5, AP: 6, ABILITY: 7 };
-const C_TER   = { ID: 0, NAME: 1, OWNER: 2, TROOPS: 3, MAX_TROOPS: 4, INCOME: 5, DEV: 6, X: 7, Y: 8, ADJ: 9 };
+const C_TER   = { ID: 0, NAME: 1, OWNER: 2, TROOPS: 3, MAX_TROOPS: 4, INCOME: 5, DEV: 6, X: 7, Y: 8, ADJ: 9,
+                  MARKET: 10, BARRACKS: 11, WALL: 12, TOWER: 13 };
 const C_CHAR  = {
   ID: 0, NAME: 1, OWNER: 2, UNIT: 3, LEVEL: 4, EXP: 5,
   LEAD: 6, WAR: 7, INT: 8, SKILL: 9, LOC: 10, ACTED: 11, ALIVE: 12, LOYALTY: 13, EQUIP: 14,
@@ -46,8 +47,20 @@ const RULES = {
   ALLY_COST: 600, CEASEFIRE_COST: 300, CEASEFIRE_TURNS: 5,
   WEALTH_BONUS: 0.20, VETERAN_BONUS: 0.50,
   // 回合限制
-  TURN_LIMIT: 40
+  TURN_LIMIT: 40,
+  // 內政建設（施設）
+  BUILD_MAX_LEVEL: 5, BUILD_BASE_COST: 200,
+  MARKET_INCOME: 12, BARRACKS_MAX: 150, WALL_DEF: 8, TOWER_SKILL: 0.05
 };
+
+// 施設種類（內政建設）
+const BUILD_TYPES = {
+  market:   { name: '市場',   icon: '🏪', desc: '每級 +12 收入' },
+  barracks: { name: '兵營',   icon: '⛺', desc: '每級 +150 兵力上限' },
+  wall:     { name: '城牆',   icon: '🧱', desc: '每級 守城防禦 +8%' },
+  tower:    { name: '魔導塔', icon: '🗼', desc: '每級 守將技能率 +5%' }
+};
+const BUILD_KEYS = ['market', 'barracks', 'wall', 'tower'];
 
 const UNIT_LABEL = { infantry: '步兵', cavalry: '騎兵', archer: '弓兵', mage: '術士', ninja: '忍者' };
 const UNIT_ADV = {
@@ -236,7 +249,8 @@ function initGame() {
     ['ID', 'NAME', 'IS_PLAYER', 'GOLD', 'COLOR', 'ALIVE', 'AP', 'ABILITY'], SEED_FACTIONS());
 
   writeSheet_(ss, SHEETS.TERRITORY,
-    ['ID', 'NAME', 'OWNER', 'TROOPS', 'MAX_TROOPS', 'INCOME', 'DEV', 'X', 'Y', 'ADJ'], SEED_TERRITORIES());
+    ['ID', 'NAME', 'OWNER', 'TROOPS', 'MAX_TROOPS', 'INCOME', 'DEV', 'X', 'Y', 'ADJ', 'MARKET', 'BARRACKS', 'WALL', 'TOWER'],
+    SEED_TERRITORIES().map(function (r) { return r.concat([0, 0, 0, 0]); }));
 
   writeSheet_(ss, SHEETS.CHAR,
     ['ID', 'NAME', 'OWNER', 'UNIT', 'LEVEL', 'EXP', 'LEAD', 'WAR', 'INT', 'SKILL',
