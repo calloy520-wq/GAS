@@ -49,13 +49,17 @@ function resolveBattle_(game, attacker, fromTer, toTer, marchTroops) {
   // 勢力能力：曙光突襲（進攻+10%）
   if (atkFac && atkFac.ability === 'vanguard') atkPower *= 1.10;
 
-  // 進攻方技能
-  let healSkill = false;
-  if (skillFires_(game, attacker)) {
-    const sk = SKILLS[attacker.skill];
-    if (sk.type === 'atk') { atkPower *= (1 + sk.power); notes.push('✨' + attacker.name + '發動「' + sk.name + '」'); }
-    else if (sk.type === 'heal') { healSkill = true; notes.push('✨' + attacker.name + '發動「' + sk.name + '」'); }
-    if (sk.ignoreCityDef) { cityBonus = 0; notes.push('（無視守城）'); }
+  // 進攻方技能：蓄力全滿保證發動且強化，否則沿用智謀機率
+  let healSkill = false, healPow = 0;
+  const atkSk = SKILLS[attacker.skill];
+  const atkFull = (attacker.charge || 0) >= RULES.CHARGE_MAX;
+  if (atkSk && (atkFull || skillFires_(game, attacker))) {
+    const pow = atkFull ? atkSk.power * RULES.CHARGE_SKILL_MULT : atkSk.power;
+    const mark = atkFull ? '⚡蓄力全滿！' : '✨';
+    if (atkSk.type === 'atk') { atkPower *= (1 + pow); notes.push(mark + attacker.name + '發動「' + atkSk.name + '」'); }
+    else if (atkSk.type === 'heal') { healSkill = true; healPow = pow; notes.push(mark + attacker.name + '發動「' + atkSk.name + '」'); }
+    if (atkSk.ignoreCityDef) { cityBonus = 0; notes.push('（無視守城）'); }
+    if (atkFull) attacker.charge = 0;
   }
 
   // 守方戰力
@@ -64,9 +68,15 @@ function resolveBattle_(game, attacker, fromTer, toTer, marchTroops) {
   if (toTer.wall) { defBonus += toTer.wall * RULES.WALL_DEF; notes.push('🧱城牆Lv' + toTer.wall); } // 城牆
   // 守方技能（鐵壁），魔導塔提升發動率
   const towerBonus = (toTer.tower || 0) * RULES.TOWER_SKILL;
-  if (defGen && skillFires_(game, defGen, towerBonus)) {
+  if (defGen) {
     const dsk = SKILLS[defGen.skill];
-    if (dsk.type === 'guard') { defBonus += dsk.power * 100; notes.push('🛡' + defGen.name + '發動「' + dsk.name + '」'); }
+    const defFull = (defGen.charge || 0) >= RULES.CHARGE_MAX;
+    if (dsk && dsk.type === 'guard' && (defFull || skillFires_(game, defGen, towerBonus))) {
+      const dpow = defFull ? dsk.power * RULES.CHARGE_SKILL_MULT : dsk.power;
+      defBonus += dpow * 100;
+      notes.push((defFull ? '⚡' : '🛡') + defGen.name + '發動「' + dsk.name + '」');
+      if (defFull) defGen.charge = 0;
+    }
   }
   let defPower = toTer.troops * (100 + defBonus) / 100 * randFactor_(0.9, 1.1);
 
@@ -74,7 +84,7 @@ function resolveBattle_(game, attacker, fromTer, toTer, marchTroops) {
   const atkRatio = atkPower / total;
 
   let atkLoss = Math.min(marchTroops, Math.round(marchTroops * (1 - atkRatio) * 0.9));
-  if (healSkill) atkLoss = Math.round(atkLoss * (1 - SKILLS[attacker.skill].power)); // 治癒減傷
+  if (healSkill) atkLoss = Math.round(atkLoss * (1 - Math.min(0.8, healPow))); // 治癒減傷
   const defLoss = Math.min(toTer.troops, Math.round(toTer.troops * atkRatio * 0.9));
   const atkSurv = marchTroops - atkLoss;
   const defSurv = toTer.troops - defLoss;
@@ -227,6 +237,35 @@ function updateAliveAndWinner_(game) {
 // 依領地數重算某勢力的行動點
 function resetAP_(game, fac) {
   fac.ap = RULES.AP_BASE + Math.floor(territoriesOf(game, fac.id).length / RULES.AP_PER_TERRITORIES);
+}
+
+// 每回合特技蓄力累積
+function chargePhase_(game) {
+  game.chars.forEach(function (c) {
+    if (c.alive) c.charge = Math.min(RULES.CHARGE_MAX, (c.charge || 0) + RULES.CHARGE_PER_TURN);
+  });
+}
+
+// 檢查玩家新達成的羈絆，回傳事件文字陣列（一次性）
+function bondEvents_(game) {
+  const player = playerFaction(game);
+  if (!player) return [];
+  const seen = (game.state.bonds || '').split(',').filter(String);
+  const out = [];
+  BONDS.forEach(function (b) {
+    if (seen.indexOf(b.id) >= 0) return;
+    const a = findChar(game, b.a), bb = findChar(game, b.b);
+    if (a && bb && a.alive && bb.alive && a.owner === player.id && bb.owner === player.id) {
+      seen.push(b.id);
+      const bt = [];
+      if (b.bonus.war) bt.push('武+' + b.bonus.war);
+      if (b.bonus.lead) bt.push('統+' + b.bonus.lead);
+      if (b.bonus.int) bt.push('智+' + b.bonus.int);
+      out.push('💞【羈絆·' + b.name + '】' + b.event + '（雙方永久 ' + bt.join(' ') + '）');
+    }
+  });
+  game.state.bonds = seen.join(',');
+  return out;
 }
 
 // 停戰到期解除（回到戰爭）

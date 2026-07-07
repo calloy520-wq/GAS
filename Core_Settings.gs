@@ -17,14 +17,14 @@ const SHEETS = {
   DIPLO:     'Diplomacy'
 };
 
-const C_STATE = { TURN: 0, PHASE: 1, WINNER: 2, LOG: 3 };
+const C_STATE = { TURN: 0, PHASE: 1, WINNER: 2, LOG: 3, BONDS: 4 };
 const C_FAC   = { ID: 0, NAME: 1, IS_PLAYER: 2, GOLD: 3, COLOR: 4, ALIVE: 5, AP: 6, ABILITY: 7 };
 const C_TER   = { ID: 0, NAME: 1, OWNER: 2, TROOPS: 3, MAX_TROOPS: 4, INCOME: 5, DEV: 6, X: 7, Y: 8, ADJ: 9,
                   MARKET: 10, BARRACKS: 11, WALL: 12, TOWER: 13 };
 const C_CHAR  = {
   ID: 0, NAME: 1, OWNER: 2, UNIT: 3, LEVEL: 4, EXP: 5,
   LEAD: 6, WAR: 7, INT: 8, SKILL: 9, LOC: 10, ACTED: 11, ALIVE: 12, LOYALTY: 13, EQUIP: 14,
-  PERSONA: 15, SPEECH: 16, LIKES: 17, CATCH: 18, BIO: 19
+  PERSONA: 15, SPEECH: 16, LIKES: 17, CATCH: 18, BIO: 19, CHARGE: 20
 };
 const C_ITEM  = { ID: 0, NAME: 1, TYPE: 2, WAR: 3, LEAD: 4, INT: 5, OWNER: 6, DESC: 7 };
 const C_DUN   = { ID: 0, NAME: 1, TER: 2, LEVEL: 3, FLOORS: 4, PROGRESS: 5, CLEARED: 6,
@@ -50,8 +50,24 @@ const RULES = {
   TURN_LIMIT: 40,
   // 內政建設（施設）
   BUILD_MAX_LEVEL: 5, BUILD_BASE_COST: 200,
-  MARKET_INCOME: 12, BARRACKS_MAX: 150, WALL_DEF: 8, TOWER_SKILL: 0.05
+  MARKET_INCOME: 12, BARRACKS_MAX: 150, WALL_DEF: 8, TOWER_SKILL: 0.05,
+  // 特技蓄力
+  CHARGE_PER_TURN: 34, CHARGE_MAX: 100, CHARGE_SKILL_MULT: 1.6
 };
+
+// ★ 女將羈絆：湊齊(同陣營且皆存活)觸發一次性事件 + 永久被動加成
+const BONDS = [
+  { id: 'b1', a: 'C1', b: 'C2',  name: '聖劍雙星', bonus: { war: 5, int: 5 },
+    event: '亞瑟莉亞與莉緹希雅並肩作戰，默契與日俱增。莉緹希雅：「哼，別扯我後腿就好……才、才不是為了妳。」' },
+  { id: 'b2', a: 'C5', b: 'C6',  name: '玄影武魂', bonus: { war: 6, lead: 4 },
+    event: '綾音與雪代一同修行，一影一刀，攻守渾然一體。雪代：「與綾音殿並肩，在下無所畏懼。」' },
+  { id: 'b3', a: 'C3', b: 'C4',  name: '緋紅主從', bonus: { lead: 5, int: 5 },
+    event: '薇歐拉始終如影隨形護衛卡蜜拉。卡蜜拉：「妳這孩子……罷了，跟緊一點。」' },
+  { id: 'b4', a: 'C9', b: 'C10', name: '獸牙義俠', bonus: { war: 8 },
+    event: '蕾娜與蓋兒不打不相識，痛飲一場後結為生死之交！「嗷——這才夠味！」' },
+  { id: 'b5', a: 'C1', b: 'C11', name: '王者之誓', bonus: { lead: 6 },
+    event: '亞瑟莉亞的理想打動了高傲的精靈女王蒂雅娜。「汝之志……本座就暫且信一回。」' }
+];
 
 // 施設種類（內政建設）
 const BUILD_TYPES = {
@@ -242,8 +258,8 @@ function genRandomChars_() {
 function initGame() {
   const ss = getOrCreateSpreadsheet_();
 
-  writeSheet_(ss, SHEETS.STATE, ['TURN', 'PHASE', 'WINNER', 'LOG'],
-    [[1, 'PLAYER', '', '亂世將起，五雄並立。招賢納士、開疆闢土，' + RULES.TURN_LIMIT + ' 回合內統一天下！']]);
+  writeSheet_(ss, SHEETS.STATE, ['TURN', 'PHASE', 'WINNER', 'LOG', 'BONDS'],
+    [[1, 'PLAYER', '', '亂世將起，五雄並立。招賢納士、開疆闢土，' + RULES.TURN_LIMIT + ' 回合內統一天下！', '']]);
 
   writeSheet_(ss, SHEETS.FACTION,
     ['ID', 'NAME', 'IS_PLAYER', 'GOLD', 'COLOR', 'ALIVE', 'AP', 'ABILITY'], SEED_FACTIONS());
@@ -254,8 +270,8 @@ function initGame() {
 
   writeSheet_(ss, SHEETS.CHAR,
     ['ID', 'NAME', 'OWNER', 'UNIT', 'LEVEL', 'EXP', 'LEAD', 'WAR', 'INT', 'SKILL',
-     'LOC', 'ACTED', 'ALIVE', 'LOYALTY', 'EQUIP', 'PERSONA', 'SPEECH', 'LIKES', 'CATCH', 'BIO'],
-    SEED_CHARS().concat(genRandomChars_()));
+     'LOC', 'ACTED', 'ALIVE', 'LOYALTY', 'EQUIP', 'PERSONA', 'SPEECH', 'LIKES', 'CATCH', 'BIO', 'CHARGE'],
+    SEED_CHARS().concat(genRandomChars_()).map(function (r) { return r.concat([randInt_(0, 66)]); }));
 
   writeSheet_(ss, SHEETS.ITEM,
     ['ID', 'NAME', 'TYPE', 'WAR', 'LEAD', 'INT', 'OWNER', 'DESC'], SEED_ITEMS());

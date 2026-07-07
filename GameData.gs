@@ -19,7 +19,8 @@ function loadGame() {
     turn:   Number(s[C_STATE.TURN]) || 1,
     phase:  String(s[C_STATE.PHASE] || 'PLAYER'),
     winner: String(s[C_STATE.WINNER] || ''),
-    log:    String(s[C_STATE.LOG] || '')
+    log:    String(s[C_STATE.LOG] || ''),
+    bonds:  String(s[C_STATE.BONDS] || '')
   };
 
   const factions = facRows.map(function (r) {
@@ -71,7 +72,8 @@ function loadGame() {
       speech: String(r[C_CHAR.SPEECH] || ''),
       likes: String(r[C_CHAR.LIKES] || ''),
       catch: String(r[C_CHAR.CATCH] || ''),
-      bio: String(r[C_CHAR.BIO] || '')
+      bio: String(r[C_CHAR.BIO] || ''),
+      charge: Number(r[C_CHAR.CHARGE]) || 0
     };
   });
 
@@ -117,8 +119,8 @@ function saveGame(game) {
   const ss = getOrCreateSpreadsheet_();
 
   writeSheet_(ss, SHEETS.STATE,
-    ['TURN', 'PHASE', 'WINNER', 'LOG'],
-    [[game.state.turn, game.state.phase, game.state.winner, game.state.log]]);
+    ['TURN', 'PHASE', 'WINNER', 'LOG', 'BONDS'],
+    [[game.state.turn, game.state.phase, game.state.winner, game.state.log, game.state.bonds || '']]);
 
   writeSheet_(ss, SHEETS.FACTION,
     ['ID', 'NAME', 'IS_PLAYER', 'GOLD', 'COLOR', 'ALIVE', 'AP', 'ABILITY'],
@@ -139,7 +141,7 @@ function saveGame(game) {
     game.chars.map(function (c) {
       return [c.id, c.name, c.owner, c.unit, c.level, Math.round(c.exp), c.lead, c.war, c.int, c.skill,
               c.loc, c.acted ? 1 : 0, c.alive ? 1 : 0, c.loyalty, c.equip,
-              c.persona, c.speech, c.likes, c.catch, c.bio];
+              c.persona, c.speech, c.likes, c.catch, c.bio, Math.round(c.charge || 0)];
     }));
 
   writeSheet_(ss, SHEETS.ITEM,
@@ -217,5 +219,18 @@ function equippedItems(game, charId) {
 function effStats(game, ch) {
   let war = ch.war, lead = ch.lead, intel = ch.int;
   equippedItems(game, ch.id).forEach(function (i) { war += i.war; lead += i.lead; intel += i.int; });
+  // 羈絆被動：夥伴同陣營且存活時，雙方獲得加成
+  activeBonds(game, ch).forEach(function (b) {
+    war += b.bonus.war || 0; lead += b.bonus.lead || 0; intel += b.bonus.int || 0;
+  });
   return { war: war, lead: lead, int: intel };
+}
+// 回傳某角色目前生效中的羈絆
+function activeBonds(game, ch) {
+  return BONDS.filter(function (b) {
+    if (b.a !== ch.id && b.b !== ch.id) return false;
+    const pid = b.a === ch.id ? b.b : b.a;
+    const p = findChar(game, pid);
+    return p && p.alive && p.owner === ch.owner;
+  });
 }

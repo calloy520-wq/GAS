@@ -82,6 +82,9 @@
   .bar{height:6px;background:#0007;border-radius:4px;overflow:hidden;margin:2px 0}
   .bar>i{display:block;height:100%}
   .loy>i{background:linear-gradient(90deg,#e878a8,#f0a0c0)} .xp>i{background:linear-gradient(90deg,#5fcf80,#a0e0b0)}
+  .cg>i{background:linear-gradient(90deg,#e8b84b,#ffd76a)}
+  .rdy{color:#231a00;background:linear-gradient(90deg,#f0c65e,#ffd76a);border-radius:8px;padding:0 6px;font-weight:800;font-size:11px}
+  .bondtag{color:var(--pink);font-size:11px}
   .soul{font-size:12px;color:#cbd3e6;background:#10141e;border:1px dashed var(--line2);border-radius:8px;
         padding:8px;margin-top:7px;line-height:1.55;display:none}
   .soul.show{display:block} .soul b{color:var(--gold)}
@@ -264,8 +267,10 @@ function renderChars(){
         '<div><div><span class="nm">'+c.name+'</span> <span class="ulab" style="background:'+UCOL[c.unit]+'">'+uLabel(c.unit)+'</span></div>'+
         '<div class="stat">Lv.'+c.level+(c.acted?' · <span class="tag">✔已行動</span>':'')+' · 📍'+(loc?loc.name:'在野')+'</div></div></div>'+
       '<div class="stat">統 '+eff.lead+' · 武 '+eff.war+' · 智 '+eff.int+' · 必殺「'+(sk.name||'—')+'」</div>'+
+      (c.bonds&&c.bonds.length?'<div class="bondtag">🔗羈絆：'+c.bonds.join('、')+'</div>':'')+
       '<div class="tag">好感 '+loy+'/100</div><div class="bar loy"><i style="width:'+loy+'%"></i></div>'+
       '<div class="tag">經驗 '+c.exp+'/'+c.expNext+'</div><div class="bar xp"><i style="width:'+xp+'%"></i></div>'+
+      '<div class="tag">蓄力 '+c.charge+'/'+VIEW.chargeMax+(c.charge>=VIEW.chargeMax?' <span class="rdy">⚡必殺就緒</span>':'')+'</div><div class="bar cg"><i style="width:'+Math.min(100,c.charge)+'%"></i></div>'+
       '<button class="btn sm" style="margin-top:6px" onclick="event.stopPropagation();toggleSoul(\''+c.id+'\')">角色卡 ▾</button>'+
       '<div class="soul'+so+'"><div style="float:left;margin:0 8px 4px 0;border:1px solid var(--line2);border-radius:7px;overflow:hidden">'+pixelAvatar(c.id,c.unit,64)+'</div>'+
         '<b>性格</b>：'+c.persona+'<br><b>說話</b>：'+c.speech+'<br><b>喜好</b>：'+c.likes+'<br><b>口頭禪</b>：'+c.catch+'<br><b>背景</b>：'+c.bio+
@@ -282,7 +287,8 @@ function renderActions(){
   hint.innerHTML='';
   var head='<div class="chead" style="margin-bottom:6px"><div class="av">'+pixelAvatar(c.id,c.unit,36)+'</div>'+
     '<div><div><span class="nm">'+c.name+'</span> <span class="ulab" style="background:'+UCOL[c.unit]+'">'+uLabel(c.unit)+'</span></div>'+
-    '<div class="stat">駐 '+(here?here.name:'在野')+(here?'（守軍 '+here.troops+'）':'')+' · 行動點剩 '+VIEW.ap+'</div></div></div>';
+    '<div class="stat">駐 '+(here?here.name:'在野')+(here?'（守軍 '+here.troops+'）':'')+' · 行動點剩 '+VIEW.ap+
+      (c.charge>=VIEW.chargeMax?' · <span class="rdy">⚡必殺就緒</span>':' · 蓄力'+c.charge+'/'+VIEW.chargeMax)+'</div></div></div>';
 
   if(c.acted){ body.innerHTML=head+'<div class="muted">此女將本回合已行動。</div>'+talkGrp(c); return; }
   if(VIEW.ap<=0){ body.innerHTML=head+'<div class="muted">行動點用盡，請結束回合。</div>'; return; }

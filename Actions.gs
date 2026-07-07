@@ -56,6 +56,8 @@ function buildView_(game) {
       lead: c.lead, war: c.war, int: c.int, eff: eff, skill: c.skill,
       loc: c.loc, acted: c.acted, loyalty: c.loyalty, equip: c.equip,
       persona: c.persona, speech: c.speech, likes: c.likes, catch: c.catch, bio: c.bio,
+      charge: c.charge || 0,
+      bonds: activeBonds(game, c).map(function (b) { return b.name; }),
       equipItems: equippedItems(game, c.id).map(function (i) { return i.id; })
     };
   });
@@ -74,7 +76,7 @@ function buildView_(game) {
     playerFactionId: player ? player.id : 'F1',
     ap: player ? player.ap : 0,
     rules: RULES, unitLabel: UNIT_LABEL, unitAdv: UNIT_ADV, skills: SKILLS, abilities: ABILITIES,
-    buildTypes: BUILD_TYPES, buildKeys: BUILD_KEYS,
+    buildTypes: BUILD_TYPES, buildKeys: BUILD_KEYS, chargeMax: RULES.CHARGE_MAX,
     factions: game.factions, territories: game.territories, chars: chars,
     items: game.items.filter(function (i) { return i.owner !== 'LOCKED'; }), // 未取得的迷宮寶物不外顯
     dungeons: game.dungeons || [], relations: relations
@@ -401,6 +403,8 @@ function actionEndTurn() {
   updateAliveAndWinner_(game);
 
   game.chars.forEach(function (c) { c.acted = false; });
+  chargePhase_(game);                         // 特技蓄力累積
+  const bondLogs = bondEvents_(game);         // 羈絆事件
   game.state.turn += 1;
   game.state.phase = 'PLAYER';
   expireCeasefires_(game);
@@ -410,10 +414,11 @@ function actionEndTurn() {
   // 回合上限：若勝負仍未定，評定結局
   if (!game.state.winner && game.state.turn > RULES.TURN_LIMIT) computeEnding_(game);
 
-  const income = territoriesOf(game, player.id).reduce(function (s, t) { return s + t.income; }, 0);
+  const income = territoriesOf(game, player.id).reduce(function (s, t) { return s + terIncome(t); }, 0);
   const left = Math.max(0, RULES.TURN_LIMIT - game.state.turn + 1);
   let summary = '📅 第 ' + game.state.turn + ' 回合（行動點 ' + player.ap + '，距天下大定剩 ' + left + ' 回合）。收入 +' + income + '。';
   if (aiLogs.length) summary += ' 敵軍動向：' + aiLogs.join(' ');
+  if (bondLogs.length) summary += ' ' + bondLogs.join(' ');
   summary += winnerSuffix_(game);
 
   saveGame(game);
