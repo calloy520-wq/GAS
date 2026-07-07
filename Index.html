@@ -181,13 +181,31 @@ function terMax(t){return t.maxTroops+(t.barracks||0)*VIEW.rules.BARRACKS_MAX;}
 //     'L2': 'https://your-cdn.example/legend_hishizuku.webp',
 //   角色 ID：具名女將 C1~C13、路人 R1~R12、傳說 L1~L3（可用「角色卡」或存檔試算表查 ID）。
 var PORTRAITS = {
-  // 'C1': '在這裡貼上亞瑟莉亞的立繪圖片URL或data URI',
+  // 具名女將
+  'C1':  'https://i.ibb.co/vvvFyg3y/33ae8ae6c28a.jpg', // 亞瑟莉亞
+  'C2':  'https://i.ibb.co/5Xyr2mhR/240a6b750038.jpg', // 莉緹希雅
+  'C3':  'https://i.ibb.co/GfcsQGn4/08075adfda3b.jpg', // 卡蜜拉
+  'C4':  'https://i.ibb.co/Q3HbD7W1/fde17c78e65d.jpg', // 薇歐拉
+  'C5':  'https://i.ibb.co/21L90NhG/e93fd13e2bd7.jpg', // 綾音
+  'C6':  'https://i.ibb.co/4np1PjMv/5d1fced29431.jpg', // 雪代
+  'C7':  'https://i.ibb.co/kgTJXnqD/8dfb8ee8e696.jpg', // 星奈
+  'C8':  'https://i.ibb.co/Z6Nb5LNm/a84c537c755e.jpg', // 澪
+  'C9':  'https://i.ibb.co/5WqYCh3J/9a281dffd86b.jpg', // 蕾娜
+  'C10': 'https://i.ibb.co/SSBMqyb/fe72c8889672.jpg',  // 蓋兒
+  'C11': 'https://i.ibb.co/jkM0sGwc/c7977b22b240.jpg', // 蒂雅娜
+  'C12': 'https://i.ibb.co/27G8bG3f/ef080ac1459a.jpg', // 芙蘭
+  'C13': 'https://i.ibb.co/vC6CbPGh/31fc78713ae0.jpg', // 巫月
+  // 傳說女將
+  'L1':  'https://i.ibb.co/dw29k73d/fbe9acce3e81.jpg', // 沙夜
+  'L2':  'https://i.ibb.co/5hyv99st/2b046b004162.jpg', // 緋雫
+  'L3':  'https://i.ibb.co/cKDP565g/89af46eff556.jpg', // 露娜
+  'L4':  'https://i.ibb.co/ycy4Nhq2/ad42166044e2.jpg', // 露卡卡
 };
 
 // 向量動漫 Q 版頭像 v2（純 SVG，零 API）。線稿描邊+瀏海投影+呆毛+臥蠶反光；傳說女將(id 以 L 開頭)加金光暈+星芒+寶石王冠。
 function pixelAvatar(id, unit, px){
   id=String(id);
-  if(PORTRAITS[id]) return '<img src="'+PORTRAITS[id]+'" width="'+px+'" height="'+px+'" alt="" style="display:block;object-fit:cover;border-radius:8px"/>'; // 有立繪就用立繪
+  if(PORTRAITS[id]) return '<img src="'+PORTRAITS[id]+'" width="'+px+'" height="'+px+'" alt="" loading="lazy" style="display:block;object-fit:cover;object-position:center top;border-radius:8px;background:#0c0e14"/>'; // 有立繪就用立繪(從上緣裁切，露臉)
   var h=0,i; for(i=0;i<id.length;i++) h=(h*131+id.charCodeAt(i))>>>0;
   function rnd(n){ h=(h*1103515245+12345)>>>0; return Math.floor(h/65536)%n; }
   var uid='av'+(h%997);
