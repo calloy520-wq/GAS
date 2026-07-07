@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --bg:#12151c; --panel:#1c2130; --panel2:#252c3d; --line:#39415a; --gold:#e6b64c; --text:#e8ecf5; --muted:#9aa4bd; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+         background:var(--bg); color:var(--text); font-size:14px; }
+  #app { max-width:1000px; margin:0 auto; padding:10px; }
+  h1 { font-size:18px; margin:4px 0 8px; letter-spacing:2px; }
+  .topbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:var(--panel);
+            border:1px solid var(--line); border-radius:8px; padding:8px 12px; margin-bottom:8px; }
+  .stat { font-weight:700; } .stat span { color:var(--gold); }
+  .muted { color:var(--muted); }
+  .banner { text-align:center; font-size:20px; font-weight:800; padding:10px; border-radius:8px; margin-bottom:8px; }
+  .banner.win { background:#1f3a24; color:#8ff0a4; } .banner.lose { background:#3a1f1f; color:#f08f8f; }
+  #mapWrap { position:relative; width:100%; padding-top:56%; background:var(--panel);
+             border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  #map { position:absolute; inset:0; }
+  #lines { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .ter { position:absolute; transform:translate(-50%,-50%); min-width:58px; text-align:center; cursor:pointer;
+         border:2px solid #0006; border-radius:8px; padding:4px 6px; font-size:12px; line-height:1.25;
+         box-shadow:0 2px 6px #0007; transition:transform .08s; user-select:none; }
+  .ter:hover { transform:translate(-50%,-50%) scale(1.06); }
+  .ter b { display:block; font-size:12.5px; }
+  .ter .tr { font-size:11px; opacity:.95; }
+  .ter.sel { outline:3px solid var(--gold); }
+  .ter.target { outline:3px dashed #fff; }
+  .gflag { font-size:10px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px; margin-top:8px; }
+  .row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .gcard { background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:6px 8px; cursor:pointer; }
+  .gcard.sel { outline:2px solid var(--gold); }
+  .gcard.acted { opacity:.45; }
+  .gcard small { color:var(--muted); }
+  button { background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:6px;
+           padding:7px 12px; font-size:13px; cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--gold); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  button.primary { background:var(--gold); color:#1a1500; font-weight:700; border-color:var(--gold); }
+  #log { min-height:44px; background:#0d0f15; border:1px solid var(--line); border-radius:6px;
+         padding:8px 10px; margin-top:8px; line-height:1.5; }
+  input[type=range] { flex:1; min-width:120px; }
+  .hint { color:var(--muted); font-size:12px; }
+  .legend { display:flex; gap:10px; flex-wrap:wrap; font-size:12px; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:3px; vertical-align:-1px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>⚔️ 諸國爭霸</h1>
+  <div id="bannerSlot"></div>
+
+  <div class="topbar">
+    <div class="stat">回合 <span id="turn">-</span></div>
+    <div class="stat">銀兩 <span id="gold">-</span></div>
+    <div class="legend" id="legend"></div>
+    <div style="flex:1"></div>
+    <button class="primary" id="btnEnd" onclick="endTurn()">結束回合 ▶</button>
+    <button id="btnNew" onclick="newGame()">重開新局</button>
+  </div>
+
+  <div id="mapWrap">
+    <svg id="lines"></svg>
+    <div id="map"></div>
+  </div>
+
+  <div class="panel" id="genPanel">
+    <div class="hint">① 選一位你的武將（藍色勢力）：</div>
+    <div class="row" id="genList" style="margin-top:6px;"></div>
+  </div>
+
+  <div class="panel" id="actPanel">
+    <div class="hint" id="actHint">② 選武將後，點地圖上的相鄰領地下令。</div>
+    <div id="actBody"></div>
+  </div>
+
+  <div id="log">載入中…</div>
+</div>
+
+<script>
+var VIEW = null;         // 後端回傳的完整視圖
+var selGeneralId = null; // 目前選取的武將
+var selTargetId = null;  // 目前選取的目標領地
+var busy = false;
+
+function call(action, params) {
+  if (busy) return;
+  busy = true;
+  document.getElementById('log').textContent = '⏳ 處理中…';
+  var payload = Object.assign({ action: action }, params || {});
+  google.script.run
+    .withSuccessHandler(function (resp) {
+      busy = false;
+      if (!resp || !resp.ok) {
+        document.getElementById('log').textContent = '⚠️ ' + ((resp && resp.message) || '未知錯誤');
+        return;
+      }
+      VIEW = resp.view;
+      render();
+    })
+    .withFailureHandler(function (err) {
+      busy = false;
+      document.getElementById('log').textContent = '❌ 連線錯誤：' + err.message +
+        '（若第一次使用，請先在 Apps Script 編輯器手動執行一次 initGame）';
+    })
+    .handleAction(payload);
+}
+
+function facOf(id) { return (VIEW.factions || []).filter(function (f){return f.id===id;})[0]; }
+function terOf(id) { return (VIEW.territories || []).filter(function (t){return t.id===id;})[0]; }
+function genOf(id) { return (VIEW.generals || []).filter(function (g){return g.id===id;})[0]; }
+function isMine(facId) { return facId === VIEW.playerFactionId; }
+
+function render() {
+  document.getElementById('turn').textContent = VIEW.turn;
+  var pf = facOf(VIEW.playerFactionId);
+  document.getElementById('gold').textContent = pf ? pf.gold : '-';
+  document.getElementById('log').textContent = VIEW.log || '';
+
+  renderLegend();
+  renderBanner();
+  renderMap();
+  renderGenerals();
+  renderActions();
+
+  var over = !!VIEW.winner;
+  document.getElementById('btnEnd').disabled = over;
+}
+
+function renderLegend() {
+  var html = (VIEW.factions || []).map(function (f) {
+    return '<span><span class="dot" style="background:'+f.color+'"></span>'+f.name+'</span>';
+  }).join('');
+  document.getElementById('legend').innerHTML = html;
+}
+
+function renderBanner() {
+  var slot = document.getElementById('bannerSlot');
+  if (VIEW.winner === 'WIN')  { slot.innerHTML = '<div class="banner win">🎉 天下一統，霸業已成！</div>'; }
+  else if (VIEW.winner === 'LOSE') { slot.innerHTML = '<div class="banner lose">💀 勢力覆滅，再接再厲</div>'; }
+  else { slot.innerHTML = ''; }
+}
+
+function renderMap() {
+  var map = document.getElementById('map');
+  var svg = document.getElementById('lines');
+  map.innerHTML = '';
+  // 相鄰連線(去重)
+  var seen = {}, linesHtml = '';
+  (VIEW.territories || []).forEach(function (t) {
+    (t.adj || []).forEach(function (nid) {
+      var key = [t.id, nid].sort().join('-');
+      if (seen[key]) return; seen[key] = 1;
+      var n = terOf(nid); if (!n) return;
+      linesHtml += '<line x1="'+t.x+'%" y1="'+t.y+'%" x2="'+n.x+'%" y2="'+n.y+'%" stroke="#39415a" stroke-width="2"/>';
+    });
+  });
+  svg.innerHTML = linesHtml;
+
+  (VIEW.territories || []).forEach(function (t) {
+    var f = facOf(t.owner) || { color:'#888', name:'?' };
+    var el = document.createElement('div');
+    el.className = 'ter' + (selTargetId===t.id?' target':'');
+    el.style.left = t.x + '%'; el.style.top = t.y + '%';
+    el.style.background = f.color;
+    // 該地武將
+    var gens = (VIEW.generals||[]).filter(function(g){return g.loc===t.id;});
+    var flag = gens.length ? '<div class="gflag">🎖️'+gens.map(function(g){return g.name;}).join('/')+'</div>' : '';
+    el.innerHTML = '<b>'+t.name+'</b><div class="tr">🛡'+t.troops+'</div>'+flag;
+    el.onclick = function(){ onTerritoryClick(t.id); };
+    map.appendChild(el);
+  });
+}
+
+function renderGenerals() {
+  var mine = (VIEW.generals||[]).filter(function(g){return isMine(g.owner);});
+  var html = mine.map(function (g) {
+    var loc = terOf(g.loc);
+    var cls = 'gcard' + (g.id===selGeneralId?' sel':'') + (g.acted?' acted':'');
+    return '<div class="'+cls+'" onclick="selectGeneral(\''+g.id+'\')">'+
+      '<b>'+g.name+'</b> '+(g.acted?'✔已行動':'')+'<br>'+
+      '<small>統'+g.lead+' 武'+g.war+' 智'+g.int+' · 📍'+(loc?loc.name:'?')+'</small></div>';
+  }).join('');
+  document.getElementById('genList').innerHTML = html || '<span class="hint">你已無武將。</span>';
+}
+
+function renderActions() {
+  var body = document.getElementById('actBody');
+  var hint = document.getElementById('actHint');
+  if (!selGeneralId) { body.innerHTML=''; hint.textContent='② 選武將後，點地圖上的相鄰領地下令。'; return; }
+  var g = genOf(selGeneralId);
+  if (!g) { selGeneralId=null; body.innerHTML=''; return; }
+  var here = terOf(g.loc);
+  var pf = facOf(VIEW.playerFactionId);
+  var acted = g.acted;
+  var costDev = VIEW.rules.DEVELOP_COST;
+
+  hint.innerHTML = '目前選取：<b>'+g.name+'</b>（駐 '+(here?here.name:'?')+'，守軍 '+(here?here.troops:0)+'）';
+
+  if (acted) { body.innerHTML = '<div class="hint" style="margin-top:6px">此武將本回合已行動。</div>'; return; }
+
+  // 出征滑桿
+  var maxMarch = here ? here.troops : 0;
+
+  var html = '';
+  html += '<div class="row" style="margin-top:8px">';
+  html += '出征兵力 <input type="range" id="march" min="1" max="'+Math.max(1,maxMarch)+'" value="'+Math.max(1,Math.floor(maxMarch*0.7))+'" oninput="document.getElementById(\'marchv\').textContent=this.value">';
+  html += '<b id="marchv">'+Math.max(1,Math.floor(maxMarch*0.7))+'</b>';
+  html += '</div>';
+  html += '<div class="hint" style="margin-top:4px">→ 選一個<b>相鄰的非我方</b>領地按「進攻」；或選相鄰<b>我方</b>領地按「移動」。</div>';
+  html += '<div class="row" style="margin-top:8px">';
+  html += '<button class="primary" onclick="doAttack()"'+(selTargetId?'':' disabled')+'>⚔️ 進攻'+(selTargetId?' → '+(terOf(selTargetId)||{}).name:'')+'</button>';
+  html += '<button onclick="doMove()"'+(selTargetId?'':' disabled')+'>🐎 移動'+(selTargetId?' → '+(terOf(selTargetId)||{}).name:'')+'</button>';
+  html += '<button onclick="call(\'recruit\',{generalId:selGeneralId})"'+(pf.gold<VIEW.rules.RECRUIT_COST_PER_TROOP? ' disabled':'')+'>🪖 就地徵兵</button>';
+  html += '<button onclick="call(\'develop\',{generalId:selGeneralId})"'+(pf.gold<costDev? ' disabled':'')+'>🏗️ 開發領地('+costDev+')</button>';
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+function selectGeneral(id) {
+  selGeneralId = id; selTargetId = null; render();
+}
+function onTerritoryClick(id) {
+  if (!selGeneralId) { // 未選武將時，點自己城裡的武將方便切換
+    var gens = (VIEW.generals||[]).filter(function(g){return g.loc===id && isMine(g.owner) && !g.acted;});
+    if (gens.length) selectGeneral(gens[0].id);
+    return;
+  }
+  selTargetId = (selTargetId===id? null : id);
+  render();
+}
+
+function doAttack() {
+  if (!selGeneralId || !selTargetId) return;
+  var m = document.getElementById('march');
+  var march = m ? parseInt(m.value,10) : 0;
+  var t = selTargetId; selTargetId = null;
+  call('attack', { generalId: selGeneralId, targetId: t, marchTroops: march });
+}
+function doMove() {
+  if (!selGeneralId || !selTargetId) return;
+  var t = selTargetId; selTargetId = null;
+  call('move', { generalId: selGeneralId, targetId: t });
+}
+function endTurn() { selGeneralId=null; selTargetId=null; call('end_turn'); }
+function newGame() {
+  if (!confirm('確定重開新局？現有進度將重置。')) return;
+  selGeneralId=null; selTargetId=null; call('new_game');
+}
+
+// 啟動
+call('get_state');
+</script>
+</body>
+</html>
