@@ -90,6 +90,12 @@
   </div>
 
   <div class="panel">
+    <div class="sect">🤝 外交（不耗行動點）</div>
+    <div class="hint">與 AI 勢力結盟／停戰可避免多線作戰；但 AI 不願與獨大者結盟。</div>
+    <div class="grid" id="diploList" style="margin-top:6px;"></div>
+  </div>
+
+  <div class="panel">
     <div class="sect">🗡️ 寶庫 / 裝備（裝備不耗行動點）</div>
     <div class="row" id="itemList"></div>
   </div>
@@ -145,12 +151,12 @@ function pixelAvatar(id,unit,px){
 }
 
 function render(){
-  document.getElementById('turn').textContent=VIEW.turn;
+  document.getElementById('turn').textContent=VIEW.turn+' / '+VIEW.turnLimit;
   var pf=facOf(VIEW.playerFactionId);
   document.getElementById('gold').textContent=pf?pf.gold:'-';
   document.getElementById('ap').textContent=VIEW.ap;
   document.getElementById('log').textContent=VIEW.log||'';
-  renderLegend(); renderBanner(); renderMap(); renderChars(); renderActions(); renderItems();
+  renderLegend(); renderBanner(); renderMap(); renderChars(); renderActions(); renderItems(); renderDiplo();
   document.getElementById('btnEnd').disabled=!!VIEW.winner;
 }
 
@@ -163,6 +169,8 @@ function renderLegend(){
 function renderBanner(){
   var s=document.getElementById('bannerSlot');
   if(VIEW.winner==='WIN') s.innerHTML='<div class="banner win">🎉 天下一統，霸業已成！</div>';
+  else if(VIEW.winner==='TIMEUP_A') s.innerHTML='<div class="banner win">🏯 時限已至 — 群雄之首，一方霸主！</div>';
+  else if(VIEW.winner==='TIMEUP_B') s.innerHTML='<div class="banner lose">🏳️ 時限已至 — 割據求存，未能問鼎天下</div>';
   else if(VIEW.winner==='LOSE') s.innerHTML='<div class="banner lose">💀 勢力覆滅，再接再厲</div>';
   else s.innerHTML='';
 }
@@ -229,13 +237,15 @@ function renderActions(){
   if(VIEW.ap<=0){ body.innerHTML='<div class="hint">行動點用盡，請結束回合。</div>'; return; }
 
   var maxM=here?here.troops:0, def=Math.max(1,Math.floor(maxM*0.7));
-  var canAtk = tgt && here && here.adj.indexOf(tgt.id)>=0 && tgt.owner!==pf.id;
+  var tgtRel = tgt && VIEW.relations[tgt.owner] ? VIEW.relations[tgt.owner].status : 'war';
+  var pactBlocked = (tgtRel==='ally'||tgtRel==='ceasefire');
+  var canAtk = tgt && here && here.adj.indexOf(tgt.id)>=0 && tgt.owner!==pf.id && !pactBlocked;
   var canMove= tgt && here && here.adj.indexOf(tgt.id)>=0 && tgt.owner===pf.id;
   var onOwn = here && here.owner===pf.id;
 
   var h='';
   h+='<div class="row">出征兵力 <input type="range" id="march" min="1" max="'+Math.max(1,maxM)+'" value="'+def+'" oninput="document.getElementById(\'mv\').textContent=this.value"><b id="mv">'+def+'</b></div>';
-  h+='<div class="hint" style="margin:4px 0">目標：'+(tgt?('<b>'+tgt.name+'</b>'):'（點地圖選一格）')+'　兵種相剋：'+advHint(c,tgt)+'</div>';
+  h+='<div class="hint" style="margin:4px 0">目標：'+(tgt?('<b>'+tgt.name+'</b>'+(pactBlocked?'（'+(tgtRel==='ally'?'盟友':'停戰中')+'，需先毀約）':'')):'（點地圖選一格）')+'　兵種相剋：'+advHint(c,tgt)+'</div>';
   h+='<div class="row">';
   h+='<button class="primary" onclick="doAttack()"'+(canAtk?'':' disabled')+'>⚔️ 進攻'+(tgt&&canAtk?' → '+tgt.name:'')+'</button>';
   h+='<button onclick="doMove()"'+(canMove?'':' disabled')+'>🐎 移動'+(tgt&&canMove?' → '+tgt.name:'')+'</button>';
@@ -275,6 +285,31 @@ function renderItems(){
       else if(selCharId) btn='<button style="padding:3px 8px;font-size:12px" onclick="call(\'equip\',{charId:selCharId,itemId:\''+i.id+'\'})">裝備給'+ (chOf(selCharId)||{}).name +'</button>';
     }
     return '<div class="itemcard"><b>'+i.name+'</b> <span class="tag">'+bonus.join(' ')+'</span><br><span class="tag">'+i.desc+' · '+status+'</span><br>'+btn+'</div>';
+  }).join('');
+}
+
+function renderDiplo(){
+  var pf=facOf(VIEW.playerFactionId);
+  var others=(VIEW.factions||[]).filter(function(f){return f.id!=='F0'&&!f.isPlayer;});
+  document.getElementById('diploList').innerHTML=others.map(function(f){
+    var rel=(VIEW.relations[f.id]||{status:'war',expire:0});
+    var terr=(VIEW.territories||[]).filter(function(t){return t.owner===f.id;}).length;
+    var statusTxt, statusCol;
+    if(!f.alive){ statusTxt='已滅亡'; statusCol='var(--muted)'; }
+    else if(rel.status==='ally'){ statusTxt='🤝 同盟'; statusCol='var(--green)'; }
+    else if(rel.status==='ceasefire'){ statusTxt='🕊️ 停戰(至第'+rel.expire+'回)'; statusCol='var(--gold)'; }
+    else { statusTxt='⚔️ 戰爭'; statusCol='#f08f8f'; }
+    var ab=VIEW.abilities[f.ability]||{};
+    var btns='';
+    if(f.alive && !VIEW.winner){
+      if(rel.status!=='ally') btns+='<button style="padding:4px 8px;font-size:12px" onclick="call(\'ally\',{factionId:\''+f.id+'\'})"'+(pf.gold<VIEW.rules.ALLY_COST?' disabled':'')+'>結盟('+VIEW.rules.ALLY_COST+')</button> ';
+      if(rel.status==='war') btns+='<button style="padding:4px 8px;font-size:12px" onclick="call(\'ceasefire\',{factionId:\''+f.id+'\'})"'+(pf.gold<VIEW.rules.CEASEFIRE_COST?' disabled':'')+'>停戰('+VIEW.rules.CEASEFIRE_COST+')</button> ';
+      if(rel.status!=='war') btns+='<button class="pink" style="padding:4px 8px;font-size:12px" onclick="if(confirm(\'確定毀約開戰？\'))call(\'break_pact\',{factionId:\''+f.id+'\'})">毀約</button>';
+    }
+    return '<div class="card" style="cursor:default"><div><span class="dot" style="background:'+f.color+'"></span><b>'+f.name+'</b> <span class="tag">'+terr+'城</span></div>'+
+      '<div style="color:'+statusCol+';font-weight:700;margin:2px 0">'+statusTxt+'</div>'+
+      '<div class="tag">特色：'+(ab.name||'—')+'（'+(ab.desc||'')+'）</div>'+
+      '<div style="margin-top:5px">'+(btns||'<span class="tag">—</span>')+'</div></div>';
   }).join('');
 }
 

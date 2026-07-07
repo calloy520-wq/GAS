@@ -118,6 +118,8 @@ function resolveBattle_(game, attacker, fromTer, toTer, marchTroops) {
 // ------------------------------------------
 function expForNext_(level) { return level * 100; }
 function gainExp_(game, ch, amount, onLog) {
+  const fac = findFaction(game, ch.owner);
+  if (fac && fac.ability === 'veteran') amount = Math.round(amount * (1 + RULES.VETERAN_BONUS)); // 白狼精兵
   ch.exp += amount;
   let ups = 0;
   while (ch.exp >= expForNext_(ch.level)) {
@@ -201,6 +203,7 @@ function economyPhase_(game) {
       inc += t.income;
       t.troops = Math.min(t.maxTroops, t.troops + RULES.TROOP_REGEN);
     });
+    if (f.ability === 'wealth') inc = Math.round(inc * (1 + RULES.WEALTH_BONUS)); // 蒼海貿易
     f.gold += inc;
   });
 }
@@ -224,6 +227,27 @@ function resetAP_(game, fac) {
   fac.ap = RULES.AP_BASE + Math.floor(territoriesOf(game, fac.id).length / RULES.AP_PER_TERRITORIES);
 }
 
+// 停戰到期解除（回到戰爭）
+function expireCeasefires_(game) {
+  game.diplo = (game.diplo || []).filter(function (d) {
+    return !(d.status === 'ceasefire' && d.expire && game.state.turn >= d.expire);
+  });
+}
+
+// 回合上限時的結局評定（勝負未定時呼叫）
+function computeEnding_(game) {
+  const player = playerFaction(game);
+  if (!player || !player.alive) { game.state.winner = 'LOSE'; return; }
+  const playerCount = territoriesOf(game, player.id).length;
+  let maxOther = 0;
+  game.factions.forEach(function (f) {
+    if (f.id === 'F0' || f.isPlayer || !f.alive) return;
+    const c = territoriesOf(game, f.id).length;
+    if (c > maxOther) maxOther = c;
+  });
+  game.state.winner = (playerCount >= maxOther) ? 'TIMEUP_A' : 'TIMEUP_B';
+}
+
 // ------------------------------------------
 // ★ 敵方 AI 回合（規則式，非 LLM）
 // ------------------------------------------
@@ -243,6 +267,9 @@ function aiPhase_(game) {
       here.adj.forEach(function (nid) {
         const nt = findTerritory(game, nid);
         if (!nt || nt.owner === fac.id) return;
+        // 尊重同盟/停戰：不攻打盟友或停戰對象
+        const rel = relStatus(game, fac.id, nt.owner);
+        if (rel === 'ally' || rel === 'ceasefire') return;
         if (here.troops > nt.troops * 1.15 && here.troops > 200) {
           if (!best || nt.troops < best.troops) best = nt;
         }

@@ -12,6 +12,7 @@ function loadGame() {
   const chRows    = readSheet_(ss, SHEETS.CHAR);
   const itRows    = readSheet_(ss, SHEETS.ITEM);
   const dunRows   = readSheet_(ss, SHEETS.DUNGEON);
+  const dipRows   = readSheet_(ss, SHEETS.DIPLO);
 
   const s = stateRows[0] || [1, 'PLAYER', '', ''];
   const state = {
@@ -96,8 +97,16 @@ function loadGame() {
     };
   });
 
+  const diplo = dipRows.map(function (r) {
+    return {
+      a: String(r[C_DIPLO.FA]), b: String(r[C_DIPLO.FB]),
+      status: String(r[C_DIPLO.STATUS] || 'war'),
+      expire: Number(r[C_DIPLO.EXPIRE]) || 0
+    };
+  });
+
   return { state: state, factions: factions, territories: territories,
-           chars: chars, items: items, dungeons: dungeons };
+           chars: chars, items: items, dungeons: dungeons, diplo: diplo };
 }
 
 function saveGame(game) {
@@ -140,6 +149,9 @@ function saveGame(game) {
       return [d.id, d.name, d.ter, d.level, d.floors, d.progress, d.cleared ? 1 : 0,
               d.monster, d.rewardGold, d.rewardItem, d.recruit ? 1 : 0];
     }));
+
+  writeSheet_(ss, SHEETS.DIPLO, ['FA', 'FB', 'STATUS', 'EXPIRE'],
+    (game.diplo || []).map(function (d) { return [d.a, d.b, d.status, d.expire]; }));
 }
 
 function readSheet_(ss, name) {
@@ -158,6 +170,27 @@ function findFaction(game, id)   { return game.factions.filter(function (f) { re
 function findItem(game, id)      { return game.items.filter(function (i) { return i.id === id; })[0] || null; }
 function findDungeon(game, id)   { return (game.dungeons || []).filter(function (d) { return d.id === id; })[0] || null; }
 function dungeonAt(game, terId)  { return (game.dungeons || []).filter(function (d) { return d.ter === terId; })[0] || null; }
+
+// ------------------------------------------
+// 外交關係（對稱，未列於表者預設 war）
+// ------------------------------------------
+function relEntry(game, a, b) {
+  return (game.diplo || []).filter(function (d) {
+    return (d.a === a && d.b === b) || (d.a === b && d.b === a);
+  })[0] || null;
+}
+function relStatus(game, a, b) {
+  if (a === b) return 'self';
+  if (a === 'F0' || b === 'F0') return 'neutral';
+  const e = relEntry(game, a, b);
+  return e ? e.status : 'war';
+}
+function setRel(game, a, b, status, expire) {
+  game.diplo = (game.diplo || []).filter(function (d) {
+    return !((d.a === a && d.b === b) || (d.a === b && d.b === a));
+  });
+  if (status !== 'war') game.diplo.push({ a: a, b: b, status: status, expire: expire || 0 });
+}
 function playerFaction(game)     { return game.factions.filter(function (f) { return f.isPlayer; })[0] || null; }
 function territoriesOf(game, facId) { return game.territories.filter(function (t) { return t.owner === facId; }); }
 // 某領地上、指定勢力仍存活的守將

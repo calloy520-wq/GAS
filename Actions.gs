@@ -20,6 +20,9 @@ const ACTION_ROUTER = {
   'talk':      actionTalk,
   'equip':     actionEquip,
   'unequip':   actionUnequip,
+  'ally':      actionProposeAlly,
+  'ceasefire': actionProposeCeasefire,
+  'break_pact':actionBreakPact,
   'end_turn':  actionEndTurn,
   'new_game':  actionNewGame
 };
@@ -55,14 +58,24 @@ function buildView_(game) {
       equipItems: equippedItems(game, c.id).map(function (i) { return i.id; })
     };
   });
+  // 玩家對各勢力的外交關係（給前端顯示與判斷）
+  const relations = {};
+  if (player) {
+    game.factions.forEach(function (f) {
+      if (f.id === 'F0' || f.isPlayer) return;
+      const e = relEntry(game, player.id, f.id);
+      relations[f.id] = { status: relStatus(game, player.id, f.id), expire: e ? e.expire : 0 };
+    });
+  }
   return {
     turn: game.state.turn, phase: game.state.phase, winner: game.state.winner, log: game.state.log,
+    turnLimit: RULES.TURN_LIMIT,
     playerFactionId: player ? player.id : 'F1',
     ap: player ? player.ap : 0,
     rules: RULES, unitLabel: UNIT_LABEL, unitAdv: UNIT_ADV, skills: SKILLS, abilities: ABILITIES,
     factions: game.factions, territories: game.territories, chars: chars,
     items: game.items.filter(function (i) { return i.owner !== 'LOCKED'; }), // 未取得的迷宮寶物不外顯
-    dungeons: game.dungeons || []
+    dungeons: game.dungeons || [], relations: relations
   };
 }
 
@@ -106,6 +119,9 @@ function actionAttack(p) {
   if (from.owner !== ctx.player.id) return errorResp_('你不再擁有出兵領地。');
   if (to.owner === ctx.player.id) return errorResp_('不能攻打自己的領地。');
   if (from.adj.indexOf(to.id) < 0) return errorResp_(to.name + ' 與 ' + from.name + ' 不相鄰。');
+  const rel = relStatus(game, ctx.player.id, to.owner);
+  if (rel === 'ally') return errorResp_('與該勢力結盟中，需先「毀約」才能開戰。');
+  if (rel === 'ceasefire') return errorResp_('與該勢力停戰中，需先「毀約」才能開戰。');
 
   const march = Math.floor(Number(p.marchTroops) || 0);
   if (march <= 0) return errorResp_('請指定出征兵力。');
@@ -292,7 +308,61 @@ function actionUnequip(p) {
 }
 
 // ------------------------------------------
-// 結束回合 → AI 行動 → 收入/回補 → 新回合、重置 AP 與行動狀態
+// 外交：結盟 { factionId }（花銀兩，AI 不願與獨大者結盟）
+// ------------------------------------------
+function actionProposeAlly(p) {
+  const game = loadGame(); requireNotOver_(game);
+  const player = playerFaction(game);
+  const target = findFaction(game, p.factionId);
+  if (!target || target.id === 'F0' || target.isPlayer || !target.alive) return errorResp_('無效的結盟對象。');
+  if (relStatus(game, player.id, target.id) === 'ally') return errorResp_('雙方已是盟友。');
+  if (player.gold < RULES.ALLY_COST) return errorResp_('銀兩不足，結盟需 ' + RULES.ALLY_COST + '。');
+
+  const mine = territoriesOf(game, player.id).length;
+  const theirs = territoriesOf(game, target.id).length;
+  if (mine > theirs * 1.5) return errorResp_(target.name + ' 忌憚妳的勢力過大，拒絕結盟。（先別擴張太快，或改提停戰）');
+
+  player.gold -= RULES.ALLY_COST;
+  setRel(game, player.id, target.id, 'ally', 0);
+  saveGame(game);
+  return okResp_(game, '🤝 與【' + target.name + '】締結同盟！雙方互不侵犯（花費 ' + RULES.ALLY_COST + '）。');
+}
+
+// 外交：停戰 { factionId }（較易成功，維持數回合）
+function actionProposeCeasefire(p) {
+  const game = loadGame(); requireNotOver_(game);
+  const player = playerFaction(game);
+  const target = findFaction(game, p.factionId);
+  if (!target || target.id === 'F0' || target.isPlayer || !target.alive) return errorResp_('無效的停戰對象。');
+  const cur = relStatus(game, player.id, target.id);
+  if (cur === 'ally') return errorResp_('雙方已是盟友，無需停戰。');
+  if (player.gold < RULES.CEASEFIRE_COST) return errorResp_('銀兩不足，停戰需 ' + RULES.CEASEFIRE_COST + '。');
+
+  const mine = territoriesOf(game, player.id).length;
+  const theirs = territoriesOf(game, target.id).length;
+  if (mine > theirs * 2.2) return errorResp_(target.name + ' 認為妳勢不可擋，拒絕停戰、決意死戰。');
+
+  player.gold -= RULES.CEASEFIRE_COST;
+  const expire = game.state.turn + RULES.CEASEFIRE_TURNS;
+  setRel(game, player.id, target.id, 'ceasefire', expire);
+  saveGame(game);
+  return okResp_(game, '🕊️ 與【' + target.name + '】停戰 ' + RULES.CEASEFIRE_TURNS + ' 回合（至第 ' + expire + ' 回合）。');
+}
+
+// 外交：毀約 { factionId } → 恢復戰爭（免費）
+function actionBreakPact(p) {
+  const game = loadGame(); requireNotOver_(game);
+  const player = playerFaction(game);
+  const target = findFaction(game, p.factionId);
+  if (!target) return errorResp_('無效對象。');
+  if (relStatus(game, player.id, target.id) === 'war') return errorResp_('雙方本就處於戰爭狀態。');
+  setRel(game, player.id, target.id, 'war', 0);
+  saveGame(game);
+  return okResp_(game, '⚔️ 撕毀與【' + target.name + '】的盟約，恢復戰爭狀態。');
+}
+
+// ------------------------------------------
+// 結束回合 → AI 行動 → 收入/回補 → 停戰到期 → 新回合、重置 AP；回合上限判定結局
 // ------------------------------------------
 function actionEndTurn() {
   const game = loadGame(); requireNotOver_(game);
@@ -305,11 +375,16 @@ function actionEndTurn() {
   game.chars.forEach(function (c) { c.acted = false; });
   game.state.turn += 1;
   game.state.phase = 'PLAYER';
+  expireCeasefires_(game);
   const player = playerFaction(game);
   resetAP_(game, player);
 
+  // 回合上限：若勝負仍未定，評定結局
+  if (!game.state.winner && game.state.turn > RULES.TURN_LIMIT) computeEnding_(game);
+
   const income = territoriesOf(game, player.id).reduce(function (s, t) { return s + t.income; }, 0);
-  let summary = '📅 第 ' + game.state.turn + ' 回合（行動點 ' + player.ap + '）。本回合收入 +' + income + '。';
+  const left = Math.max(0, RULES.TURN_LIMIT - game.state.turn + 1);
+  let summary = '📅 第 ' + game.state.turn + ' 回合（行動點 ' + player.ap + '，距天下大定剩 ' + left + ' 回合）。收入 +' + income + '。';
   if (aiLogs.length) summary += ' 敵軍動向：' + aiLogs.join(' ');
   summary += winnerSuffix_(game);
 
@@ -318,7 +393,9 @@ function actionEndTurn() {
 }
 
 function winnerSuffix_(game) {
-  if (game.state.winner === 'WIN')  return ' 🎉🎉 天下一統，霸業已成！';
-  if (game.state.winner === 'LOSE') return ' 💀 妳的勢力已被消滅……';
+  if (game.state.winner === 'WIN')      return ' 🎉🎉 天下一統，霸業已成！';
+  if (game.state.winner === 'TIMEUP_A') return ' 🏯 時限已至——妳雄踞群雄之首，成就一方霸主！';
+  if (game.state.winner === 'TIMEUP_B') return ' 🏳️ 時限已至——妳偏安一隅，割據求存，未能問鼎天下。';
+  if (game.state.winner === 'LOSE')     return ' 💀 妳的勢力已被消滅……';
   return '';
 }
