@@ -12,7 +12,7 @@
   *{box-sizing:border-box}
   body{margin:0;background:
       radial-gradient(1200px 600px at 50% -10%, #1a2133 0%, var(--bg) 60%);
-    color:var(--text);font-size:14px;line-height:1.5;
+    color:var(--text);font-size:14px;line-height:1.5;overflow-x:hidden;
     font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;}
   #app{max-width:1080px;margin:0 auto;padding:12px;}
   .muted{color:var(--muted)} .tag{font-size:11px;color:var(--muted)}
@@ -56,7 +56,8 @@
   .banner.lose{background:linear-gradient(180deg,#3f1f22,#301619);color:#f3a0a0;border:1px solid #6b3030}
 
   /* Map */
-  #mapWrap{position:relative;width:100%;padding-top:52%;
+  .mapscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--r)}
+  #mapWrap{position:relative;width:100%;min-width:600px;padding-top:52%;
     background:radial-gradient(700px 380px at 50% 40%,#1c2436 0%,#131826 72%);
     border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
   #map{position:absolute;inset:0} #lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
@@ -108,6 +109,20 @@
   .lvdots i.on{background:var(--gold)}
   #log{background:#0b0e15;border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;line-height:1.6;min-height:44px}
   .itemcard{background:var(--card);border:1px solid var(--line2);border-radius:9px;padding:7px 9px;font-size:12px;min-width:150px}
+  /* 手機優化 */
+  @media (max-width:640px){
+    #app{padding:8px}
+    .panel{padding:10px 11px}
+    .hd{gap:8px;padding:8px 10px}
+    .hd .logo{font-size:15px;letter-spacing:1px} .hd .logo small{display:none}
+    .kpi b{font-size:15px}
+    .turnbar{order:5;flex-basis:100%;min-width:0}
+    .grid{gap:7px}
+    .ter b{font-size:12.5px} .ter .tr{font-size:11px}
+    .mapscroll::after{content:'← 左右滑動看全地圖 →';display:block;text-align:center;color:var(--muted);font-size:11px;padding:4px 0 0}
+    .btn{padding:8px 12px}
+    #log{font-size:13px}
+  }
 </style>
 </head>
 <body>
@@ -142,7 +157,7 @@
   <div class="panel">
     <div class="ptitle"><span class="i">🗺️</span>戰況地圖<span class="sub" id="mapsub"></span>
       <div class="spacer"></div><div class="legend" id="legend"></div></div>
-    <div id="mapWrap"><svg id="lines"></svg><div id="map"></div></div>
+    <div class="mapscroll"><div id="mapWrap"><svg id="lines"></svg><div id="map"></div></div></div>
     <div class="tag" style="margin-top:7px">圖示：🛡兵力　🏪市場 ⛺兵營 🧱城牆 🗼魔導塔（數字=等級）　🗿迷宮(未通關) ✅已通關　·　點領地上的女將可快速選取</div>
   </div>
 
