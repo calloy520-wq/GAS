@@ -22,104 +22,121 @@ function skillFires_(game, ch, extra) {
   return Math.random() < chance;
 }
 
+// 部隊：主將 + 同城未行動副將（上限 MAX_PARTY）
+function buildParty_(game, leader, terId) {
+  const party = [leader];
+  game.chars.forEach(function (c) {
+    if (party.length >= RULES.MAX_PARTY) return;
+    if (c.alive && c.owner === leader.owner && c.loc === terId && !c.acted && c.id !== leader.id) party.push(c);
+  });
+  return party;
+}
+// 某領地上該勢力所有存活守將
+function defendersAt_(game, terId, facId) {
+  return game.chars.filter(function (c) { return c.alive && c.loc === terId && c.owner === facId; });
+}
+
 // ------------------------------------------
-// ★ 戰鬥結算
-//   attacker: 進攻角色；fromTer: 出兵地；toTer: 目標地；marchTroops: 出征兵力
-//   直接改動 game，回傳結算敘述字串。
+// ★ 戰鬥結算（部隊制：多位女將組隊出戰／守城）
+//   attacker: 主將；fromTer: 出兵地；toTer: 目標地；marchTroops: 出征兵力
 // ------------------------------------------
 function resolveBattle_(game, attacker, fromTer, toTer, marchTroops) {
   const atkFac = findFaction(game, attacker.owner);
-  const defGen = charAt(game, toTer.id, toTer.owner);
   const defFac = findFaction(game, toTer.owner);
-  const atkEff = effStats(game, attacker);
+  const party = buildParty_(game, attacker, fromTer.id);          // 進攻部隊
+  const defenders = defendersAt_(game, toTer.id, toTer.owner);    // 守城部隊
+  const defLead = defenders[0] || null;
 
   let notes = [];
 
-  // 基礎戰力
-  let atkPower = marchTroops * (100 + atkEff.war) / 100 * randFactor_(0.9, 1.1);
+  // 部隊有效武力：主將全額 + 副將各半
+  let warTotal = effStats(game, attacker).war;
+  party.slice(1).forEach(function (s) { warTotal += Math.round(effStats(game, s).war * 0.5); });
+  let atkPower = marchTroops * (100 + warTotal) / 100 * randFactor_(0.9, 1.1);
   let cityBonus = RULES.CITY_DEFENSE_BONUS;
-  let defExtra = defGen ? effStats(game, defGen).lead : 0;
 
-  // 兵種相剋
-  const uMult = defGen ? unitMult_(attacker.unit, defGen.unit) : 1.0;
+  // 兵種相剋（主將 vs 主守將）
+  const uMult = defLead ? unitMult_(attacker.unit, defLead.unit) : 1.0;
   atkPower *= uMult;
-  if (uMult > 1) notes.push('兵種克制！' + UNIT_LABEL[attacker.unit] + '剋' + UNIT_LABEL[defGen.unit]);
-  else if (uMult < 1) notes.push('兵種被剋…' + UNIT_LABEL[defGen.unit] + '剋' + UNIT_LABEL[attacker.unit]);
+  if (uMult > 1) notes.push('兵種克制！' + UNIT_LABEL[attacker.unit] + '剋' + UNIT_LABEL[defLead.unit]);
+  else if (uMult < 1) notes.push('兵種被剋…' + UNIT_LABEL[defLead.unit] + '剋' + UNIT_LABEL[attacker.unit]);
 
-  // 勢力能力：曙光突襲（進攻+10%）
   if (atkFac && atkFac.ability === 'vanguard') atkPower *= 1.10;
 
-  // 進攻方技能：蓄力全滿保證發動且強化，否則沿用智謀機率
+  // 進攻部隊技能：每位可各自發動（蓄力滿保證+強化，否則機率），效果疊加
   let healSkill = false, healPow = 0;
-  const atkSk = SKILLS[attacker.skill];
-  const atkFull = (attacker.charge || 0) >= RULES.CHARGE_MAX;
-  if (atkSk && (atkFull || skillFires_(game, attacker))) {
-    const pow = atkFull ? atkSk.power * RULES.CHARGE_SKILL_MULT : atkSk.power;
-    const mark = atkFull ? '⚡蓄力全滿！' : '✨';
-    if (atkSk.type === 'atk') { atkPower *= (1 + pow); notes.push(mark + attacker.name + '發動「' + atkSk.name + '」'); }
-    else if (atkSk.type === 'heal') { healSkill = true; healPow = pow; notes.push(mark + attacker.name + '發動「' + atkSk.name + '」'); }
-    if (atkSk.ignoreCityDef) { cityBonus = 0; notes.push('（無視守城）'); }
-    if (atkFull) attacker.charge = 0;
-  }
-
-  // 守方戰力
-  let defBonus = defExtra + cityBonus;
-  if (defFac && defFac.ability === 'fortress' && toTer.owner !== 'F0') defBonus += 15;
-  if (toTer.wall) { defBonus += toTer.wall * RULES.WALL_DEF; notes.push('🧱城牆Lv' + toTer.wall); } // 城牆
-  // 守方技能（鐵壁），魔導塔提升發動率
-  const towerBonus = (toTer.tower || 0) * RULES.TOWER_SKILL;
-  if (defGen) {
-    const dsk = SKILLS[defGen.skill];
-    const defFull = (defGen.charge || 0) >= RULES.CHARGE_MAX;
-    if (dsk && dsk.type === 'guard' && (defFull || skillFires_(game, defGen, towerBonus))) {
-      const dpow = defFull ? dsk.power * RULES.CHARGE_SKILL_MULT : dsk.power;
-      defBonus += dpow * 100;
-      notes.push((defFull ? '⚡' : '🛡') + defGen.name + '發動「' + dsk.name + '」');
-      if (defFull) defGen.charge = 0;
+  party.forEach(function (g) {
+    const sk = SKILLS[g.skill]; if (!sk) return;
+    const full = (g.charge || 0) >= RULES.CHARGE_MAX;
+    if (full || skillFires_(game, g)) {
+      const pow = full ? sk.power * RULES.CHARGE_SKILL_MULT : sk.power;
+      const mark = full ? '⚡' : '✨';
+      if (sk.type === 'atk') { atkPower *= (1 + pow); notes.push(mark + g.name + '「' + sk.name + '」'); }
+      else if (sk.type === 'heal') { healSkill = true; healPow = Math.max(healPow, pow); notes.push(mark + g.name + '「' + sk.name + '」'); }
+      if (sk.ignoreCityDef) cityBonus = 0;
+      if (full) g.charge = 0;
     }
+  });
+
+  // 守方：所有守將（主守將全額統率 + 其餘各 40%）
+  let defBonus = cityBonus;
+  if (defLead) {
+    let leadTotal = effStats(game, defLead).lead;
+    defenders.slice(1).forEach(function (d) { leadTotal += Math.round(effStats(game, d).lead * 0.4); });
+    defBonus += leadTotal;
   }
+  if (defFac && defFac.ability === 'fortress' && toTer.owner !== 'F0') defBonus += 15;
+  if (toTer.wall) { defBonus += toTer.wall * RULES.WALL_DEF; notes.push('🧱城牆Lv' + toTer.wall); }
+  const towerBonus = (toTer.tower || 0) * RULES.TOWER_SKILL;
+  defenders.forEach(function (d) {
+    const dsk = SKILLS[d.skill]; if (!dsk || dsk.type !== 'guard') return;
+    const full = (d.charge || 0) >= RULES.CHARGE_MAX;
+    if (full || skillFires_(game, d, towerBonus)) {
+      const dpow = full ? dsk.power * RULES.CHARGE_SKILL_MULT : dsk.power;
+      defBonus += dpow * 100;
+      notes.push((full ? '⚡' : '🛡') + d.name + '「' + dsk.name + '」');
+      if (full) d.charge = 0;
+    }
+  });
   let defPower = toTer.troops * (100 + defBonus) / 100 * randFactor_(0.9, 1.1);
 
   const total = atkPower + defPower || 1;
   const atkRatio = atkPower / total;
-
   let atkLoss = Math.min(marchTroops, Math.round(marchTroops * (1 - atkRatio) * 0.9));
-  if (healSkill) atkLoss = Math.round(atkLoss * (1 - Math.min(0.8, healPow))); // 治癒減傷
+  if (healSkill) atkLoss = Math.round(atkLoss * (1 - Math.min(0.8, healPow)));
   const defLoss = Math.min(toTer.troops, Math.round(toTer.troops * atkRatio * 0.9));
   const atkSurv = marchTroops - atkLoss;
   const defSurv = toTer.troops - defLoss;
 
-  let log = '⚔️ ' + attacker.name + '(' + (atkFac ? atkFac.name : '?') + ' · ' + UNIT_LABEL[attacker.unit] +
-            ') 率 ' + marchTroops + ' 兵攻 ' + toTer.name +
-            '(' + (defFac ? defFac.name : '中立') + ' 守軍' + toTer.troops + (defGen ? '／' + defGen.name : '') + ')。';
+  const pn = party.length > 1 ? '（部隊：' + party.map(function (g) { return g.name; }).join('、') + '）' : '';
+  let log = '⚔️ ' + attacker.name + '(' + (atkFac ? atkFac.name : '?') + ' · ' + UNIT_LABEL[attacker.unit] + ')' + pn +
+            ' 率 ' + marchTroops + ' 兵攻 ' + toTer.name +
+            '(' + (defFac ? defFac.name : '中立') + ' 守軍' + toTer.troops + (defLead ? '／' + defLead.name : '') + ')。';
   if (notes.length) log += ' ' + notes.join('，') + '。';
 
-  attacker.acted = true;
+  party.forEach(function (g) { g.acted = true; });
 
   if (atkPower > defPower && atkSurv > 0) {
     toTer.owner = attacker.owner;
     toTer.troops = atkSurv;
     fromTer.troops -= marchTroops;
-    attacker.loc = toTer.id;
-    log += ' 🏰攻克！駐軍 ' + atkSurv + '。';
-    gainExp_(game, attacker, RULES.EXP_BASE_WIN + Math.round(defLoss / 10), function (m) { log += ' ' + m; });
-
-    if (defGen && defGen.alive) {
+    party.forEach(function (g) { g.loc = toTer.id; });          // 整隊進駐
+    log += ' 🏰攻克！駐軍 ' + atkSurv + (party.length > 1 ? '，部隊進駐' : '') + '。';
+    party.forEach(function (g) { gainExp_(game, g, RULES.EXP_BASE_WIN + Math.round(defLoss / 10), function (m) { log += ' ' + m; }); });
+    // 逐一判定俘虜守將
+    defenders.forEach(function (dg) {
+      if (!dg.alive) return;
       if (Math.random() < RULES.CAPTURE_GENERAL_CHANCE) {
-        defGen.owner = attacker.owner; defGen.loc = toTer.id; defGen.acted = true; defGen.loyalty = 25;
-        log += ' 🎖️俘獲 ' + defGen.name + '，暫時歸順（忠誠低，需安撫）！';
-      } else {
-        defGen.alive = false;
-        log += ' ' + defGen.name + ' 戰死。';
-      }
-    }
+        dg.owner = attacker.owner; dg.loc = toTer.id; dg.acted = true; dg.loyalty = 25;
+        log += ' 🎖️俘獲 ' + dg.name + '（忠誠低，需安撫）！';
+      } else { dg.alive = false; log += ' ' + dg.name + ' 戰死。'; }
+    });
   } else {
     toTer.troops = defSurv;
     fromTer.troops -= atkLoss;
-    log += ' 🛡️守軍擊退，' + attacker.name + ' 折損 ' + atkLoss + ' 退回 ' + fromTer.name + '。';
-    gainExp_(game, attacker, Math.round((RULES.EXP_BASE_WIN + defLoss / 10) / 2), function (m) { log += ' ' + m; });
-    // 守將也獲得經驗
-    if (defGen) gainExp_(game, defGen, Math.round(atkLoss / 8), function () {});
+    log += ' 🛡️守軍擊退，' + attacker.name + ' 部隊折損 ' + atkLoss + ' 退回 ' + fromTer.name + '。';
+    party.forEach(function (g) { gainExp_(game, g, Math.round((RULES.EXP_BASE_WIN + defLoss / 10) / 2), function () {}); });
+    defenders.forEach(function (d) { gainExp_(game, d, Math.round(atkLoss / 8), function () {}); });
   }
 
   return log;

@@ -300,7 +300,13 @@ function renderActions(){
   var canMove=tgt&&here&&here.adj.indexOf(tgt.id)>=0&&tgt.owner===pf.id;
 
   // 軍事
-  var mil='<div class="cmdgrp"><div class="lab">⚔️ 軍事</div>'+
+  // 出戰部隊預覽：主將 + 同城未行動女將（上限 MAX_PARTY）
+  var party=[c];
+  if(here){(VIEW.chars||[]).forEach(function(o){ if(party.length>=VIEW.rules.MAX_PARTY)return;
+    if(isMine(o.owner)&&o.loc===here.id&&!o.acted&&o.id!==c.id) party.push(o); });}
+  var partyStr = party.length>1 ? '　🛡️出戰部隊：'+party.map(function(g){return g.name+(g.charge>=VIEW.chargeMax?'⚡':'');}).join('＋') : '　（單將出戰，同城可組副將）';
+
+  var mil='<div class="cmdgrp"><div class="lab">⚔️ 軍事'+partyStr+'</div>'+
     '<div class="row" style="margin-bottom:6px">出征兵力 <input type="range" id="march" min="1" max="'+Math.max(1,maxM)+'" value="'+def+'" oninput="document.getElementById(\'mv\').textContent=this.value"><b id="mv">'+def+'</b></div>'+
     '<div class="tag" style="margin-bottom:6px">目標：'+(tgt?('<b>'+tgt.name+'</b>'+(blocked?'（'+(rel==='ally'?'盟友':'停戰中')+'，需先毀約）':'')):'（點地圖選一格）')+'　'+advHint(c,tgt)+'</div>'+
     '<div class="row">'+
