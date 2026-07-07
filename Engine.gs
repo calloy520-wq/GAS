@@ -297,21 +297,21 @@ function aiPhase_(game) {
   const aiFactions = game.factions.filter(function (f) { return f.id !== 'F0' && !f.isPlayer && f.alive; });
 
   aiFactions.forEach(function (fac) {
-    const myChars = game.chars.filter(function (c) { return c.alive && c.owner === fac.id && !c.acted && c.loc; });
+    aiInvest_(game, fac);   // 經濟成長：升級收入最高領地的施設
 
+    const myChars = game.chars.filter(function (c) { return c.alive && c.owner === fac.id && !c.acted && c.loc; });
     myChars.forEach(function (ch) {
       const here = findTerritory(game, ch.loc);
       if (!here || here.owner !== fac.id) return;
 
-      // 找相鄰、非我方、兵力有優勢的目標
+      // 找相鄰、可攻打(非我方/非盟友停戰)且我方有優勢的最弱目標
       let best = null;
       here.adj.forEach(function (nid) {
         const nt = findTerritory(game, nid);
         if (!nt || nt.owner === fac.id) return;
-        // 尊重同盟/停戰：不攻打盟友或停戰對象
         const rel = relStatus(game, fac.id, nt.owner);
         if (rel === 'ally' || rel === 'ceasefire') return;
-        if (here.troops > nt.troops * 1.15 && here.troops > 200) {
+        if (here.troops > nt.troops * 1.08 && here.troops > 250) {
           if (!best || nt.troops < best.troops) best = nt;
         }
       });
@@ -319,13 +319,32 @@ function aiPhase_(game) {
       if (best) {
         const march = Math.floor(here.troops * 0.7);
         if (march > 0) logs.push(resolveBattle_(game, ch, here, best, march));
-      } else if (fac.gold >= RULES.RECRUIT_COST_PER_TROOP * RULES.RECRUIT_BATCH && here.troops < here.maxTroops) {
-        const add = Math.min(RULES.RECRUIT_BATCH, here.maxTroops - here.troops);
-        here.troops += add; fac.gold -= add * RULES.RECRUIT_COST_PER_TROOP; ch.acted = true;
-        logs.push('🔁 ' + fac.name + '：' + ch.name + ' 於 ' + here.name + ' 徵兵 ' + add + '。');
+      } else {
+        // 沒有好打的目標 → 徵兵壯大，下回合再攻
+        const cap = terMaxTroops(here);
+        if (here.troops < cap * 0.85 && fac.gold >= RULES.RECRUIT_COST_PER_TROOP * RULES.RECRUIT_BATCH) {
+          const add = Math.min(RULES.RECRUIT_BATCH, cap - here.troops);
+          here.troops += add; fac.gold -= add * RULES.RECRUIT_COST_PER_TROOP; ch.acted = true;
+          logs.push('🔁 ' + fac.name + '：' + ch.name + ' 於 ' + here.name + ' 徵兵 ' + add + '。');
+        }
       }
     });
   });
 
   return logs;
+}
+
+// AI 內政：留足軍費後，把收入最高的領地升級市場/兵營以滾大經濟
+function aiInvest_(game, fac) {
+  if (fac.gold < 450) return; // 保留軍費
+  const owned = territoriesOf(game, fac.id);
+  if (!owned.length) return;
+  let t = owned[0];
+  owned.forEach(function (o) { if (terIncome(o) > terIncome(t)) t = o; });
+  const key = (t.market <= t.barracks) ? 'market' : 'barracks';
+  const cur = t[key] || 0;
+  if (cur >= RULES.BUILD_MAX_LEVEL) return;
+  const cost = RULES.BUILD_BASE_COST * (cur + 1);
+  if (fac.gold < cost) return;
+  fac.gold -= cost; t[key] = cur + 1;
 }
