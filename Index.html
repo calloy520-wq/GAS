@@ -85,6 +85,13 @@
   .cg>i{background:linear-gradient(90deg,#e8b84b,#ffd76a)}
   .rdy{color:#231a00;background:linear-gradient(90deg,#f0c65e,#ffd76a);border-radius:8px;padding:0 6px;font-weight:800;font-size:11px}
   .bondtag{color:var(--pink);font-size:11px}
+  #login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:100;
+    background:radial-gradient(900px 500px at 50% 0%,#1a2133,#0e1017 70%)}
+  .loginbox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px 26px;width:min(90vw,360px);
+    text-align:center;box-shadow:0 12px 40px #000a}
+  .loginbox input{width:100%;padding:11px 12px;font-size:15px;border-radius:9px;border:1px solid var(--line2);
+    background:var(--panel2);color:var(--text);font-family:inherit}
+  .loginbox input:focus{outline:none;border-color:var(--gold)}
   .legend{font-size:10px;font-weight:800;padding:1px 7px;border-radius:10px;color:#3a2a00;background:linear-gradient(90deg,#ffd76a,#ffb84a);box-shadow:0 0 6px rgba(255,200,80,.5)}
   .soul{font-size:12px;color:#cbd3e6;background:#10141e;border:1px dashed var(--line2);border-radius:8px;
         padding:8px;margin-top:7px;line-height:1.55;display:none}
@@ -104,7 +111,17 @@
 </style>
 </head>
 <body>
-<div id="app">
+<div id="login">
+  <div class="loginbox">
+    <div class="logo" style="font-size:26px">⚔️ 諸國爭霸</div>
+    <div class="muted" style="margin:6px 0 14px">輸入暱稱，開始屬於你的征程</div>
+    <input id="pname" maxlength="20" placeholder="你的暱稱" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn primary" style="width:100%;margin-top:10px" onclick="doLogin()">進入遊戲 ▶</button>
+    <div class="tag" id="loginmsg" style="margin-top:10px"></div>
+    <div class="tag" style="margin-top:12px;opacity:.7">同一個暱稱＝同一份存檔；換暱稱＝另一局。進度每步自動存。</div>
+  </div>
+</div>
+<div id="app" style="display:none">
   <div class="hd">
     <div class="logo">⚔️ 諸國爭霸 <small>戰略 SLG · 純 GAS</small></div>
     <div class="turnbar">
@@ -113,8 +130,10 @@
     </div>
     <div class="kpi"><b class="g" id="gold">-</b><span>銀兩</span></div>
     <div class="kpi"><b class="ap" id="ap">-</b><span>行動點</span></div>
+    <div class="kpi"><b id="who" style="font-size:14px">-</b><span>玩家</span></div>
     <button class="btn primary" id="btnEnd" onclick="endTurn()">結束回合 ▶</button>
     <button class="btn" onclick="newGame()">重開</button>
+    <button class="btn" onclick="logout()">換人</button>
   </div>
 
   <div id="bannerSlot"></div>
@@ -149,19 +168,37 @@
 </div>
 
 <script>
-var VIEW=null, selCharId=null, selTargetId=null, busy=false, openSoul={};
+var VIEW=null, selCharId=null, selTargetId=null, busy=false, openSoul={}, PLAYER='';
 var UCOL={infantry:'#9aa7b5',cavalry:'#e8b84b',archer:'#5fcf80',mage:'#a986e0',ninja:'#6f86d6'};
 
 function call(action,params){
   if(busy) return; busy=true;
   var el=document.getElementById('log'); el.style.opacity=.5;
+  var lm=document.getElementById('loginmsg');
   google.script.run
     .withSuccessHandler(function(resp){ busy=false; el.style.opacity=1;
-      if(!resp||!resp.ok){ el.textContent='⚠️ '+((resp&&resp.message)||'未知錯誤'); return; }
-      VIEW=resp.view; render(); })
+      if(!resp||!resp.ok){ var m='⚠️ '+((resp&&resp.message)||'未知錯誤'); el.textContent=m; if(lm&&action==='login')lm.textContent=m; return; }
+      VIEW=resp.view;
+      document.getElementById('login').style.display='none';
+      document.getElementById('app').style.display='block';
+      var w=document.getElementById('who'); if(w)w.textContent=PLAYER;
+      render(); })
     .withFailureHandler(function(err){ busy=false; el.style.opacity=1;
-      el.textContent='❌ 連線錯誤：'+err.message+'（第一次使用請先在 Apps Script 編輯器手動執行一次 initGame）'; })
-    .handleAction(Object.assign({action:action},params||{}));
+      var m='❌ 連線錯誤：'+err.message+'（第一次使用請先在 Apps Script 編輯器手動執行一次 initGame）';
+      el.textContent=m; if(lm&&action==='login')lm.textContent=m; })
+    .handleAction(Object.assign({action:action,player:PLAYER},params||{}));
+}
+function doLogin(){
+  var n=(document.getElementById('pname').value||'').trim();
+  if(!n){ document.getElementById('loginmsg').textContent='請輸入暱稱'; return; }
+  PLAYER=n; try{localStorage.setItem('gas_player',n);}catch(e){}
+  document.getElementById('loginmsg').textContent='登入中…';
+  call('login',{});
+}
+function logout(){
+  PLAYER=''; VIEW=null; selCharId=null; selTargetId=null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('login').style.display='flex';
 }
 function facOf(id){return (VIEW.factions||[]).filter(function(f){return f.id===id;})[0];}
 function terOf(id){return (VIEW.territories||[]).filter(function(t){return t.id===id;})[0];}
@@ -467,7 +504,9 @@ function doMove(){if(!selCharId||!selTargetId)return;var t=selTargetId;selTarget
 function endTurn(){selCharId=null;selTargetId=null;call('end_turn');}
 function newGame(){if(!confirm('確定重開新局？現有進度將重置。'))return;selCharId=null;selTargetId=null;openSoul={};call('new_game');}
 
-call('get_state');
+// 啟動：顯示登入頁，帶回上次的暱稱
+(function(){ try{ var s=localStorage.getItem('gas_player'); if(s) document.getElementById('pname').value=s; }catch(e){}
+  document.getElementById('pname').focus(); })();
 </script>
 </body>
 </html>

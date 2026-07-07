@@ -14,7 +14,8 @@ const SHEETS = {
   CHAR:      'Characters',
   ITEM:      'Items',
   DUNGEON:   'Dungeons',
-  DIPLO:     'Diplomacy'
+  DIPLO:     'Diplomacy',
+  SAVES:     'Saves'
 };
 
 const C_STATE = { TURN: 0, PHASE: 1, WINNER: 2, LOG: 3, BONDS: 4 };
@@ -284,36 +285,13 @@ function genRandomChars_() {
 }
 
 // ------------------------------------------
-// ★ 初始化 / 重開新局（第一次請在編輯器手動執行 initGame）
+// ★ 初始化（第一次請在編輯器手動執行一次 initGame，用來建立試算表並授權）
+//   多人版：只需確保試算表與 Saves 分頁存在；每位玩家的存檔在登入時各自建立。
 // ------------------------------------------
 function initGame() {
   const ss = getOrCreateSpreadsheet_();
-
-  writeSheet_(ss, SHEETS.STATE, ['TURN', 'PHASE', 'WINNER', 'LOG', 'BONDS'],
-    [[1, 'PLAYER', '', '亂世將起，五雄並立。招賢納士、開疆闢土，' + RULES.TURN_LIMIT + ' 回合內統一天下！', '']]);
-
-  writeSheet_(ss, SHEETS.FACTION,
-    ['ID', 'NAME', 'IS_PLAYER', 'GOLD', 'COLOR', 'ALIVE', 'AP', 'ABILITY'], SEED_FACTIONS());
-
-  writeSheet_(ss, SHEETS.TERRITORY,
-    ['ID', 'NAME', 'OWNER', 'TROOPS', 'MAX_TROOPS', 'INCOME', 'DEV', 'X', 'Y', 'ADJ', 'MARKET', 'BARRACKS', 'WALL', 'TOWER'],
-    SEED_TERRITORIES().map(function (r) { return r.concat([0, 0, 0, 0]); }));
-
-  writeSheet_(ss, SHEETS.CHAR,
-    ['ID', 'NAME', 'OWNER', 'UNIT', 'LEVEL', 'EXP', 'LEAD', 'WAR', 'INT', 'SKILL',
-     'LOC', 'ACTED', 'ALIVE', 'LOYALTY', 'EQUIP', 'PERSONA', 'SPEECH', 'LIKES', 'CATCH', 'BIO', 'CHARGE'],
-    SEED_CHARS().concat(genRandomChars_()).concat(SEED_LEGENDS()).map(function (r) { return r.concat([randInt_(0, 66)]); }));
-
-  writeSheet_(ss, SHEETS.ITEM,
-    ['ID', 'NAME', 'TYPE', 'WAR', 'LEAD', 'INT', 'OWNER', 'DESC'], SEED_ITEMS());
-
-  writeSheet_(ss, SHEETS.DUNGEON,
-    ['ID', 'NAME', 'TER', 'LEVEL', 'FLOORS', 'PROGRESS', 'CLEARED', 'MONSTER', 'REWARD_GOLD', 'REWARD_ITEM', 'RECRUIT'],
-    SEED_DUNGEONS());
-
-  writeSheet_(ss, SHEETS.DIPLO, ['FA', 'FB', 'STATUS', 'EXPIRE'], SEED_DIPLO());
-
-  return '✅ 遊戲已初始化，試算表 ID：' + ss.getId();
+  getSavesSheet_(); // 確保 Saves 分頁存在（玩家存檔用）
+  return '✅ 已初始化（多人存檔版）。玩家於登入頁輸入暱稱即各自開局。試算表 ID：' + ss.getId();
 }
 
 function getOrCreateSpreadsheet_() {

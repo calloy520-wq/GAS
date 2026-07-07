@@ -10,6 +10,7 @@ function doGet() {
 }
 
 const ACTION_ROUTER = {
+  'login':     actionLogin,
   'get_state': actionGetState,
   'attack':    actionAttack,
   'recruit':   actionRecruit,
@@ -101,11 +102,23 @@ function requirePlayerChar_(game, charId) {
 function requireUnacted_(ch) { if (ch.acted) throw new Error(ch.name + ' 本回合已行動過了。'); }
 
 // ------------------------------------------
-function actionGetState() { return okResp_(loadGame()); }
+// 登入 { player } — 依暱稱載入存檔；無存檔則自動開一局新的
+function actionLogin(p) {
+  const name = cleanPlayer_(p.player);
+  if (!name) return errorResp_('請輸入暱稱。');
+  let game = loadGame(name);
+  const fresh = !game;
+  if (fresh) { game = buildFreshGame(name); saveGame(game); }
+  return okResp_(game, fresh ? ('歡迎，' + name + '！新的征程開始了。') : ('歡迎回來，' + name + '！繼續妳的霸業。'));
+}
+function requireGame_(game) { if (!game) throw new Error('尚未登入，或存檔遺失，請重新登入。'); return game; }
 
-function actionNewGame() {
-  initGame();
-  const game = loadGame();
+function actionGetState(p) { return okResp_(requireGame_(loadGame(p.player))); }
+
+// 重開新局：重置該玩家自己的存檔
+function actionNewGame(p) {
+  if (!cleanPlayer_(p.player)) return errorResp_('請先登入。');
+  const game = buildFreshGame(p.player); saveGame(game);
   return okResp_(game, '亂世將起。招賢納士、開疆闢土，統一天下就靠妳的號令了。');
 }
 
@@ -113,7 +126,7 @@ function actionNewGame() {
 // 攻擊 { charId, targetId, marchTroops } — 1 AP
 // ------------------------------------------
 function actionAttack(p) {
-  const game = loadGame(); requireNotOver_(game); requireAP_(game, 1);
+  const game = requireGame_(loadGame(p.player)); requireNotOver_(game); requireAP_(game, 1);
   const ctx = requirePlayerChar_(game, p.charId); requireUnacted_(ctx.ch);
   const ch = ctx.ch;
   const from = findTerritory(game, ch.loc);
@@ -142,7 +155,7 @@ function actionAttack(p) {
 // 徵兵 { charId } — 1 AP
 // ------------------------------------------
 function actionRecruit(p) {
-  const game = loadGame(); requireNotOver_(game); requireAP_(game, 1);
+  const game = requireGame_(loadGame(p.player)); requireNotOver_(game); requireAP_(game, 1);
   const ctx = requirePlayerChar_(game, p.charId); requireUnacted_(ctx.ch);
   const ch = ctx.ch, player = ctx.player;
   const ter = findTerritory(game, ch.loc);
@@ -163,7 +176,7 @@ function actionRecruit(p) {
 // 開發 { charId } — 1 AP
 // ------------------------------------------
 function actionDevelop(p) {
-  const game = loadGame(); requireNotOver_(game); requireAP_(game, 1);
+  const game = requireGame_(loadGame(p.player)); requireNotOver_(game); requireAP_(game, 1);
   const ctx = requirePlayerChar_(game, p.charId); requireUnacted_(ctx.ch);
   const ch = ctx.ch, player = ctx.player;
   const ter = findTerritory(game, ch.loc);
@@ -183,7 +196,7 @@ function actionDevelop(p) {
 // 建設 { charId, building } — 1 AP，升級角色所在領地的施設
 // ------------------------------------------
 function actionBuild(p) {
-  const game = loadGame(); requireNotOver_(game); requireAP_(game, 1);
+  const game = requireGame_(loadGame(p.player)); requireNotOver_(game); requireAP_(game, 1);
   const ctx = requirePlayerChar_(game, p.charId); requireUnacted_(ctx.ch);
   const ch = ctx.ch, player = ctx.player;
   const ter = findTerritory(game, ch.loc);
@@ -208,7 +221,7 @@ function actionBuild(p) {
 // 移動 { charId, targetId } — 1 AP
 // ------------------------------------------
 function actionMove(p) {
-  const game = loadGame(); requireNotOver_(game); requireAP_(game, 1);
+  const game = requireGame_(loadGame(p.player)); requireNotOver_(game); requireAP_(game, 1);
   const ctx = requirePlayerChar_(game, p.charId); requireUnacted_(ctx.ch);
   const ch = ctx.ch, player = ctx.player;
   const from = findTerritory(game, ch.loc);
@@ -227,7 +240,7 @@ function actionMove(p) {
 // 搜索 { charId } — 1 AP + 銀兩，在角色所在地發掘在野女將並招攬
 // ------------------------------------------
 function actionSearch(p) {
-  const game = loadGame(); requireNotOver_(game); requireAP_(game, 1);
+  const game = requireGame_(loadGame(p.player)); requireNotOver_(game); requireAP_(game, 1);
   const ctx = requirePlayerChar_(game, p.charId); requireUnacted_(ctx.ch);
   const ch = ctx.ch, player = ctx.player;
   const ter = findTerritory(game, ch.loc);
@@ -256,7 +269,7 @@ function actionSearch(p) {
 // 探索 { charId } — 1 AP，挑戰角色所在領地的迷宮下一層
 // ------------------------------------------
 function actionExplore(p) {
-  const game = loadGame(); requireNotOver_(game); requireAP_(game, 1);
+  const game = requireGame_(loadGame(p.player)); requireNotOver_(game); requireAP_(game, 1);
   const ctx = requirePlayerChar_(game, p.charId); requireUnacted_(ctx.ch);
   const ch = ctx.ch;
   const ter = findTerritory(game, ch.loc);
@@ -275,7 +288,7 @@ function actionExplore(p) {
 // 談話/安撫 { charId } — 1 AP，提升好感度，達門檻觸發角色事件
 // ------------------------------------------
 function actionTalk(p) {
-  const game = loadGame(); requireNotOver_(game); requireAP_(game, 1);
+  const game = requireGame_(loadGame(p.player)); requireNotOver_(game); requireAP_(game, 1);
   const ctx = requirePlayerChar_(game, p.charId);
   const ch = ctx.ch;
 
@@ -311,7 +324,7 @@ function triggerLoyaltyEvent_(ch, before, after) {
 // 裝備 { charId, itemId } / 卸下 { itemId } — 不耗 AP
 // ------------------------------------------
 function actionEquip(p) {
-  const game = loadGame(); requireNotOver_(game);
+  const game = requireGame_(loadGame(p.player)); requireNotOver_(game);
   const ctx = requirePlayerChar_(game, p.charId);
   const item = findItem(game, p.itemId);
   if (!item) return errorResp_('找不到該裝備。');
@@ -326,7 +339,7 @@ function actionEquip(p) {
 }
 
 function actionUnequip(p) {
-  const game = loadGame(); requireNotOver_(game);
+  const game = requireGame_(loadGame(p.player)); requireNotOver_(game);
   const item = findItem(game, p.itemId);
   if (!item) return errorResp_('找不到該裝備。');
   const holder = findChar(game, item.owner);
@@ -341,7 +354,7 @@ function actionUnequip(p) {
 // 外交：結盟 { factionId }（花銀兩，AI 不願與獨大者結盟）
 // ------------------------------------------
 function actionProposeAlly(p) {
-  const game = loadGame(); requireNotOver_(game);
+  const game = requireGame_(loadGame(p.player)); requireNotOver_(game);
   const player = playerFaction(game);
   const target = findFaction(game, p.factionId);
   if (!target || target.id === 'F0' || target.isPlayer || !target.alive) return errorResp_('無效的結盟對象。');
@@ -360,7 +373,7 @@ function actionProposeAlly(p) {
 
 // 外交：停戰 { factionId }（較易成功，維持數回合）
 function actionProposeCeasefire(p) {
-  const game = loadGame(); requireNotOver_(game);
+  const game = requireGame_(loadGame(p.player)); requireNotOver_(game);
   const player = playerFaction(game);
   const target = findFaction(game, p.factionId);
   if (!target || target.id === 'F0' || target.isPlayer || !target.alive) return errorResp_('無效的停戰對象。');
@@ -381,7 +394,7 @@ function actionProposeCeasefire(p) {
 
 // 外交：毀約 { factionId } → 恢復戰爭（免費）
 function actionBreakPact(p) {
-  const game = loadGame(); requireNotOver_(game);
+  const game = requireGame_(loadGame(p.player)); requireNotOver_(game);
   const player = playerFaction(game);
   const target = findFaction(game, p.factionId);
   if (!target) return errorResp_('無效對象。');
@@ -394,8 +407,8 @@ function actionBreakPact(p) {
 // ------------------------------------------
 // 結束回合 → AI 行動 → 收入/回補 → 停戰到期 → 新回合、重置 AP；回合上限判定結局
 // ------------------------------------------
-function actionEndTurn() {
-  const game = loadGame(); requireNotOver_(game);
+function actionEndTurn(p) {
+  const game = requireGame_(loadGame(p.player)); requireNotOver_(game);
 
   game.state.phase = 'AI';
   const aiLogs = aiPhase_(game);

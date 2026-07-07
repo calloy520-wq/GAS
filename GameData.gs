@@ -3,170 +3,97 @@
 //   整局讀進記憶體 → 運算 → 一次寫回。
 // ==========================================
 
-function loadGame() {
+// ==========================================
+// 第二部分：資料存取層（多人存檔：每位玩家一份整局 JSON，存於 Saves 分頁）
+// ==========================================
+
+// 清理玩家暱稱（上限20字，去頭尾空白）
+function cleanPlayer_(name) { return String(name == null ? '' : name).trim().slice(0, 20); }
+
+// 取得(或建立) Saves 分頁：欄位 PLAYER / JSON / UPDATED
+function getSavesSheet_() {
   const ss = getOrCreateSpreadsheet_();
-
-  const stateRows = readSheet_(ss, SHEETS.STATE);
-  const facRows   = readSheet_(ss, SHEETS.FACTION);
-  const terRows   = readSheet_(ss, SHEETS.TERRITORY);
-  const chRows    = readSheet_(ss, SHEETS.CHAR);
-  const itRows    = readSheet_(ss, SHEETS.ITEM);
-  const dunRows   = readSheet_(ss, SHEETS.DUNGEON);
-  const dipRows   = readSheet_(ss, SHEETS.DIPLO);
-
-  const s = stateRows[0] || [1, 'PLAYER', '', ''];
-  const state = {
-    turn:   Number(s[C_STATE.TURN]) || 1,
-    phase:  String(s[C_STATE.PHASE] || 'PLAYER'),
-    winner: String(s[C_STATE.WINNER] || ''),
-    log:    String(s[C_STATE.LOG] || ''),
-    bonds:  String(s[C_STATE.BONDS] || '')
-  };
-
-  const factions = facRows.map(function (r) {
-    return {
-      id: String(r[C_FAC.ID]), name: String(r[C_FAC.NAME]),
-      isPlayer: Number(r[C_FAC.IS_PLAYER]) === 1,
-      gold: Number(r[C_FAC.GOLD]) || 0,
-      color: String(r[C_FAC.COLOR]),
-      alive: Number(r[C_FAC.ALIVE]) === 1,
-      ap: Number(r[C_FAC.AP]) || 0,
-      ability: String(r[C_FAC.ABILITY] || '')
-    };
-  });
-
-  const territories = terRows.map(function (r) {
-    return {
-      id: String(r[C_TER.ID]), name: String(r[C_TER.NAME]),
-      owner: String(r[C_TER.OWNER]),
-      troops: Number(r[C_TER.TROOPS]) || 0,
-      maxTroops: Number(r[C_TER.MAX_TROOPS]) || 0,
-      income: Number(r[C_TER.INCOME]) || 0,
-      dev: Number(r[C_TER.DEV]) || 0,
-      x: Number(r[C_TER.X]) || 0, y: Number(r[C_TER.Y]) || 0,
-      adj: String(r[C_TER.ADJ] || '').split(',').map(function (a) { return a.trim(); }).filter(String),
-      market: Number(r[C_TER.MARKET]) || 0,
-      barracks: Number(r[C_TER.BARRACKS]) || 0,
-      wall: Number(r[C_TER.WALL]) || 0,
-      tower: Number(r[C_TER.TOWER]) || 0
-    };
-  });
-
-  const chars = chRows.map(function (r) {
-    return {
-      id: String(r[C_CHAR.ID]), name: String(r[C_CHAR.NAME]),
-      owner: String(r[C_CHAR.OWNER]),
-      unit: String(r[C_CHAR.UNIT] || 'infantry'),
-      level: Number(r[C_CHAR.LEVEL]) || 1,
-      exp: Number(r[C_CHAR.EXP]) || 0,
-      lead: Number(r[C_CHAR.LEAD]) || 0,
-      war: Number(r[C_CHAR.WAR]) || 0,
-      int: Number(r[C_CHAR.INT]) || 0,
-      skill: String(r[C_CHAR.SKILL] || ''),
-      loc: String(r[C_CHAR.LOC] || ''),
-      acted: Number(r[C_CHAR.ACTED]) === 1,
-      alive: Number(r[C_CHAR.ALIVE]) === 1,
-      loyalty: Number(r[C_CHAR.LOYALTY]) || 0,
-      equip: String(r[C_CHAR.EQUIP] || ''),
-      persona: String(r[C_CHAR.PERSONA] || ''),
-      speech: String(r[C_CHAR.SPEECH] || ''),
-      likes: String(r[C_CHAR.LIKES] || ''),
-      catch: String(r[C_CHAR.CATCH] || ''),
-      bio: String(r[C_CHAR.BIO] || ''),
-      charge: Number(r[C_CHAR.CHARGE]) || 0
-    };
-  });
-
-  const items = itRows.map(function (r) {
-    return {
-      id: String(r[C_ITEM.ID]), name: String(r[C_ITEM.NAME]),
-      type: String(r[C_ITEM.TYPE]),
-      war: Number(r[C_ITEM.WAR]) || 0,
-      lead: Number(r[C_ITEM.LEAD]) || 0,
-      int: Number(r[C_ITEM.INT]) || 0,
-      owner: String(r[C_ITEM.OWNER] || ''),
-      desc: String(r[C_ITEM.DESC] || '')
-    };
-  });
-
-  const dungeons = dunRows.map(function (r) {
-    return {
-      id: String(r[C_DUN.ID]), name: String(r[C_DUN.NAME]), ter: String(r[C_DUN.TER]),
-      level: Number(r[C_DUN.LEVEL]) || 1,
-      floors: Number(r[C_DUN.FLOORS]) || 1,
-      progress: Number(r[C_DUN.PROGRESS]) || 0,
-      cleared: Number(r[C_DUN.CLEARED]) === 1,
-      monster: Number(r[C_DUN.MONSTER]) || 0,
-      rewardGold: Number(r[C_DUN.REWARD_GOLD]) || 0,
-      rewardItem: String(r[C_DUN.REWARD_ITEM] || ''),
-      recruit: Number(r[C_DUN.RECRUIT]) === 1
-    };
-  });
-
-  const diplo = dipRows.map(function (r) {
-    return {
-      a: String(r[C_DIPLO.FA]), b: String(r[C_DIPLO.FB]),
-      status: String(r[C_DIPLO.STATUS] || 'war'),
-      expire: Number(r[C_DIPLO.EXPIRE]) || 0
-    };
-  });
-
-  return { state: state, factions: factions, territories: territories,
-           chars: chars, items: items, dungeons: dungeons, diplo: diplo };
+  let sh = ss.getSheetByName(SHEETS.SAVES);
+  if (!sh) { sh = ss.insertSheet(SHEETS.SAVES); sh.getRange(1, 1, 1, 3).setValues([['PLAYER', 'JSON', 'UPDATED']]); }
+  return sh;
 }
 
+// 讀取某玩家的整局；沒有存檔回傳 null
+function loadGame(player) {
+  player = cleanPlayer_(player);
+  if (!player) return null;
+  const sh = getSavesSheet_();
+  const data = sh.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === player) {
+      try { const g = JSON.parse(data[i][1]); g._player = player; return g; }
+      catch (e) { return null; }
+    }
+  }
+  return null;
+}
+
+// 寫回該玩家的整局（以 game._player 為 key，LockService 防並發衝突）
 function saveGame(game) {
-  const ss = getOrCreateSpreadsheet_();
-
-  writeSheet_(ss, SHEETS.STATE,
-    ['TURN', 'PHASE', 'WINNER', 'LOG', 'BONDS'],
-    [[game.state.turn, game.state.phase, game.state.winner, game.state.log, game.state.bonds || '']]);
-
-  writeSheet_(ss, SHEETS.FACTION,
-    ['ID', 'NAME', 'IS_PLAYER', 'GOLD', 'COLOR', 'ALIVE', 'AP', 'ABILITY'],
-    game.factions.map(function (f) {
-      return [f.id, f.name, f.isPlayer ? 1 : 0, Math.round(f.gold), f.color, f.alive ? 1 : 0, f.ap, f.ability];
-    }));
-
-  writeSheet_(ss, SHEETS.TERRITORY,
-    ['ID', 'NAME', 'OWNER', 'TROOPS', 'MAX_TROOPS', 'INCOME', 'DEV', 'X', 'Y', 'ADJ', 'MARKET', 'BARRACKS', 'WALL', 'TOWER'],
-    game.territories.map(function (t) {
-      return [t.id, t.name, t.owner, Math.round(t.troops), t.maxTroops, t.income, t.dev, t.x, t.y, t.adj.join(','),
-              t.market, t.barracks, t.wall, t.tower];
-    }));
-
-  writeSheet_(ss, SHEETS.CHAR,
-    ['ID', 'NAME', 'OWNER', 'UNIT', 'LEVEL', 'EXP', 'LEAD', 'WAR', 'INT', 'SKILL',
-     'LOC', 'ACTED', 'ALIVE', 'LOYALTY', 'EQUIP', 'PERSONA', 'SPEECH', 'LIKES', 'CATCH', 'BIO'],
-    game.chars.map(function (c) {
-      return [c.id, c.name, c.owner, c.unit, c.level, Math.round(c.exp), c.lead, c.war, c.int, c.skill,
-              c.loc, c.acted ? 1 : 0, c.alive ? 1 : 0, c.loyalty, c.equip,
-              c.persona, c.speech, c.likes, c.catch, c.bio, Math.round(c.charge || 0)];
-    }));
-
-  writeSheet_(ss, SHEETS.ITEM,
-    ['ID', 'NAME', 'TYPE', 'WAR', 'LEAD', 'INT', 'OWNER', 'DESC'],
-    game.items.map(function (i) {
-      return [i.id, i.name, i.type, i.war, i.lead, i.int, i.owner, i.desc];
-    }));
-
-  writeSheet_(ss, SHEETS.DUNGEON,
-    ['ID', 'NAME', 'TER', 'LEVEL', 'FLOORS', 'PROGRESS', 'CLEARED', 'MONSTER', 'REWARD_GOLD', 'REWARD_ITEM', 'RECRUIT'],
-    (game.dungeons || []).map(function (d) {
-      return [d.id, d.name, d.ter, d.level, d.floors, d.progress, d.cleared ? 1 : 0,
-              d.monster, d.rewardGold, d.rewardItem, d.recruit ? 1 : 0];
-    }));
-
-  writeSheet_(ss, SHEETS.DIPLO, ['FA', 'FB', 'STATUS', 'EXPIRE'],
-    (game.diplo || []).map(function (d) { return [d.a, d.b, d.status, d.expire]; }));
+  const player = cleanPlayer_(game && game._player);
+  if (!player) throw new Error('無玩家識別，無法存檔');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const sh = getSavesSheet_();
+    const data = sh.getDataRange().getValues();
+    const json = JSON.stringify(game);
+    const stamp = new Date();
+    let row = -1;
+    for (let i = 1; i < data.length; i++) { if (String(data[i][0]) === player) { row = i + 1; break; } }
+    if (row < 0) sh.appendRow([player, json, stamp]);
+    else sh.getRange(row, 1, 1, 3).setValues([[player, json, stamp]]);
+  } finally { lock.releaseLock(); }
 }
 
-function readSheet_(ss, name) {
-  const sh = ss.getSheetByName(name);
-  if (!sh) return [];
-  const values = sh.getDataRange().getValues();
-  return values.slice(1);
+// 依種子建立一局全新遊戲（含隨機路人＋傳說），回傳與遊戲一致的物件結構
+function buildFreshGame(player) {
+  const state = { turn: 1, phase: 'PLAYER', winner: '', bonds: '',
+    log: '亂世將起，五雄並立。招賢納士、開疆闢土，' + RULES.TURN_LIMIT + ' 回合內統一天下！' };
+  const factions = SEED_FACTIONS().map(function (r) {
+    return { id: String(r[C_FAC.ID]), name: String(r[C_FAC.NAME]), isPlayer: Number(r[C_FAC.IS_PLAYER]) === 1,
+      gold: Number(r[C_FAC.GOLD]) || 0, color: String(r[C_FAC.COLOR]), alive: Number(r[C_FAC.ALIVE]) === 1,
+      ap: Number(r[C_FAC.AP]) || 0, ability: String(r[C_FAC.ABILITY] || '') };
+  });
+  const territories = SEED_TERRITORIES().map(function (r) {
+    return { id: String(r[C_TER.ID]), name: String(r[C_TER.NAME]), owner: String(r[C_TER.OWNER]),
+      troops: Number(r[C_TER.TROOPS]) || 0, maxTroops: Number(r[C_TER.MAX_TROOPS]) || 0,
+      income: Number(r[C_TER.INCOME]) || 0, dev: 0, x: Number(r[C_TER.X]) || 0, y: Number(r[C_TER.Y]) || 0,
+      adj: String(r[C_TER.ADJ] || '').split(',').map(function (a) { return a.trim(); }).filter(String),
+      market: 0, barracks: 0, wall: 0, tower: 0 };
+  });
+  const chars = SEED_CHARS().concat(genRandomChars_()).concat(SEED_LEGENDS()).map(function (r) {
+    return { id: String(r[C_CHAR.ID]), name: String(r[C_CHAR.NAME]), owner: String(r[C_CHAR.OWNER]),
+      unit: String(r[C_CHAR.UNIT] || 'infantry'), level: Number(r[C_CHAR.LEVEL]) || 1, exp: Number(r[C_CHAR.EXP]) || 0,
+      lead: Number(r[C_CHAR.LEAD]) || 0, war: Number(r[C_CHAR.WAR]) || 0, int: Number(r[C_CHAR.INT]) || 0,
+      skill: String(r[C_CHAR.SKILL] || ''), loc: String(r[C_CHAR.LOC] || ''), acted: false, alive: true,
+      loyalty: Number(r[C_CHAR.LOYALTY]) || 0, equip: String(r[C_CHAR.EQUIP] || ''),
+      persona: String(r[C_CHAR.PERSONA] || ''), speech: String(r[C_CHAR.SPEECH] || ''),
+      likes: String(r[C_CHAR.LIKES] || ''), catch: String(r[C_CHAR.CATCH] || ''), bio: String(r[C_CHAR.BIO] || ''),
+      charge: randInt_(0, 66) };
+  });
+  const items = SEED_ITEMS().map(function (r) {
+    return { id: String(r[C_ITEM.ID]), name: String(r[C_ITEM.NAME]), type: String(r[C_ITEM.TYPE]),
+      war: Number(r[C_ITEM.WAR]) || 0, lead: Number(r[C_ITEM.LEAD]) || 0, int: Number(r[C_ITEM.INT]) || 0,
+      owner: String(r[C_ITEM.OWNER] || ''), desc: String(r[C_ITEM.DESC] || '') };
+  });
+  const dungeons = SEED_DUNGEONS().map(function (r) {
+    return { id: String(r[C_DUN.ID]), name: String(r[C_DUN.NAME]), ter: String(r[C_DUN.TER]),
+      level: Number(r[C_DUN.LEVEL]) || 1, floors: Number(r[C_DUN.FLOORS]) || 1, progress: 0, cleared: false,
+      monster: Number(r[C_DUN.MONSTER]) || 0, rewardGold: Number(r[C_DUN.REWARD_GOLD]) || 0,
+      rewardItem: String(r[C_DUN.REWARD_ITEM] || ''), recruit: Number(r[C_DUN.RECRUIT]) === 1 };
+  });
+  const game = { state: state, factions: factions, territories: territories, chars: chars,
+    items: items, dungeons: dungeons, diplo: [] };
+  game._player = cleanPlayer_(player);
+  return game;
 }
+
 
 // ------------------------------------------
 // 查詢工具
