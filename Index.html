@@ -348,7 +348,7 @@ function mock(action,p){return new Promise(function(res,rej){
       for(var bi=0;bi<bt.length;bi++)for(var bj=bi+1;bj<bt.length;bj++){var kk=[bt[bi],bt[bj]].sort().join('|');var bef=bondLevelC(pl.bonds[kk]);pl.bonds[kk]=Math.min(60,(pl.bonds[kk]||0)+2);var aft=bondLevelC(pl.bonds[kk]);if(aft>bef){var ca=pl.roster.filter(function(c){return c.id===bt[bi];})[0]||{},cb=pl.roster.filter(function(c){return c.id===bt[bj];})[0]||{};rep.bondUps.push({a:ca.name||'?',b:cb.name||'?',level:BOND_NM_C[aft]});}}
       if(reached>=5&&!rep.wiped&&bt.length){var hc=pl.roster.filter(function(c){return c.id===bt[0];})[0];if(hc&&Math.random()<0.7){if(!hc.traits)hc.traits=[];var pool=['slayer','sharp','veteran','lucky'],tk=pool[Math.floor(Math.random()*pool.length)];if(hc.traits.indexOf(tk)<0&&hc.traits.length<4){hc.traits.push(tk);hc.maxhp=cMaxHp(hc);rep.traitGains.push({name:hc.name,key:tk,good:true});}}}
       rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
-    if(action==='roster'){return res({players:Object.keys(DB).map(function(k){var pl=DB[k];ensureC(pl);var team=pl.team.battle.concat(pl.team.support);var by={};pl.roster.forEach(function(c){by[c.id]=c;});var mm=MARKET_BYC[pl.port||'merc']||{};return{nick:k,deepest:pl.deepest,gold:pl.gold,updated:0,port:pl.port||'merc',portNm:mm.nm||'',portIco:mm.ico||'',cannon:(pl.ship&&pl.ship.cannon)||6,hull:(pl.ship&&pl.ship.hullMax)||60,members:team.map(function(id){var c=by[id];return c?{name:c.name,job:c.job,ico:(cinfo(c.job)||{}).ico,level:c.level,portrait:c.portrait}:null;}).filter(Boolean)};})});}
+    if(action==='roster'){return res({players:Object.keys(DB).map(function(k){var pl=DB[k];ensureC(pl);var team=pl.team.battle.concat(pl.team.support);var by={};pl.roster.forEach(function(c){by[c.id]=c;});var mm=MARKET_BYC[pl.port||'merc']||{};var fm=fameOfC(pl);return{nick:k,deepest:pl.deepest,gold:pl.gold,fame:fm,peerage:peerageOfC(fm),updated:0,port:pl.port||'merc',portNm:mm.nm||'',portIco:mm.ico||'',cannon:(pl.ship&&pl.ship.cannon)||6,hull:(pl.ship&&pl.ship.hullMax)||60,members:team.map(function(id){var c=by[id];return c?{name:c.name,job:c.job,ico:(cinfo(c.job)||{}).ico,level:c.level,portrait:c.portrait}:null;}).filter(Boolean)};}).sort(function(a,b){return b.fame-a.fame;})});}
     if(action==='raid'){var me=DB[p.nick.trim()];ensureC(me);if(me.ship.hull<=0)return rej(new Error('船身破損，先修理'));var tg=DB[(p.target||'').trim()];if(!tg||tg.nick===me.nick)return rej(new Error('目標無效'));ensureC(tg);if((tg.deepest||0)<3)return rej(new Error('對方是新手，受保護'));
       var mby={};me.roster.forEach(function(c){mby[c.id]=c;});var mparty=(me.team.battle||[]).map(function(id){return mby[id];}).filter(Boolean);var dby={};tg.roster.forEach(function(c){dby[c.id]=c;});var dparty=(tg.team.battle||[]).map(function(id){return dby[id];}).filter(Boolean);var dpw=0;dparty.forEach(function(c){dpw+=(c.level||1);});
       var espeed=(tg.ship.speed||6)+Math.floor(dpw/8);var enemy={nm:tg.nick+'的商船',ico:'⛵',hull:(tg.ship.hullMax||60),cannon:(tg.ship.cannon||6)+Math.floor(dpw/5),speed:espeed};
@@ -771,6 +771,8 @@ function asideHTML(){
   if(hids.length){h+='<div class="ah">🚩 領地（'+hids.length+'）</div>';hids.forEach(function(pid){var mk=MARKET_BYC[pid];if(!mk)return;h+='<div class="ai"><b>'+mk.ico+' '+mk.nm+'</b><br><small>治理 Lv'+P.holdings[pid].lv+' ・ 稅收累積中</small></div>';});}
   h+='<div class="ah">⚓ 海事技能</div><div class="ai"><b>⚓ 航海術 Lv'+P.nav.lv+'</b><br><small>航程 −'+Math.round((1-navDaysMulC(P))*100)+'%・砲擊 +'+navGunBonusC(P)+'</small></div>';
   h+='<div class="ai"><b>💰 商業 Lv'+P.com.lv+'</b><br><small>進貨 −'+Math.round((1-comBuyMulC(P))*100)+'%・售價 +'+Math.round((comSellMulC(P)-1)*100)+'%</small></div>';
+  var fm=fameOfC(P),pr=PEERAGE_C[peerageOfC(fm)];
+  h+='<div class="ah">🌊 威名</div><div class="ai"><b>'+pr.ico+' '+pr.nm+'</b><br><small>威名 '+fm+'</small></div>';
   h+='<div class="ah">📍 現況</div><div class="ai"><small>🪙 '+P.gold+'　🏙️ '+portNmC(P.port||'merc')+'　⚔️ 最深 '+(P.deepest||0)+' 層　🧭 線索 '+(P.clues||0)+'/5</small></div>';
   return h;
 }
@@ -1484,9 +1486,22 @@ function renderVoyage(v){
 }
 
 // ---- 領主城堡（主線・階級）----
+// ---- 威名 / 爵位（把地城深度＋財富＋領地＋艦隊＋海事＋戰功合成總目標）----
+var PEERAGE_C=[{t:0,nm:'無名浪人',ico:'🚶'},{t:300,nm:'見習船長',ico:'⛵'},{t:800,nm:'名聞商賈',ico:'💰'},{t:1600,nm:'海域騎士',ico:'🗡️'},{t:2800,nm:'男爵',ico:'🎖️'},{t:4500,nm:'子爵',ico:'🏅'},{t:7000,nm:'伯爵',ico:'👑'},{t:10000,nm:'侯爵',ico:'💠'},{t:15000,nm:'海洋霸主',ico:'🌊'}];
+function fameOfC(pl){var f=0;f+=(pl.deepest||0)*40;f+=Math.floor((pl.gold||0)/120)+Math.floor((pl.invest||0)/120);if(pl.holdings)Object.keys(pl.holdings).forEach(function(k){f+=50+(pl.holdings[k].lv||1)*50;});f+=(pl.fleet||[]).length*40;f+=(((pl.nav&&pl.nav.lv)||1)+((pl.com&&pl.com.lv)||1))*18;f+=(pl.questsDone||0)*12;(pl.roster||[]).forEach(function(c){f+=(c.level||1)*3;});if(pl.uniques)f+=Object.keys(pl.uniques).length*80;return Math.round(f);}
+function peerageOfC(f){var ix=0;for(var i=0;i<PEERAGE_C.length;i++){if(f>=PEERAGE_C[i].t)ix=i;}return ix;}
+function fameBreakdownC(pl){return [['⚔️ 地城深度',(pl.deepest||0)*40],['💰 財富',Math.floor((pl.gold||0)/120)+Math.floor((pl.invest||0)/120)],['🚩 領地',(pl.holdings?Object.keys(pl.holdings).reduce(function(a,k){return a+50+(pl.holdings[k].lv||1)*50;},0):0)],['🚢 艦隊',(pl.fleet||[]).length*40],['⚓ 海事',(((pl.nav&&pl.nav.lv)||1)+((pl.com&&pl.com.lv)||1))*18],['📜 委託',(pl.questsDone||0)*12],['👥 夥伴',(pl.roster||[]).reduce(function(a,c){return a+(c.level||1)*3;},0)],['✦ 頭目戰利',(pl.uniques?Object.keys(pl.uniques).length*80:0)]];}
 function openCastle(){
   var deep=P.deepest||0,ri=rankOf(deep),next=RANKS[ri+1];
-  var body='<div class="card"><b>🎖️ 目前階級：'+RANKS[ri].nm+'</b>';
+  var fame=fameOfC(P),pix=peerageOfC(fame),pr=PEERAGE_C[pix],pn=PEERAGE_C[pix+1];
+  var body='<div class="card" style="border-color:var(--gold);background:linear-gradient(180deg,rgba(200,151,31,.14),transparent)"><b style="font-size:15px">'+pr.ico+' 爵位：'+pr.nm+'</b> <span class="tag">威名 '+fame+'</span>';
+  if(pn){var fp=Math.min(100,Math.round((fame-pr.t)/(pn.t-pr.t)*100));body+='<div class="note" style="text-align:left;margin-top:4px">距離晉爵「'+pn.ico+pn.nm+'」還差 <b>'+(pn.t-fame)+'</b> 威名</div><div class="hpbar" style="height:9px;margin-top:6px"><i style="background:linear-gradient(90deg,#f4c34e,#c8971f);width:'+fp+'%"></i></div>';}
+  else body+='<div class="note" style="text-align:left;margin-top:4px">🏆 你已受封『海洋霸主』—— 這片海域的傳說，登峰造極！</div>';
+  body+='<div class="glab" style="margin-top:8px">威名來源</div>';
+  fameBreakdownC(P).forEach(function(x){if(x[1]>0)body+='<div class="note" style="text-align:left;display:inline-block;width:48%">'+x[0]+' <b style="color:var(--gold)">'+x[1]+'</b></div>';});
+  body+='</div>';
+  body+='<div class="card" style="border-color:var(--gold-d)"><b>🌊 海上終極目標</b><div class="note" style="text-align:left;margin-top:4px">累積威名達 <b>15000</b>，受封『🌊 海洋霸主』—— 打得深、賺得多、佔得廣、艦隊強，樣樣都算數。</div></div>';
+  body+='<div class="card"><b>🎖️ 傭兵階級：'+RANKS[ri].nm+'</b>';
   if(next){var pct=Math.min(100,Math.round(deep/next.floor*100));
     body+='<div class="note" style="text-align:left;margin-top:4px">下一階「'+next.nm+'」：探索到第 '+next.floor+' 層（目前最深 '+deep+'）</div>'+
       '<div class="hpbar" style="height:9px;margin-top:6px"><i style="background:linear-gradient(90deg,#f4c34e,#c8971f);width:'+pct+'%"></i></div>';}
@@ -1506,8 +1521,9 @@ function openRoster(){
     r.players.forEach(function(pl,ix){
       var me=pl.nick===P.nick;
       var canRaid=!me&&(pl.deepest||0)>=3;
-      body+='<div class="card"'+(me?' style="border-color:var(--gold)"':'')+'><b>'+(ix+1===1?'👑 ':'')+'#'+(ix+1)+' '+pl.nick+(me?' <span class="tag">你</span>':'')+'</b>'+
-        '<div class="note" style="text-align:left;margin:4px 0 6px">⬇️ 最深第 '+pl.deepest+' 層 ・ 🪙 '+pl.gold+'<br>'+(pl.portIco||'🏰')+' 停泊 '+(pl.portNm||'?')+' ・ ⛵ 火砲 '+(pl.cannon||6)+' ・ 🚢 '+(pl.hull||60)+'</div><div class="chips">';
+      var pr=PEERAGE_C[pl.peerage||0]||PEERAGE_C[0];
+      body+='<div class="card"'+(me?' style="border-color:var(--gold)"':'')+'><b>'+(ix+1===1?'👑 ':'')+'#'+(ix+1)+' '+pl.nick+(me?' <span class="tag">你</span>':'')+'</b> <span class="tag">'+pr.ico+pr.nm+'</span>'+
+        '<div class="note" style="text-align:left;margin:4px 0 6px">🌊 威名 '+(pl.fame||0)+' ・ ⬇️ 最深第 '+pl.deepest+' 層 ・ 🪙 '+pl.gold+'<br>'+(pl.portIco||'🏰')+' 停泊 '+(pl.portNm||'?')+' ・ ⛵ 火砲 '+(pl.cannon||6)+' ・ 🚢 '+(pl.hull||60)+'</div><div class="chips">';
       (pl.members||[]).forEach(function(m){body+='<span class="chip" style="cursor:default">'+(m.portrait?'🖼️':m.ico)+' '+m.name+' Lv'+m.level+'</span>';});
       body+='</div>'+(canRaid?'<div class="rowbtns"><button class="btn dim sm" data-scoutpvp="'+pl.nick+'" style="margin-top:8px">🔭 偵查</button><button class="btn re sm" data-raid="'+pl.nick+'" style="margin-top:8px">🏴‍☠️ 掠奪這艘船</button></div>':(!me&&(pl.deepest||0)<3?'<div class="note" style="text-align:left">🛡️ 新手保護中，不可掠奪</div>':''))+'</div>';
     });

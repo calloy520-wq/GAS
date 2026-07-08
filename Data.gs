@@ -326,6 +326,10 @@ function npcTradersForDay(day){
   return list;
 }
 
+// ---- 威名 / 爵位（總目標：多面向合成的名聲分數）----
+var PEERAGE = [{t:0,nm:'無名浪人',ico:'🚶'},{t:300,nm:'見習船長',ico:'⛵'},{t:800,nm:'名聞商賈',ico:'💰'},{t:1600,nm:'海域騎士',ico:'🗡️'},{t:2800,nm:'男爵',ico:'🎖️'},{t:4500,nm:'子爵',ico:'🏅'},{t:7000,nm:'伯爵',ico:'👑'},{t:10000,nm:'侯爵',ico:'💠'},{t:15000,nm:'海洋霸主',ico:'🌊'}];
+function fameOf(pl){ var f=0; f+=(pl.deepest||0)*40; f+=Math.floor((pl.gold||0)/120)+Math.floor((pl.invest||0)/120); if(pl.holdings)Object.keys(pl.holdings).forEach(function(k){ f+=50+((pl.holdings[k]&&pl.holdings[k].lv)||1)*50; }); f+=((pl.fleet||[]).length)*40; f+=(((pl.nav&&pl.nav.lv)||1)+((pl.com&&pl.com.lv)||1))*18; f+=(pl.questsDone||0)*12; (pl.roster||[]).forEach(function(c){ if(c)f+=(c.level||1)*3; }); if(pl.uniques)f+=Object.keys(pl.uniques).length*80; return Math.round(f); }
+function peerageOf(f){ var ix=0; for(var i=0;i<PEERAGE.length;i++){ if(f>=PEERAGE[i].t) ix=i; } return ix; }
 function hashNoise(str){ var h=2166136261; for (var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return ((h>>>0)%1000)/1000; }
 function tradeDayBucket(){ return Math.floor(Date.now()/(1000*60*60*4)); }   // 每 4 小時波動一次
 // 回傳某市集某商品的市價（波動後）

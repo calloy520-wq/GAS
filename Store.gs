@@ -174,7 +174,8 @@ function buildPreview_(player){
   }).filter(Boolean);
   var mk = MARKET_BY[player.port||'merc'] || {};
   var sh = player.ship || {};
-  return { deepest:player.deepest||0, gold:player.gold||0, members:members,
+  var fame = fameOf(player);
+  return { deepest:player.deepest||0, gold:player.gold||0, members:members, fame:fame, peerage:peerageOf(fame),
     port:player.port||'merc', portNm:mk.nm||'', portIco:mk.ico||'', cannon:sh.cannon||6, hull:sh.hullMax||60 };
 }
 
@@ -193,9 +194,10 @@ function listPlayers(){
     var nick = (nicks[i][0]||'').toString(); if (!nick) continue;
     var preview = safeParse_(rest[i][3]) || {};
     out.push({ nick:nick, deepest:rest[i][0]||0, gold:rest[i][1]||0, updated:rest[i][2]||0, members:preview.members||[],
+      fame:preview.fame||0, peerage:preview.peerage||0,
       port:preview.port||'merc', portNm:preview.portNm||'', portIco:preview.portIco||'', cannon:preview.cannon||6, hull:preview.hull||60 });
   }
-  out.sort(function(a,b){ return (b.deepest-a.deepest) || (b.gold-a.gold); });
+  out.sort(function(a,b){ return (b.fame-a.fame) || (b.deepest-a.deepest); });
   cache.put('list_players', JSON.stringify(out), LIST_TTL);
   return out;
 }
