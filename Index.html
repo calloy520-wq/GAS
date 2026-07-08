@@ -1,527 +1,516 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
+<base target="_top">
 <style>
-  :root{
-    --bg:#0e1017; --panel:#171c29; --panel2:#1f2536; --card:#232a3d;
-    --line:#2c3446; --line2:#3a4459; --text:#e9edf7; --muted:#8b95af;
-    --gold:#e8b84b; --blue:#4a90e2; --green:#5fcf80; --pink:#e878a8; --red:#e5675a; --purple:#a986e0;
-    --sp:10px; --r:12px;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:
-      radial-gradient(1200px 600px at 50% -10%, #1a2133 0%, var(--bg) 60%);
-    color:var(--text);font-size:14px;line-height:1.5;overflow-x:hidden;
-    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;}
-  #app{max-width:1080px;margin:0 auto;padding:12px;}
-  .muted{color:var(--muted)} .tag{font-size:11px;color:var(--muted)}
+  :root{--ink:#f0e9dc;--soft:#b6a892;--gold:#f4c34e;--gold-d:#c8971f;--line:#5a4a35;
+    --panel:#33291f;--panel2:#3d3125;--good:#7cc36a;--good-d:#4f9e42;--hp:#e5556a;
+    --t1:#3a3357;--t2:#6d5a6e;--d-bg:#15111c;--d-panel:#2f273f;--d-line:#43385a}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{color:var(--ink);font-family:"Baloo 2","Segoe UI Rounded","Hiragino Maru Gothic ProN","Noto Sans TC",system-ui,sans-serif;
+    background:linear-gradient(180deg,var(--t1),var(--t2) 45%,#2a211a);min-height:100dvh}
+  #app{max-width:520px;margin:0 auto;min-height:100dvh;position:relative}
+  h1{font-size:22px;text-align:center;margin:6px 0 2px}
+  .lead{text-align:center;color:#f0d6ad;font-size:12.5px;margin:0 0 12px;opacity:.9}
+  .pad{padding:14px 12px 30px}
 
-  /* Header */
-  .hd{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-      background:linear-gradient(180deg,#1c2334,#161b28);border:1px solid var(--line);
-      border-radius:var(--r);padding:10px 14px;margin-bottom:10px;box-shadow:0 4px 18px #0006;}
-  .hd .logo{font-size:18px;font-weight:800;letter-spacing:3px;}
-  .hd .logo small{font-size:11px;font-weight:400;color:var(--muted);letter-spacing:1px;margin-left:6px}
-  .kpi{display:flex;flex-direction:column;line-height:1.1}
-  .kpi b{font-size:17px} .kpi span{font-size:10px;color:var(--muted);letter-spacing:1px}
-  .kpi .g{color:var(--gold)} .kpi .ap{color:var(--green)}
-  .turnbar{flex:1;min-width:140px}
-  .turnbar .trk{height:8px;background:#0007;border-radius:5px;overflow:hidden;border:1px solid var(--line)}
-  .turnbar .trk>i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--gold))}
+  .bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:8px;padding:9px 12px;
+    background:rgba(20,16,12,.72);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+  .bar .t{font-weight:800;font-size:15px} .bar .t small{color:var(--soft);font-weight:600;font-size:11px}
   .spacer{flex:1}
+  .pill{display:flex;align-items:center;gap:4px;background:#1c1712;border:1px solid var(--line);
+    border-radius:11px;padding:4px 9px;font-weight:800;font-variant-numeric:tabular-nums;font-size:13px}
 
-  /* Buttons */
-  .btn{background:var(--panel2);color:var(--text);border:1px solid var(--line2);border-radius:8px;
-       padding:7px 12px;font-size:13px;cursor:pointer;transition:.12s;white-space:nowrap;font-family:inherit}
-  .btn:hover:not(:disabled){border-color:var(--gold);transform:translateY(-1px)}
-  .btn:disabled{opacity:.38;cursor:not-allowed}
-  .btn.primary{background:linear-gradient(180deg,#f0c65e,#e0a838);color:#231a00;font-weight:800;border-color:#f0c65e}
-  .btn.accent{border-color:var(--pink)} .btn.sm{padding:4px 9px;font-size:12px}
-  .btn.on{outline:2px solid var(--gold)}
+  input,select{font-family:inherit}
+  .inp{width:100%;padding:12px;border-radius:11px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:15px}
+  .inp:focus{outline:none;border-color:var(--gold)}
 
-  /* Panels */
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
-         padding:12px 14px;margin-bottom:10px;box-shadow:0 2px 10px #0004}
-  .ptitle{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:1px;margin-bottom:8px}
-  .ptitle .i{font-size:16px} .ptitle .sub{font-size:11px;color:var(--muted);font-weight:400}
-  .grid{display:grid;gap:8px}
-  .g-char{grid-template-columns:repeat(auto-fill,minmax(232px,1fr))}
-  .g-fac{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
-  .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .btn{border:none;border-radius:13px;padding:13px;font-weight:800;font-size:15px;color:#fff;cursor:pointer;font-family:inherit;
+    box-shadow:0 4px 0 rgba(0,0,0,.35);width:100%}
+  .btn:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.35)}
+  .btn.gold{background:linear-gradient(180deg,var(--gold),var(--gold-d));color:#3a2600}
+  .btn.ok{background:linear-gradient(180deg,var(--good),var(--good-d))}
+  .btn.re{background:linear-gradient(180deg,#8a6fd0,#6a4cae)}
+  .btn.dim{background:#4a3b2a} .btn[disabled]{opacity:.45}
+  .btn.sm{padding:9px 12px;font-size:13px;width:auto;box-shadow:0 3px 0 rgba(0,0,0,.35)}
 
-  /* Banner */
-  .banner{text-align:center;font-size:20px;font-weight:800;padding:12px;border-radius:var(--r);margin-bottom:10px}
-  .banner.win{background:linear-gradient(180deg,#1f3f2a,#16301f);color:#9af0b0;border:1px solid #2f6b45}
-  .banner.lose{background:linear-gradient(180deg,#3f1f22,#301619);color:#f3a0a0;border:1px solid #6b3030}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+  .glab{font-size:11px;color:var(--soft);font-weight:700;letter-spacing:1px;margin:0 2px 7px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:7px 11px;font-size:13px;font-weight:700;cursor:pointer}
+  .chip.on{background:linear-gradient(180deg,#f4c34e,#d09a1f);color:#3a2600;border-color:#f4c34e}
+  .chip:active{transform:scale(.96)}
 
-  /* Map */
-  .mapscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--r)}
-  #mapWrap{position:relative;width:100%;min-width:600px;padding-top:52%;
-    background:radial-gradient(700px 380px at 50% 40%,#1c2436 0%,#131826 72%);
-    border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
-  #map{position:absolute;inset:0} #lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-  .ter{position:absolute;transform:translate(-50%,-50%);min-width:66px;text-align:center;cursor:pointer;
-       background:var(--panel2);border:1px solid var(--line2);border-top:3px solid #888;border-radius:9px;
-       padding:3px 6px 4px;box-shadow:0 3px 8px #0008;transition:.1s;user-select:none}
-  .ter:hover{transform:translate(-50%,-50%) scale(1.07);z-index:5}
-  .ter b{display:block;font-size:12px;line-height:1.2}
-  .ter .tr{font-size:10.5px;color:#cfd6e6}
-  .ter .bld{font-size:9px;letter-spacing:-.5px}
-  .ter .gs{display:flex;justify-content:center;gap:1px;margin-top:1px}
-  .ter.sel{outline:2px solid var(--gold)} .ter.target{outline:2px dashed #fff}
-  .ter .dg{font-size:9px;color:var(--gold)}
+  .abil{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+  .ab{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:7px 4px;text-align:center}
+  .ab b{font-size:17px;display:block} .ab .mm{color:var(--soft);font-size:11px} .ab small{color:var(--soft);font-size:10.5px}
 
-  /* Cards */
-  .card{background:var(--card);border:1px solid var(--line2);border-radius:10px;padding:9px 10px}
-  .card.sel{outline:2px solid var(--gold)} .card.acted{opacity:.5}
-  .chead{display:flex;align-items:center;gap:8px}
-  .av{border-radius:7px;overflow:hidden;background:#0c0e14;flex:none}
-  .nm{font-weight:700;font-size:15px}
-  .ulab{font-size:10px;padding:1px 7px;border-radius:10px;color:#0a0d14;font-weight:700}
-  .stat{font-size:12px;color:#cfd6e6;margin-top:2px}
-  .bar{height:6px;background:#0007;border-radius:4px;overflow:hidden;margin:2px 0}
-  .bar>i{display:block;height:100%}
-  .loy>i{background:linear-gradient(90deg,#e878a8,#f0a0c0)} .xp>i{background:linear-gradient(90deg,#5fcf80,#a0e0b0)}
-  .cg>i{background:linear-gradient(90deg,#e8b84b,#ffd76a)}
-  .rdy{color:#231a00;background:linear-gradient(90deg,#f0c65e,#ffd76a);border-radius:8px;padding:0 6px;font-weight:800;font-size:11px}
-  .bondtag{color:var(--pink);font-size:11px}
-  #login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:100;
-    background:radial-gradient(900px 500px at 50% 0%,#1a2133,#0e1017 70%)}
-  .loginbox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px 26px;width:min(90vw,360px);
-    text-align:center;box-shadow:0 12px 40px #000a}
-  .loginbox input{width:100%;padding:11px 12px;font-size:15px;border-radius:9px;border:1px solid var(--line2);
-    background:var(--panel2);color:var(--text);font-family:inherit}
-  .loginbox input:focus{outline:none;border-color:var(--gold)}
-  .legend{font-size:10px;font-weight:800;padding:1px 7px;border-radius:10px;color:#3a2a00;background:linear-gradient(90deg,#ffd76a,#ffb84a);box-shadow:0 0 6px rgba(255,200,80,.5)}
-  .soul{font-size:12px;color:#cbd3e6;background:#10141e;border:1px dashed var(--line2);border-radius:8px;
-        padding:8px;margin-top:7px;line-height:1.55;display:none}
-  .soul.show{display:block} .soul b{color:var(--gold)}
-  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
-  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;align-items:center}
+  .pbox{width:min(56vw,220px);aspect-ratio:1/1;margin:0 auto;border-radius:16px;overflow:hidden;position:relative;
+    border:3px solid var(--gold-d);background:#2a2118;box-shadow:0 8px 22px rgba(0,0,0,.4)}
+  .pbox img{width:100%;height:100%;object-fit:cover;display:block}
+  .pbox .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;
+    color:#ffe0a8;font-size:13px;text-align:center;font-weight:700}
+  .ring{width:32px;height:32px;border:4px solid #ffffff33;border-top-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
 
-  /* Actions */
-  .cmdgrp{border:1px solid var(--line);border-radius:9px;padding:8px;margin-top:8px;background:#10141e}
-  .cmdgrp .lab{font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:5px}
-  input[type=range]{flex:1;min-width:120px;accent-color:var(--gold)}
-  .lvdots{display:inline-flex;gap:2px;margin-left:4px}
-  .lvdots i{width:6px;height:6px;border-radius:50%;background:#0009;display:inline-block}
-  .lvdots i.on{background:var(--gold)}
-  #log{background:#0b0e15;border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;line-height:1.6;min-height:44px}
-  .itemcard{background:var(--card);border:1px solid var(--line2);border-radius:9px;padding:7px 9px;font-size:12px;min-width:150px}
-  /* 手機優化 */
-  @media (max-width:640px){
-    #app{padding:8px}
-    .panel{padding:10px 11px}
-    .hd{gap:8px;padding:8px 10px}
-    .hd .logo{font-size:15px;letter-spacing:1px} .hd .logo small{display:none}
-    .kpi b{font-size:15px}
-    .turnbar{order:5;flex-basis:100%;min-width:0}
-    .grid{gap:7px}
-    .ter b{font-size:12.5px} .ter .tr{font-size:11px}
-    .mapscroll::after{content:'← 左右滑動看全地圖 →';display:block;text-align:center;color:var(--muted);font-size:11px;padding:4px 0 0}
-    .btn{padding:8px 12px}
-    #log{font-size:13px}
-  }
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .bldg{position:relative;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:15px;padding:12px;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.28)}
+  .bldg:active{transform:translateY(2px)}
+  .bldg .ico{font-size:30px} .bldg .nm{font-weight:800;font-size:15px;margin-top:4px} .bldg .ds{color:var(--soft);font-size:11px;margin-top:1px}
+  .bldg.wide{grid-column:1/3;background:linear-gradient(180deg,#4a2c3a,#331c26);border-color:#7a3c52}
+  .badge{position:absolute;top:8px;right:8px;background:var(--hp);color:#fff;font-size:10px;font-weight:800;padding:1px 7px;border-radius:9px}
+
+  .u{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:9px;margin-bottom:8px}
+  .u .av{width:44px;height:44px;border-radius:10px;object-fit:cover;background:#241d14;flex:none;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden}
+  .u .av img{width:100%;height:100%;object-fit:cover}
+  .u .info{flex:1;min-width:0} .u .info b{font-size:14.5px} .u .info small{display:block;color:var(--soft);font-size:11.5px;line-height:1.5}
+  .u .tag{font-size:10px;font-weight:800;padding:1px 7px;border-radius:8px;background:#0006;color:var(--soft)}
+  .hpbar{height:6px;border-radius:4px;background:#0007;overflow:hidden;margin-top:4px}
+  .hpbar>i{display:block;height:100%;background:linear-gradient(90deg,var(--hp),#ff8a99)}
+
+  .modal{position:fixed;inset:0;z-index:40;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55)}
+  .modal.show{display:flex}
+  .sheet{width:100%;max-width:520px;max-height:90dvh;overflow-y:auto;background:linear-gradient(180deg,#2e251b,#241c14);
+    border:1px solid var(--line);border-radius:20px 20px 0 0;padding:14px 12px calc(20px + env(safe-area-inset-bottom))}
+  .sheet h2{margin:2px 0 2px;font-size:19px} .sheet .sub{color:var(--soft);font-size:12.5px;margin:0 0 12px}
+  .close{float:right;background:#4a3b2a;border:none;color:var(--ink);width:32px;height:32px;border-radius:10px;font-size:16px;font-weight:800;cursor:pointer}
+  .note{color:var(--soft);font-size:12px;text-align:center;margin:10px 0 2px}
+  .rowbtns{display:flex;gap:8px;margin-top:6px}
+
+  .rep-floor{background:var(--d-panel);border:1px solid var(--d-line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+  .rep-floor .fh{font-weight:800;font-size:14px;margin-bottom:3px}
+  .rep-floor .fl{color:#c9bfe0;font-size:12px;line-height:1.6}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#241c14;border:1px solid var(--gold-d);
+    color:var(--ink);padding:10px 16px;border-radius:12px;font-weight:700;font-size:13px;z-index:80;opacity:0;transition:opacity .25s;pointer-events:none}
+  .toast.show{opacity:1}
+  details{margin-top:8px;color:var(--soft);font-size:12px}
+  details pre{white-space:pre-wrap;word-break:break-word;background:#241d14;padding:8px;border-radius:8px;border:1px solid var(--line)}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 </head>
 <body>
-<div id="login">
-  <div class="loginbox">
-    <div class="logo" style="font-size:26px">⚔️ 諸國爭霸</div>
-    <div class="muted" style="margin:6px 0 14px">輸入暱稱，開始屬於你的征程</div>
-    <input id="pname" maxlength="20" placeholder="你的暱稱" onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="btn primary" style="width:100%;margin-top:10px" onclick="doLogin()">進入遊戲 ▶</button>
-    <div class="tag" id="loginmsg" style="margin-top:10px"></div>
-    <div class="tag" style="margin-top:12px;opacity:.7">同一個暱稱＝同一份存檔；換暱稱＝另一局。進度每步自動存。</div>
-  </div>
-</div>
-<div id="app" style="display:none">
-  <div class="hd">
-    <div class="logo">⚔️ 諸國爭霸 <small>戰略 SLG · 純 GAS</small></div>
-    <div class="turnbar">
-      <div class="tag" id="turnlab">回合 - / -</div>
-      <div class="trk"><i id="turnfill" style="width:0%"></i></div>
-    </div>
-    <div class="kpi"><b class="g" id="gold">-</b><span>銀兩</span></div>
-    <div class="kpi"><b class="ap" id="ap">-</b><span>行動點</span></div>
-    <div class="kpi"><b id="who" style="font-size:14px">-</b><span>玩家</span></div>
-    <button class="btn primary" id="btnEnd" onclick="endTurn()">結束回合 ▶</button>
-    <button class="btn" onclick="newGame()">重開</button>
-    <button class="btn" onclick="logout()">換人</button>
-  </div>
-
-  <div id="bannerSlot"></div>
-  <div id="log">載入中…</div>
-
-  <div class="panel">
-    <div class="ptitle"><span class="i">🗺️</span>戰況地圖<span class="sub" id="mapsub"></span>
-      <div class="spacer"></div><div class="legend" id="legend"></div></div>
-    <div class="mapscroll"><div id="mapWrap"><svg id="lines"></svg><div id="map"></div></div></div>
-    <div class="tag" style="margin-top:7px">圖示：🛡兵力　🏪市場 ⛺兵營 🧱城牆 🗼魔導塔（數字=等級）　🗿迷宮(未通關) ✅已通關　·　點領地上的女將可快速選取</div>
-  </div>
-
-  <div class="panel">
-    <div class="ptitle"><span class="i">🎴</span>女將<span class="sub">點卡片選取，點「角色卡」看她的靈魂</span></div>
-    <div class="grid g-char" id="charList"></div>
-  </div>
-
-  <div class="panel">
-    <div class="ptitle"><span class="i">🎯</span>指令<span class="sub" id="actHint"></span></div>
-    <div id="actBody"></div>
-  </div>
-
-  <div class="panel">
-    <div class="ptitle"><span class="i">🤝</span>外交<span class="sub">結盟／停戰避免多線作戰；AI 不與獨大者結盟</span></div>
-    <div class="grid g-fac" id="diploList"></div>
-  </div>
-
-  <div class="panel">
-    <div class="ptitle"><span class="i">🗡️</span>寶庫 · 裝備<span class="sub">裝備不耗行動點</span></div>
-    <div class="row" id="itemList"></div>
-  </div>
-</div>
+<div id="app"></div>
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<div class="modal" id="pmodal"><div class="sheet" id="psheet"></div></div>
+<div class="toast" id="toast"></div>
 
 <script>
-var VIEW=null, selCharId=null, selTargetId=null, busy=false, openSoul={}, PLAYER='';
-var UCOL={infantry:'#9aa7b5',cavalry:'#e8b84b',archer:'#5fcf80',mage:'#a986e0',ninja:'#6f86d6'};
-
-function call(action,params){
-  if(busy) return; busy=true;
-  var el=document.getElementById('log'); el.style.opacity=.5;
-  var lm=document.getElementById('loginmsg');
-  google.script.run
-    .withSuccessHandler(function(resp){ busy=false; el.style.opacity=1;
-      if(!resp||!resp.ok){ var m='⚠️ '+((resp&&resp.message)||'未知錯誤'); el.textContent=m; if(lm&&action==='login')lm.textContent=m; return; }
-      VIEW=resp.view;
-      document.getElementById('login').style.display='none';
-      document.getElementById('app').style.display='block';
-      var w=document.getElementById('who'); if(w)w.textContent=PLAYER;
-      render(); })
-    .withFailureHandler(function(err){ busy=false; el.style.opacity=1;
-      var m='❌ 連線錯誤：'+err.message+'（第一次使用請先在 Apps Script 編輯器手動執行一次 initGame）';
-      el.textContent=m; if(lm&&action==='login')lm.textContent=m; })
-    .handleAction(Object.assign({action:action,player:PLAYER},params||{}));
-}
-function doLogin(){
-  var n=(document.getElementById('pname').value||'').trim();
-  if(!n){ document.getElementById('loginmsg').textContent='請輸入暱稱'; return; }
-  PLAYER=n; try{localStorage.setItem('gas_player',n);}catch(e){}
-  document.getElementById('loginmsg').textContent='登入中…';
-  call('login',{});
-}
-function logout(){
-  PLAYER=''; VIEW=null; selCharId=null; selTargetId=null;
-  document.getElementById('app').style.display='none';
-  document.getElementById('login').style.display='flex';
-}
-function facOf(id){return (VIEW.factions||[]).filter(function(f){return f.id===id;})[0];}
-function terOf(id){return (VIEW.territories||[]).filter(function(t){return t.id===id;})[0];}
-function chOf(id){return (VIEW.chars||[]).filter(function(c){return c.id===id;})[0];}
-function dunOf(id){return (VIEW.dungeons||[]).filter(function(d){return d.ter===id;})[0];}
-function isMine(f){return f===VIEW.playerFactionId;}
-function uLabel(u){return VIEW.unitLabel[u]||u;}
-function terInc(t){return t.income+(t.market||0)*VIEW.rules.MARKET_INCOME;}
-function terMax(t){return t.maxTroops+(t.barracks||0)*VIEW.rules.BARRACKS_MAX;}
-
-// ★★ 立繪烘焙接口（PORTRAITS）★★
-//   把「角色 ID → 圖片」填進下面即可換上真立繪（資料 URI 或圖片網址皆可）。
-//   之後有 AI 生圖/手繪立繪時，離線做好一套圖，填進這裡就無縫替換；遊戲執行仍然零 AI。
-//   留空(預設)則使用下方純 SVG 向量頭像當占位。
-//   範例：
-//     'C1': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...',
-//     'L2': 'https://your-cdn.example/legend_hishizuku.webp',
-//   角色 ID：具名女將 C1~C13、路人 R1~R12、傳說 L1~L3（可用「角色卡」或存檔試算表查 ID）。
-var PORTRAITS = {
-  // 具名女將
-  'C1':  'https://i.ibb.co/vvvFyg3y/33ae8ae6c28a.jpg', // 亞瑟莉亞
-  'C2':  'https://i.ibb.co/5Xyr2mhR/240a6b750038.jpg', // 莉緹希雅
-  'C3':  'https://i.ibb.co/GfcsQGn4/08075adfda3b.jpg', // 卡蜜拉
-  'C4':  'https://i.ibb.co/Q3HbD7W1/fde17c78e65d.jpg', // 薇歐拉
-  'C5':  'https://i.ibb.co/21L90NhG/e93fd13e2bd7.jpg', // 綾音
-  'C6':  'https://i.ibb.co/4np1PjMv/5d1fced29431.jpg', // 雪代
-  'C7':  'https://i.ibb.co/kgTJXnqD/8dfb8ee8e696.jpg', // 星奈
-  'C8':  'https://i.ibb.co/Z6Nb5LNm/a84c537c755e.jpg', // 澪
-  'C9':  'https://i.ibb.co/5WqYCh3J/9a281dffd86b.jpg', // 蕾娜
-  'C10': 'https://i.ibb.co/SSBMqyb/fe72c8889672.jpg',  // 蓋兒
-  'C11': 'https://i.ibb.co/jkM0sGwc/c7977b22b240.jpg', // 蒂雅娜
-  'C12': 'https://i.ibb.co/27G8bG3f/ef080ac1459a.jpg', // 芙蘭
-  'C13': 'https://i.ibb.co/vC6CbPGh/31fc78713ae0.jpg', // 巫月
-  // 傳說女將
-  'L1':  'https://i.ibb.co/dw29k73d/fbe9acce3e81.jpg', // 沙夜
-  'L2':  'https://i.ibb.co/5hyv99st/2b046b004162.jpg', // 緋雫
-  'L3':  'https://i.ibb.co/cKDP565g/89af46eff556.jpg', // 露娜
-  'L4':  'https://i.ibb.co/ycy4Nhq2/ad42166044e2.jpg', // 露卡卡
+// ============ 前端資料（顯示用；戰鬥仍以後端為準）============
+var COMBAT={
+  fighter:{nm:'戰士',ico:'⚔️',atk:'str',hd:10,dmg:[1,8],skill:'猛擊',blurb:'血厚攻高的前線支柱'},
+  paladin:{nm:'聖騎士',ico:'🛡️',atk:'str',hd:10,dmg:[1,8],skill:'神聖斬',blurb:'能扛能奶的重甲騎士'},
+  rogue:{nm:'盜賊',ico:'🗡️',atk:'dex',hd:8,dmg:[1,6],skill:'偷襲',blurb:'高暴擊高閃避的收割者'},
+  ranger:{nm:'遊俠',ico:'🏹',atk:'dex',hd:10,dmg:[1,8],skill:'瞄準連射',blurb:'穩定輸出的遠程獵手'},
+  wizard:{nm:'法師',ico:'🔮',atk:'int',hd:6,dmg:[1,6],skill:'火球術',blurb:'脆皮但一發清場'},
+  cleric:{nm:'牧師',ico:'✨',atk:'wis',hd:8,dmg:[1,6],skill:'聖光',blurb:'能打能奶的定海神針'}
 };
+var SUPPORT={
+  bard:{nm:'吟遊詩人',ico:'🎵',hd:8,dmg:[1,6],desc:'全隊攻擊檢定 +2'},
+  merchant:{nm:'商人',ico:'💰',hd:6,dmg:[1,4],desc:'金幣與掉落率 +40%'},
+  scholar:{nm:'學者',ico:'📖',hd:6,dmg:[1,4],desc:'經驗 +35%、自動鑑定'},
+  medic:{nm:'醫者',ico:'⛑️',hd:8,dmg:[1,6],desc:'每層自動治療全隊 35%'},
+  diviner:{nm:'占卜師',ico:'🍀',hd:6,dmg:[1,4],desc:'全隊暴擊+10%、避陷阱'}
+};
+var WEAPONS=[
+  {id:'w_dagger',nm:'匕首',ico:'🔪',dmg:[1,4],bonus:0,price:20,tier:1},
+  {id:'w_short',nm:'短劍',ico:'🗡️',dmg:[1,6],bonus:0,price:45,tier:1},
+  {id:'w_long',nm:'長劍',ico:'⚔️',dmg:[1,8],bonus:0,price:90,tier:2},
+  {id:'w_bow',nm:'長弓',ico:'🏹',dmg:[1,8],bonus:1,price:110,tier:2},
+  {id:'w_great',nm:'巨劍',ico:'🗡️',dmg:[2,6],bonus:0,price:200,tier:3},
+  {id:'w_staff',nm:'秘法杖',ico:'🪄',dmg:[1,8],bonus:2,price:220,tier:3},
+  {id:'w_flame',nm:'烈焰之刃',ico:'🔥',dmg:[2,6],bonus:2,price:420,tier:4}];
+var ARMORS=[
+  {id:'a_cloth',nm:'布衣',ico:'👕',ac:1,price:20,tier:1},
+  {id:'a_leather',nm:'皮甲',ico:'🧥',ac:2,price:50,tier:1},
+  {id:'a_chain',nm:'鎖子甲',ico:'🥋',ac:4,price:120,tier:2},
+  {id:'a_plate',nm:'板甲',ico:'🛡️',ac:6,price:260,tier:3},
+  {id:'a_dragon',nm:'龍鱗鎧',ico:'🐲',ac:8,price:480,tier:4}];
+var TRINKETS=[
+  {id:'t_str',nm:'力量指環',ico:'💍',ab:'str',val:2,price:100,tier:2},
+  {id:'t_dex',nm:'敏捷護符',ico:'📿',ab:'dex',val:2,price:100,tier:2},
+  {id:'t_con',nm:'體質護身',ico:'🧿',ab:'con',val:2,price:100,tier:2},
+  {id:'t_int',nm:'智慧之冠',ico:'👑',ab:'int',val:2,price:120,tier:3},
+  {id:'t_luck',nm:'幸運四葉',ico:'🍀',ab:'cha',val:2,price:120,tier:3}];
+var AB=['str','dex','con','int','wis','cha'];
+var ABN={str:'力量',dex:'敏捷',con:'體質',int:'智力',wis:'睿知',cha:'魅力'};
+var ABI={str:'💪',dex:'🎯',con:'❤️',int:'🧠',wis:'👁️',cha:'💬'};
+var ROSTER_MAX=10, BATTLE_MAX=4, SUPPORT_MAX=2, MAX_FLOOR=30;
 
-// 向量動漫 Q 版頭像 v2（純 SVG，零 API）。線稿描邊+瀏海投影+呆毛+臥蠶反光；傳說女將(id 以 L 開頭)加金光暈+星芒+寶石王冠。
-function pixelAvatar(id, unit, px){
-  id=String(id);
-  if(PORTRAITS[id]) return '<img src="'+PORTRAITS[id]+'" width="'+px+'" height="'+px+'" alt="" loading="lazy" style="display:block;object-fit:cover;object-position:center top;border-radius:8px;background:#0c0e14"/>'; // 有立繪就用立繪(從上緣裁切，露臉)
-  var h=0,i; for(i=0;i<id.length;i++) h=(h*131+id.charCodeAt(i))>>>0;
-  function rnd(n){ h=(h*1103515245+12345)>>>0; return Math.floor(h/65536)%n; }
-  var uid='av'+(h%997);
-  var HAIR=[['#7a5236','#9c6f4a','#5a3a22'],['#33303e','#4a4658','#201e2a'],['#e6c260','#f4dc8e','#c89a34'],
-    ['#e88fb4','#f6b6cf','#c96a92'],['#5a7fc0','#84a3d8','#3d5c98'],['#8f6fc0','#b393d8','#6a4c98'],
-    ['#cf5f56','#e58079','#9c3d38'],['#4fa398','#78c3b8','#357a70'],['#dfe2ea','#f4f6fa','#bcc0cc'],['#e0894a','#f2ad74','#b8642c']];
-  var EYE=['#8a5cc0','#4a86d0','#4fa35f','#d05a6a','#d0a040','#5a5468','#c8623a','#3aa0a0'];
-  var SKIN=[['#ffe1c6','#f3c6a2'],['#ffd8b6','#efbf98'],['#f6cfa4','#e3b184']];
-  var hair=HAIR[rnd(HAIR.length)], eye=EYE[rnd(EYE.length)], skin=SKIN[rnd(SKIN.length)];
-  var side=rnd(4), bangs=rnd(3), expr=rnd(5), mouth=rnd(3), acc=rnd(6), part=(rnd(3)-1)*4, BL=[60,74,90][rnd(3)];
-  var ahoge=rnd(3)===0;
-  var legend=id.charAt(0)==='L'; // 傳說女將：華麗特效
-  function shift(hex,a){var s=hex.replace('#','');var n=parseInt(s,16);var r=Math.max(0,Math.min(255,((n>>16)&255)+a));var g=Math.max(0,Math.min(255,((n>>8)&255)+a));var b=Math.max(0,Math.min(255,(n&255)+a));return 'rgb('+r+','+g+','+b+')';}
-  var ol=shift(hair[2],-22); // 髮線稿描邊色
-  function blob(cx,cy,rx,ry,c){return '<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+rx+'" ry="'+ry+'" fill="'+c+'" stroke="'+ol+'" stroke-width="1"/>';}
-  function eyeSVG(ex,ey,sideLR){
-    var closed=(expr===3)||(expr===4&&sideLR==='R');
-    if(closed) return '<path d="M'+(ex-8)+','+(ey+1)+' Q'+ex+','+(ey-8)+' '+(ex+8)+','+(ey+1)+'" stroke="#3a3040" stroke-width="2.4" fill="none" stroke-linecap="round"/>';
-    var ry=(expr===2)?11:9.5;var s='';
-    s+='<ellipse cx="'+ex+'" cy="'+ey+'" rx="8" ry="'+ry+'" fill="#fff"/>';
-    s+='<ellipse cx="'+ex+'" cy="'+(ey+1)+'" rx="6.2" ry="'+(ry-1.5)+'" fill="url(#'+uid+'i)"/>';
-    s+='<ellipse cx="'+ex+'" cy="'+(ey+3)+'" rx="6.2" ry="3" fill="'+shift(eye,-10)+'" opacity="0.6"/>';
-    s+='<ellipse cx="'+ex+'" cy="'+(ey+2)+'" rx="3" ry="'+(ry-4)+'" fill="#2a2530"/>';
-    s+='<circle cx="'+(ex-2.4)+'" cy="'+(ey-3.5)+'" r="2.8" fill="#fff"/>';
-    s+='<circle cx="'+(ex+2.2)+'" cy="'+(ey+3)+'" r="1.5" fill="#fff" opacity="0.9"/>';
-    // 上眼線+睫毛
-    s+='<path d="M'+(ex-8.6)+','+(ey-3)+' Q'+ex+','+(ey-12)+' '+(ex+8.6)+','+(ey-3)+'" stroke="#2a2530" stroke-width="2.8" fill="none" stroke-linecap="round"/>';
-    s+='<path d="M'+(ex+7)+','+(ey-5)+' l3.4,-2.2" stroke="#2a2530" stroke-width="1.7" stroke-linecap="round"/>';
-    // 臥蠶反光
-    s+='<path d="M'+(ex-5)+','+(ey+ry-1.5)+' Q'+ex+','+(ey+ry+1.5)+' '+(ex+5)+','+(ey+ry-1.5)+'" stroke="#fff" stroke-width="1" fill="none" opacity="0.45"/>';
-    return s;
-  }
-  var S='<defs>';
-  S+='<radialGradient id="'+uid+'i" cx="50%" cy="35%" r="65%"><stop offset="0%" stop-color="'+shift(eye,55)+'"/><stop offset="55%" stop-color="'+eye+'"/><stop offset="100%" stop-color="'+shift(eye,-35)+'"/></radialGradient>';
-  S+='<linearGradient id="'+uid+'h" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+hair[1]+'"/><stop offset="55%" stop-color="'+hair[0]+'"/><stop offset="100%" stop-color="'+hair[2]+'"/></linearGradient>';
-  if(legend) S+='<radialGradient id="'+uid+'g" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#fff2c0" stop-opacity="0"/><stop offset="66%" stop-color="#ffcf5a" stop-opacity="0.38"/><stop offset="100%" stop-color="#ffcf5a" stop-opacity="0"/></radialGradient>';
-  S+='</defs>';
-  // 傳說光暈（最底層）
-  if(legend) S+='<circle cx="50" cy="50" r="50" fill="url(#'+uid+'g)"/><circle cx="50" cy="50" r="47" fill="none" stroke="#ffd76a" stroke-width="1.4" opacity="0.55"/>';
-  // 後髮尾
-  if(side===1){S+=blob(12,56,8.5,18,hair[0])+blob(88,56,8.5,18,hair[0]);}
-  else if(side===2){S+=blob(85,50,8.5,21,hair[0]);}
-  // 呆毛
-  if(ahoge) S+='<path d="M50,14 C51,5 59,4 57,12" stroke="'+hair[0]+'" stroke-width="2.4" fill="none" stroke-linecap="round"/>';
-  // 後髮主體
-  S+='<path d="M18,'+BL+' C8,42 16,14 50,14 C84,14 92,42 82,'+BL+' C70,'+(BL-8)+' 30,'+(BL-8)+' 18,'+BL+' Z" fill="url(#'+uid+'h)" stroke="'+ol+'" stroke-width="1.1"/>';
-  // 臉
-  S+='<path d="M50,28 C32,28 25,42 25,54 C25,68 36,78 50,78 C64,78 75,68 75,54 C75,42 68,28 50,28 Z" fill="'+skin[0]+'" stroke="'+shift(skin[1],-8)+'" stroke-width="0.8"/>';
-  S+='<ellipse cx="25.5" cy="55" rx="4" ry="5.5" fill="'+skin[0]+'"/><ellipse cx="74.5" cy="55" rx="4" ry="5.5" fill="'+skin[0]+'"/>';
-  S+='<ellipse cx="35" cy="63" rx="5.5" ry="3.2" fill="#f79ab0" opacity="0.55"/><ellipse cx="65" cy="63" rx="5.5" ry="3.2" fill="#f79ab0" opacity="0.55"/>';
-  S+='<path d="M49,60 Q50,61.5 51,60" stroke="'+skin[1]+'" stroke-width="1" fill="none" stroke-linecap="round"/>';
-  if(mouth===0) S+='<path d="M45.5,67 Q50,71.5 54.5,67" stroke="#c05a68" stroke-width="1.7" fill="none" stroke-linecap="round"/>';
-  else if(mouth===1) S+='<path d="M46,66.5 Q50,73 54,66.5 Z" fill="#d06a7a"/><path d="M47,68 Q50,70 53,68" stroke="#fff" stroke-width="1" fill="none"/>';
-  else S+='<ellipse cx="50" cy="67.5" rx="1.8" ry="1.4" fill="#c8586a"/>';
-  S+='<path d="M31,45 Q38,42 44,45" stroke="'+hair[2]+'" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M56,45 Q62,42 69,45" stroke="'+hair[2]+'" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
-  S+=eyeSVG(37,55,'L')+eyeSVG(63,55,'R');
-  // 瀏海投影（在瀏海之下、臉之上的柔和陰影）
-  S+='<ellipse cx="50" cy="43.5" rx="23" ry="5.5" fill="'+skin[1]+'" opacity="0.35"/>';
-  // 前瀏海
-  var cx=50+part;
-  if(bangs===0) S+='<path d="M23,46 C23,28 35,21 50,21 C65,21 77,28 77,46 C70,35 61,39 54,40 C56,31 '+cx+',29 '+cx+',29 C'+cx+',33 44,40 46,40 C37,39 30,35 23,46 Z" fill="url(#'+uid+'h)" stroke="'+ol+'" stroke-width="1"/>';
-  else if(bangs===1) S+='<path d="M23,46 C23,28 35,21 50,21 C65,21 77,28 77,46 C72,33 58,38 50,38 C42,38 30,34 23,46 Z" fill="url(#'+uid+'h)" stroke="'+ol+'" stroke-width="1"/>';
-  else S+='<path d="M23,47 C23,28 36,21 50,21 C64,21 77,28 77,47 C71,36 64,40 58,40 C60,32 52,30 50,30 C46,34 40,42 42,41 C36,40 29,37 23,47 Z" fill="url(#'+uid+'h)" stroke="'+ol+'" stroke-width="1"/>';
-  // 髮頂高光
-  S+='<path d="M35,27 Q50,20 65,27" stroke="'+hair[1]+'" stroke-width="2.8" fill="none" stroke-linecap="round" opacity="0.75"/>';
-  // 配件（傳說改戴寶石王冠＋星芒，不用隨機配件）
-  if(legend){
-    S+='<path d="M36,15 L42,5 L50,12 L58,5 L64,15 Z" fill="#ffd24a" stroke="#c8961e" stroke-width="1"/>';
-    S+='<circle cx="42" cy="7" r="1.7" fill="#7fd4ff"/><circle cx="58" cy="7" r="1.7" fill="#ff7fa8"/><circle cx="50" cy="12.5" r="2.1" fill="#ff5a7a" stroke="#c8961e" stroke-width="0.5"/>';
-    function star(cx,cy,r){return '<path d="M'+cx+','+(cy-r)+' L'+(cx+r*0.28)+','+(cy-r*0.28)+' L'+(cx+r)+','+cy+' L'+(cx+r*0.28)+','+(cy+r*0.28)+' L'+cx+','+(cy+r)+' L'+(cx-r*0.28)+','+(cy+r*0.28)+' L'+(cx-r)+','+cy+' L'+(cx-r*0.28)+','+(cy-r*0.28)+' Z" fill="#fff6c0"/>';}
-    S+=star(15,22,3.6)+star(85,26,4.2)+star(18,80,3)+star(84,78,3.4)+star(50,2,2.6);
-  } else if(acc===1){S+='<g fill="#e8567f" stroke="#c03a60" stroke-width="0.8"><path d="M12,40 L3,33 L3,47 Z"/><path d="M12,40 L21,33 L21,47 Z"/><circle cx="12" cy="40" r="3.4"/></g>';}
-  else if(acc===2){S+='<g fill="'+hair[0]+'" stroke="'+ol+'" stroke-width="0.8"><path d="M27,16 L33,1 L43,17 Z"/><path d="M73,16 L67,1 L57,17 Z"/></g><path d="M30,13 L33.5,6 L38,14 Z" fill="#f7b0c0"/><path d="M70,13 L66.5,6 L62,14 Z" fill="#f7b0c0"/>';}
-  else if(acc===3){S+='<path d="M23,19 Q50,9 77,19" stroke="#e6b64c" stroke-width="3.2" fill="none" stroke-linecap="round"/><circle cx="50" cy="13.5" r="3" fill="#ffe08a" stroke="#c89a34" stroke-width="0.6"/>';}
-  else if(acc===4){S+='<g transform="rotate(20 63 27)"><rect x="59" y="25" width="9" height="4.5" rx="2" fill="#e6b64c" stroke="#c89a34" stroke-width="0.6"/><circle cx="59" cy="27" r="1.6" fill="#fff2b0"/></g>';}
-  else if(acc===5){S+='<path d="M50,0 L36,20 L64,20 Z" fill="#3a2b5a" stroke="#251a3d" stroke-width="1"/><ellipse cx="50" cy="20.5" rx="22" ry="5.5" fill="#3a2b5a" stroke="#251a3d" stroke-width="1"/><rect x="42" y="14" width="16" height="4.5" rx="1" fill="#e6b64c"/>';}
-  return '<svg width="'+px+'" height="'+px+'" viewBox="0 0 100 100" style="display:block">'+S+'</svg>';
-}
+// ============ 顯示用計算（與後端公式一致）============
+function cmod(s){return Math.floor((s-10)/2);}
+function cprof(lv){return 2+Math.floor((lv-1)/4);}
+function cinfo(job){return COMBAT[job]||SUPPORT[job]||null;}
+function isSup(job){return !!SUPPORT[job];}
+function gById(id){var all=WEAPONS.concat(ARMORS).concat(TRINKETS);for(var i=0;i<all.length;i++)if(all[i].id===id)return all[i];return null;}
+function cab(c,a){var v=c.base[a]||10;var t=c.equip&&c.equip.trinket?gById(c.equip.trinket):null;if(t&&t.ab===a)v+=t.val;return v;}
+function cMaxHp(c){var ci=cinfo(c.job);var hd=ci.hd||8;var cm=cmod(cab(c,'con'));var hp=hd+cm;hp+=(c.level-1)*Math.max(1,Math.floor(hd/2)+1+cm);return Math.max(1,hp);}
+function cStats(c){var ci=cinfo(c.job);var w=c.equip.weapon?gById(c.equip.weapon):null;var a=c.equip.armor?gById(c.equip.armor):null;
+  var atkB=cmod(cab(c,ci.atk))+cprof(c.level)+(w?w.bonus:0);var dd=w?w.dmg:ci.dmg;var db=cmod(cab(c,ci.atk))+(w?w.bonus:0);
+  var ac=10+cmod(cab(c,'dex'))+(a?a.ac:0);return{ac:ac,atk:atkB,dmg:dd[0]+'d'+dd[1]+(db>=0?'+'+db:db),atkAb:ci.atk};}
 
-function render(){
-  var pf=facOf(VIEW.playerFactionId);
-  document.getElementById('gold').textContent=pf?pf.gold:'-';
-  document.getElementById('ap').textContent=VIEW.ap;
-  document.getElementById('turnlab').textContent='回合 '+VIEW.turn+' / '+VIEW.turnLimit;
-  document.getElementById('turnfill').style.width=Math.min(100,VIEW.turn/VIEW.turnLimit*100)+'%';
-  document.getElementById('log').textContent=VIEW.log||'';
-  var mine=(VIEW.chars||[]).filter(function(c){return isMine(c.owner);}).length;
-  var cities=(VIEW.territories||[]).filter(function(t){return t.owner===VIEW.playerFactionId;}).length;
-  document.getElementById('mapsub').textContent='　'+cities+' 城 · '+mine+' 女將';
-  renderLegend();renderBanner();renderMap();renderChars();renderActions();renderDiplo();renderItems();
-  document.getElementById('btnEnd').disabled=!!VIEW.winner;
-}
-function renderLegend(){
-  document.getElementById('legend').innerHTML=(VIEW.factions||[]).filter(function(f){return f.id!=='F0';})
-    .map(function(f){return '<span><span class="dot" style="background:'+f.color+'"></span>'+f.name+'</span>';}).join('')
-    +'<span><span class="dot" style="background:#9e9e9e"></span>中立</span>';
-}
-function renderBanner(){
-  var s=document.getElementById('bannerSlot');var w=VIEW.winner;
-  if(w==='WIN')s.innerHTML='<div class="banner win">🎉 天下一統，霸業已成！</div>';
-  else if(w==='TIMEUP_A')s.innerHTML='<div class="banner win">🏯 時限已至 — 群雄之首，一方霸主！</div>';
-  else if(w==='TIMEUP_B')s.innerHTML='<div class="banner lose">🏳️ 時限已至 — 割據求存，未能問鼎天下</div>';
-  else if(w==='LOSE')s.innerHTML='<div class="banner lose">💀 勢力覆滅，再接再厲</div>';
-  else s.innerHTML='';
-}
-function renderMap(){
-  var map=document.getElementById('map'),svg=document.getElementById('lines');map.innerHTML='';
-  var seen={},lines='';
-  (VIEW.territories||[]).forEach(function(t){(t.adj||[]).forEach(function(nid){
-    var k=[t.id,nid].sort().join('-');if(seen[k])return;seen[k]=1;var n=terOf(nid);if(!n)return;
-    lines+='<line x1="'+t.x+'%" y1="'+t.y+'%" x2="'+n.x+'%" y2="'+n.y+'%" stroke="#2c3446" stroke-width="2"/>';
-  });});svg.innerHTML=lines;
-  (VIEW.territories||[]).forEach(function(t){
-    var f=facOf(t.owner)||{color:'#888'};
-    var gens=(VIEW.chars||[]).filter(function(c){return c.loc===t.id;});
-    var gs=gens.length?'<div class="gs">'+gens.slice(0,3).map(function(g){return pixelAvatar(g.id,g.unit,16);}).join('')+'</div>':'';
-    var bld='';['market','barracks','wall','tower'].forEach(function(b){if(t[b])bld+=VIEW.buildTypes[b].icon+t[b]+' ';});
-    var bldm=bld?'<div class="bld">'+bld+'</div>':'';
-    var dg=dunOf(t.id);var dgm=dg?'<div class="dg">'+(dg.cleared?'✅':'🗿'+dg.progress+'/'+dg.floors)+'</div>':'';
-    var el=document.createElement('div');
-    el.className='ter'+(selTargetId===t.id?' target':'')+(selCharId&&chOf(selCharId)&&chOf(selCharId).loc===t.id?' sel':'');
-    el.style.left=t.x+'%';el.style.top=t.y+'%';el.style.borderTopColor=f.color;
-    el.style.background='linear-gradient(180deg,'+hexA(f.color,.18)+',var(--panel2))';
-    el.innerHTML='<b>'+t.name+'</b><div class="tr">🛡'+t.troops+'</div>'+bldm+dgm+gs;
-    el.onclick=function(){onTerritoryClick(t.id);};map.appendChild(el);
+// ============ 後端呼叫 ============
+function srv(action,payload){
+  return new Promise(function(res,rej){
+    if(window.google&&google.script&&google.script.run){
+      google.script.run.withSuccessHandler(function(s){var r;try{r=JSON.parse(s);}catch(e){return rej(new Error('回傳解析失敗'));}r.ok?res(r.data):rej(new Error(r.error));})
+        .withFailureHandler(function(e){rej(e);}).api(action,JSON.stringify(payload||{}));
+    } else { mock(action,payload||{}).then(res,rej); }
   });
 }
-function hexA(hex,a){var h=hex.replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
-  var n=parseInt(h,16);return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';}
+// 本機測試用（無 GAS 時走 localStorage；地下城以簡化假結算示意）
+function mock(action,p){return new Promise(function(res,rej){
+  var DB=JSON.parse(localStorage.getItem('merc_db')||'{}');
+  function put(pl){DB[pl.nick]=pl;localStorage.setItem('merc_db',JSON.stringify(DB));}
+  function roll(){var a=[d6(),d6(),d6(),d6()].sort(function(x,y){return x-y;});return a[1]+a[2]+a[3];}
+  function d6(){return 1+Math.floor(Math.random()*6);}
+  function mk(name,job,portrait,seed,pbase){var base={};AB.forEach(function(a){base[a]=(pbase&&pbase[a])||roll();});var c={id:'c'+Math.random().toString(36).slice(2,9),name:name,job:job,support:isSup(job),portrait:portrait||'',seed:seed||0,level:1,xp:0,base:base,equip:{weapon:null,armor:null,trinket:null},hp:0,maxhp:0};c.maxhp=cMaxHp(c);c.hp=c.maxhp;return c;}
+  setTimeout(function(){try{
+    if(action==='login'){var pl=DB[p.nick.trim()]||null;return res({exists:!!pl,player:pl});}
+    if(action==='create'){var h=mk(p.name,p.job,p.portrait,p.seed,p.base);var pl={nick:p.nick.trim(),gold:120,deepest:0,heroId:h.id,roster:[h],bag:[],team:{battle:[h.id],support:[]}};put(pl);return res(pl);}
+    if(action==='save'){put(p.player);return res(p.player);}
+    if(action==='recruit'){var pl=DB[p.nick.trim()];if(pl.roster.length>=10)return rej(new Error('倉庫已滿'));if(pl.gold<p.cost)return rej(new Error('金幣不足'));var c=mk(p.name,p.job,p.portrait,p.seed);pl.gold-=p.cost;pl.roster.push(c);put(pl);return res({player:pl,recruited:c});}
+    if(action==='dungeon'){var pl=DB[p.nick.trim()];var g=0,x=0,fl=[];var reached=0;for(var f=1;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2}]});}pl.gold+=g;var rep={target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};if(reached>pl.deepest)pl.deepest=reached;rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
+    if(action==='roster'){return res({players:Object.keys(DB).map(function(k){var pl=DB[k];var team=pl.team.battle.concat(pl.team.support);var by={};pl.roster.forEach(function(c){by[c.id]=c;});return{nick:k,deepest:pl.deepest,gold:pl.gold,updated:0,members:team.map(function(id){var c=by[id];return c?{name:c.name,job:c.job,ico:(cinfo(c.job)||{}).ico,level:c.level,portrait:c.portrait}:null;}).filter(Boolean)};})});}
+    rej(new Error('mock 未支援：'+action));
+  }catch(e){rej(e);}},250);
+});}
 
-function renderChars(){
-  var mine=(VIEW.chars||[]).filter(function(c){return isMine(c.owner);});
-  document.getElementById('charList').innerHTML=mine.map(function(c){
-    var loc=terOf(c.loc),sk=VIEW.skills[c.skill]||{},eff=c.eff;
-    var loy=c.loyalty,xp=Math.min(100,Math.round(c.exp/c.expNext*100)),so=openSoul[c.id]?' show':'';
-    return '<div class="card'+(c.id===selCharId?' sel':'')+(c.acted?' acted':'')+'" onclick="selectChar(\''+c.id+'\')">'+
-      '<div class="chead"><div class="av">'+pixelAvatar(c.id,c.unit,40)+'</div>'+
-        '<div><div><span class="nm">'+c.name+'</span> <span class="ulab" style="background:'+UCOL[c.unit]+'">'+uLabel(c.unit)+'</span>'+(c.id.charAt(0)==='L'?' <span class="legend">★傳說</span>':'')+'</div>'+
-        '<div class="stat">Lv.'+c.level+(c.acted?' · <span class="tag">✔已行動</span>':'')+' · 📍'+(loc?loc.name:'在野')+'</div></div></div>'+
-      '<div class="stat">統 '+eff.lead+' · 武 '+eff.war+' · 智 '+eff.int+' · 必殺「'+(sk.name||'—')+'」</div>'+
-      (c.bonds&&c.bonds.length?'<div class="bondtag">🔗羈絆：'+c.bonds.join('、')+'</div>':'')+
-      '<div class="tag">好感 '+loy+'/100</div><div class="bar loy"><i style="width:'+loy+'%"></i></div>'+
-      '<div class="tag">經驗 '+c.exp+'/'+c.expNext+'</div><div class="bar xp"><i style="width:'+xp+'%"></i></div>'+
-      '<div class="tag">蓄力 '+c.charge+'/'+VIEW.chargeMax+(c.charge>=VIEW.chargeMax?' <span class="rdy">⚡必殺就緒</span>':'')+'</div><div class="bar cg"><i style="width:'+Math.min(100,c.charge)+'%"></i></div>'+
-      '<button class="btn sm" style="margin-top:6px" onclick="event.stopPropagation();toggleSoul(\''+c.id+'\')">角色卡 ▾</button>'+
-      '<div class="soul'+so+'"><div style="float:left;margin:0 8px 4px 0;border:1px solid var(--line2);border-radius:7px;overflow:hidden">'+pixelAvatar(c.id,c.unit,64)+'</div>'+
-        '<b>性格</b>：'+c.persona+'<br><b>說話</b>：'+c.speech+'<br><b>喜好</b>：'+c.likes+'<br><b>口頭禪</b>：'+c.catch+'<br><b>背景</b>：'+c.bio+
-        '<br><span class="tag">↑ 這份靈魂現在驅動事件，未來就是 AI 人設。</span></div>'+
-    '</div>';
-  }).join('')||'<span class="muted">妳已無女將。</span>';
+// ============ 全域狀態 ============
+var P=null, app=document.getElementById('app');
+var modal=document.getElementById('modal'), sheet=document.getElementById('sheet');
+var pmodal=document.getElementById('pmodal'), psheet=document.getElementById('psheet');
+function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},1800);}
+function closeSheet(){modal.classList.remove('show');renderTown();}
+function heroOf(){return (P.roster||[]).filter(function(c){return c.id===P.heroId;})[0];}
+function byId(id){return (P.roster||[]).filter(function(c){return c.id===id;})[0];}
+
+function avatarHTML(c){return c&&c.portrait?'<img src="'+c.portrait+'">':((cinfo(c.job)||{}).ico||'❓');}
+
+// ============ 登入 ============
+function renderLogin(){
+  app.innerHTML='<div class="pad"><h1>🏰 傭兵之城</h1><p class="lead">輸入暱稱即可遊玩 · 每個暱稱一份存檔</p>'+
+    '<div class="card"><div class="glab">暱稱（＝帳號）</div><input class="inp" id="nick" maxlength="16" placeholder="例：小美"></div>'+
+    '<button class="btn gold" id="enter">進入城鎮</button>'+
+    '<div class="note">沒有存檔會帶你建立主角；招募夥伴、下地下城都在城裡。</div></div>';
+  document.getElementById('enter').onclick=doLogin;
+  document.getElementById('nick').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+}
+function doLogin(){
+  var nick=(document.getElementById('nick').value||'').trim();
+  if(!nick){toast('請先輸入暱稱');return;}
+  var b=document.getElementById('enter');b.disabled=true;b.textContent='讀取中…';
+  srv('login',{nick:nick}).then(function(r){
+    if(r.exists){P=r.player;renderTown();}
+    else{newNick=nick;renderCreate();}
+  }).catch(function(e){b.disabled=false;b.textContent='進入城鎮';toast('錯誤：'+e.message);});
 }
 
-function renderActions(){
-  var body=document.getElementById('actBody'),hint=document.getElementById('actHint');
-  if(!selCharId){body.innerHTML='<div class="muted">先選一位女將；攻擊／移動需再點地圖上的目標領地。</div>';hint.textContent='';return;}
-  var c=chOf(selCharId);if(!c){selCharId=null;body.innerHTML='';return;}
-  var here=terOf(c.loc),pf=facOf(VIEW.playerFactionId),tgt=terOf(selTargetId),onOwn=here&&here.owner===pf.id;
-  hint.innerHTML='';
-  var head='<div class="chead" style="margin-bottom:6px"><div class="av">'+pixelAvatar(c.id,c.unit,36)+'</div>'+
-    '<div><div><span class="nm">'+c.name+'</span> <span class="ulab" style="background:'+UCOL[c.unit]+'">'+uLabel(c.unit)+'</span></div>'+
-    '<div class="stat">駐 '+(here?here.name:'在野')+(here?'（守軍 '+here.troops+'）':'')+' · 行動點剩 '+VIEW.ap+
-      (c.charge>=VIEW.chargeMax?' · <span class="rdy">⚡必殺就緒</span>':' · 蓄力'+c.charge+'/'+VIEW.chargeMax)+'</div></div></div>';
-
-  if(c.acted){ body.innerHTML=head+'<div class="muted">此女將本回合已行動。</div>'+talkGrp(c); return; }
-  if(VIEW.ap<=0){ body.innerHTML=head+'<div class="muted">行動點用盡，請結束回合。</div>'; return; }
-
-  var maxM=here?here.troops:0,def=Math.max(1,Math.floor(maxM*0.7));
-  var rel=tgt&&VIEW.relations[tgt.owner]?VIEW.relations[tgt.owner].status:'war';
-  var blocked=(rel==='ally'||rel==='ceasefire');
-  var canAtk=tgt&&here&&here.adj.indexOf(tgt.id)>=0&&tgt.owner!==pf.id&&!blocked;
-  var canMove=tgt&&here&&here.adj.indexOf(tgt.id)>=0&&tgt.owner===pf.id;
-
-  // 軍事
-  // 出戰部隊預覽：主將 + 同城未行動女將（上限 MAX_PARTY）
-  var party=[c];
-  if(here){(VIEW.chars||[]).forEach(function(o){ if(party.length>=VIEW.rules.MAX_PARTY)return;
-    if(isMine(o.owner)&&o.loc===here.id&&!o.acted&&o.id!==c.id) party.push(o); });}
-  var partyStr = party.length>1 ? '　🛡️出戰部隊：'+party.map(function(g){return g.name+(g.charge>=VIEW.chargeMax?'⚡':'');}).join('＋') : '　（單將出戰，同城可組副將）';
-
-  var mil='<div class="cmdgrp"><div class="lab">⚔️ 軍事'+partyStr+'</div>'+
-    '<div class="row" style="margin-bottom:6px">出征兵力 <input type="range" id="march" min="1" max="'+Math.max(1,maxM)+'" value="'+def+'" oninput="document.getElementById(\'mv\').textContent=this.value"><b id="mv">'+def+'</b></div>'+
-    '<div class="tag" style="margin-bottom:6px">目標：'+(tgt?('<b>'+tgt.name+'</b>'+(blocked?'（'+(rel==='ally'?'盟友':'停戰中')+'，需先毀約）':'')):'（點地圖選一格）')+'　'+advHint(c,tgt)+'</div>'+
-    '<div class="row">'+
-      '<button class="btn primary" onclick="doAttack()"'+(canAtk?'':' disabled')+'>⚔️ 進攻'+(canAtk?' → '+tgt.name:'')+'</button>'+
-      '<button class="btn" onclick="doMove()"'+(canMove?'':' disabled')+'>🐎 移動'+(canMove?' → '+tgt.name:'')+'</button>'+
-      '<button class="btn" onclick="call(\'recruit\',{charId:selCharId})"'+(onOwn&&pf.gold>=VIEW.rules.RECRUIT_COST_PER_TROOP?'':' disabled')+'>🪖 徵兵</button>'+
-      '<button class="btn accent" onclick="call(\'search\',{charId:selCharId})"'+(onOwn&&pf.gold>=VIEW.rules.SEARCH_COST_GOLD?'':' disabled')+'>🔍 搜索('+VIEW.rules.SEARCH_COST_GOLD+')</button>'+
-      dgBtn(here,onOwn)+
-    '</div></div>';
-
-  // 內政
-  var pol='';
-  if(onOwn){
-    pol='<div class="cmdgrp"><div class="lab">🏛️ 內政建設（'+here.name+'）</div><div class="row">'+
-      VIEW.buildKeys.map(function(b){
-        var bt=VIEW.buildTypes[b],lv=here[b]||0,cost=VIEW.rules.BUILD_BASE_COST*(lv+1),mx=lv>=VIEW.rules.BUILD_MAX_LEVEL;
-        return '<button class="btn" onclick="call(\'build\',{charId:selCharId,building:\''+b+'\'})"'+((mx||pf.gold<cost)?' disabled':'')+' title="'+bt.desc+'">'+
-          bt.icon+bt.name+lvDots(lv)+(mx?' MAX':' '+cost)+'</button>';
-      }).join('')+
-      '</div><div class="tag" style="margin-top:5px">收入 '+terInc(here)+' · 兵力上限 '+terMax(here)+' · 城牆Lv'+(here.wall||0)+' · 塔Lv'+(here.tower||0)+'</div></div>';
-  }
-  body.innerHTML=head+mil+pol+talkGrp(c);
-}
-function lvDots(lv){var s='<span class="lvdots">';for(var i=0;i<VIEW.rules.BUILD_MAX_LEVEL;i++)s+='<i class="'+(i<lv?'on':'')+'"></i>';return s+'</span>';}
-function dgBtn(here,onOwn){var dg=here?dunOf(here.id):null;
-  if(dg&&!dg.cleared&&onOwn)return '<button class="btn accent" onclick="call(\'explore\',{charId:selCharId})">🗿 探索'+dg.name+'('+dg.progress+'/'+dg.floors+')</button>';return '';}
-function talkGrp(c){return '<div class="cmdgrp"><div class="lab">💬 互動</div><button class="btn accent" onclick="call(\'talk\',{charId:\''+c.id+'\'})"'+(VIEW.ap<=0?' disabled':'')+'>💬 談話／安撫（好感+，1行動點）</button></div>';}
-function advHint(c,tgt){
-  if(!tgt)return '';var g=(VIEW.chars||[]).filter(function(x){return x.loc===tgt.id;})[0];
-  if(!g)return '<span class="tag">守城無將</span>';
-  var adv=VIEW.unitAdv[c.unit]||[],dadv=VIEW.unitAdv[g.unit]||[];
-  if(adv.indexOf(g.unit)>=0)return '<span style="color:var(--green)">兵種克制 +30%</span>';
-  if(dadv.indexOf(c.unit)>=0)return '<span style="color:var(--red)">兵種被剋 -20%</span>';
-  return '<span class="tag">守將'+uLabel(g.unit)+'</span>';
+// ============ 創角 ============
+var newNick='', createSel={job:'fighter'}, createBase=null, createPortrait='', createSeed=0;
+function rollAll(){createBase={};AB.forEach(function(a){var arr=[rd6(),rd6(),rd6(),rd6()].sort(function(x,y){return x-y;});createBase[a]=arr[1]+arr[2]+arr[3];});}
+function rd6(){return 1+Math.floor(Math.random()*6);}
+function renderCreate(){
+  if(!createBase)rollAll();
+  var previewChar={job:createSel.job,level:1,base:createBase,equip:{weapon:null,armor:null,trinket:null}};
+  var st=cStats(previewChar);
+  var h='<div class="pad"><h1>🎨 建立主角</h1><p class="lead">選職業 → 骰屬性 → 做頭像 → 確認</p>';
+  // 頭像
+  h+='<div class="pbox" id="pbox">'+(createPortrait?'<img src="'+createPortrait+'">':'<div class="ph">尚未建立頭像<br>👇 點下方按鈕</div>')+'</div>';
+  h+='<button class="btn re sm" style="width:auto;display:block;margin:10px auto 14px" id="mkport">🎨 建立頭像</button>';
+  h+='<div class="card"><div class="glab">角色名</div><input class="inp" id="cname" maxlength="16" placeholder="幫主角取名"></div>';
+  // 職業
+  h+='<div class="card"><div class="glab">職業（戰鬥位）</div><div class="chips" id="jobchips">';
+  Object.keys(COMBAT).forEach(function(k){var c=COMBAT[k];h+='<span class="chip'+(createSel.job===k?' on':'')+'" data-j="'+k+'">'+c.ico+' '+c.nm+'</span>';});
+  h+='</div><div class="note" style="text-align:left;margin-top:8px">'+COMBAT[createSel.job].ico+' <b>'+COMBAT[createSel.job].nm+'</b>：'+COMBAT[createSel.job].blurb+'　招牌技「'+COMBAT[createSel.job].skill+'」</div></div>';
+  // 屬性
+  h+='<div class="card"><div class="glab">屬性（4d6 去最低）　主攻：'+ABN[COMBAT[createSel.job].atk]+'</div><div class="abil">';
+  AB.forEach(function(a){var s=createBase[a];var m=cmod(s);h+='<div class="ab"><small>'+ABI[a]+' '+ABN[a]+'</small><b>'+s+'</b><span class="mm">'+(m>=0?'+':'')+m+'</span></div>';});
+  h+='</div><div class="rowbtns"><button class="btn dim sm" id="reroll" style="flex:1;width:auto">🎲 重骰全部</button></div>'+
+    '<div class="note" style="text-align:left">生命 '+cMaxHp(previewChar)+' ・ 護甲 AC '+st.ac+' ・ 攻擊 +'+st.atk+' ・ 傷害 '+st.dmg+'</div></div>';
+  h+='<button class="btn ok" id="confirm">✅ 確認建立</button></div>';
+  app.innerHTML=h;
+  Array.prototype.forEach.call(document.querySelectorAll('#jobchips .chip'),function(el){el.onclick=function(){createSel.job=el.dataset.j;renderCreate();};});
+  document.getElementById('reroll').onclick=function(){rollAll();renderCreate();};
+  document.getElementById('mkport').onclick=function(){openPortrait(createSel.job,function(r){createPortrait=r.portrait;createSeed=r.seed;renderCreate();});};
+  document.getElementById('confirm').onclick=function(){
+    var name=(document.getElementById('cname').value||'').trim();
+    if(!name){toast('幫主角取個名字');return;}
+    if(!createPortrait){toast('請先建立頭像');return;}
+    var b=this;b.disabled=true;b.textContent='建立中…';
+    srv('create',{nick:newNick,name:name,job:createSel.job,portrait:createPortrait,seed:createSeed,base:createBase}).then(function(pl){
+      // 後端重骰屬性 → 直接採用後端角色
+      P=pl;toast('歡迎來到傭兵之城！');renderTown();
+    }).catch(function(e){b.disabled=false;b.textContent='✅ 確認建立';toast('錯誤：'+e.message);});
+  };
+  // 讓創角時的名字輸入框保留值
+  var cn=document.getElementById('cname');if(cn&&window._cname)cn.value=window._cname;
+  if(cn)cn.addEventListener('input',function(){window._cname=cn.value;});
 }
 
-function renderDiplo(){
-  var pf=facOf(VIEW.playerFactionId);
-  document.getElementById('diploList').innerHTML=(VIEW.factions||[]).filter(function(f){return f.id!=='F0'&&!f.isPlayer;}).map(function(f){
-    var rel=VIEW.relations[f.id]||{status:'war',expire:0};
-    var terr=(VIEW.territories||[]).filter(function(t){return t.owner===f.id;}).length;
-    var st,col;
-    if(!f.alive){st='已滅亡';col='var(--muted)';}
-    else if(rel.status==='ally'){st='🤝 同盟';col='var(--green)';}
-    else if(rel.status==='ceasefire'){st='🕊️ 停戰(至第'+rel.expire+'回)';col='var(--gold)';}
-    else{st='⚔️ 戰爭';col='var(--red)';}
-    var ab=VIEW.abilities[f.ability]||{},btns='';
-    if(f.alive&&!VIEW.winner){
-      if(rel.status!=='ally')btns+='<button class="btn sm" onclick="call(\'ally\',{factionId:\''+f.id+'\'})"'+(pf.gold<VIEW.rules.ALLY_COST?' disabled':'')+'>結盟('+VIEW.rules.ALLY_COST+')</button> ';
-      if(rel.status==='war')btns+='<button class="btn sm" onclick="call(\'ceasefire\',{factionId:\''+f.id+'\'})"'+(pf.gold<VIEW.rules.CEASEFIRE_COST?' disabled':'')+'>停戰('+VIEW.rules.CEASEFIRE_COST+')</button> ';
-      if(rel.status!=='war')btns+='<button class="btn sm accent" onclick="if(confirm(\'確定毀約開戰？\'))call(\'break_pact\',{factionId:\''+f.id+'\'})">毀約</button>';
-    }
-    return '<div class="card"><div><span class="dot" style="background:'+f.color+'"></span><b>'+f.name+'</b> <span class="tag">'+terr+'城</span></div>'+
-      '<div style="color:'+col+';font-weight:700;margin:3px 0">'+st+'</div>'+
-      '<div class="tag">特色：'+(ab.name||'—')+'（'+(ab.desc||'')+'）</div>'+
-      '<div style="margin-top:6px">'+(btns||'<span class="tag">—</span>')+'</div></div>';
-  }).join('');
+// ============ 頭像生成器（Pollinations · 成年限定）============
+var POPTS=[
+  ['hair','髮色',[['黑髮','black hair'],['棕髮','brown hair'],['金髮','blonde hair'],['粉髮','pink hair'],['藍髮','blue hair'],['紫髮','purple hair'],['銀白髮','silver white hair'],['紅髮','red hair']]],
+  ['style','髮型',[['長直髮','long straight hair'],['雙馬尾','twintails'],['馬尾','ponytail'],['短髮鮑伯','short bob hair'],['波浪捲','wavy long hair'],['公主切','hime cut hair']]],
+  ['eyes','瞳色',[['藍瞳','blue eyes'],['紅瞳','red eyes'],['紫瞳','purple eyes'],['綠瞳','green eyes'],['金瞳','golden eyes'],['異色瞳','heterochromia eyes']]],
+  ['age','年齡感（成年限定）',[['青年','young adult woman in her twenties'],['人妻','young married woman'],['成熟','mature adult woman'],['御姐','elegant onee-san mature woman']]],
+  ['figure','身材',[['標準','average build'],['纖細','slender slim build'],['嬌小','petite build'],['高挑','tall build'],['豐腴','curvy voluptuous figure']]],
+  ['expose','服裝露出',[['一般',''],['端莊','modest covered outfit'],['清涼','light revealing summer outfit, bare shoulders'],['性感','sexy alluring revealing outfit, cleavage'],['泳裝','bikini swimsuit']]],
+  ['face','表情',[['微笑','gentle smile'],['冷酷','cool calm expression'],['害羞','shy blushing'],['認真','serious determined'],['元氣','cheerful energetic smile'],['傲嬌','smug tsundere expression']]]
+];
+var PMAP={};POPTS.forEach(function(g){PMAP[g[0]]=g[2];});
+function jobOutfit(job){var m={fighter:'ornate knight armor',paladin:'holy paladin plate armor',rogue:'rogue leather outfit, hood',ranger:'ranger archer light leather outfit',wizard:'mage magic robe',cleric:'priestess holy robe',
+  bard:'elegant bard minstrel outfit',merchant:'travelling merchant outfit',scholar:'scholar robe with glasses',medic:'field medic apron outfit',diviner:'fortune teller mystic outfit'};return m[job]||'adventurer outfit';}
+function buildPPrompt(job,sel){
+  var base="masterpiece, best quality, anime style illustration, 1girl, solo, adult woman, attractive, upper body portrait, from the chest up, medium shot, looking at viewer, big detailed anime eyes, soft cel shading, clean lineart, soft pastel background, japanese gacha character portrait";
+  var floor=", no nudity, non-nude, not naked, no explicit content, no nsfw";
+  function g(k){return PMAP[k][sel[k]][1];}
+  function part(k){var v=g(k);return v?', '+v:'';}
+  var outfit=jobOutfit(job);
+  return base+", "+g('hair')+", "+g('style')+", "+g('eyes')+part('age')+part('figure')+", wearing "+outfit+part('expose')+", "+g('face')+floor;
 }
-function renderItems(){
-  document.getElementById('itemList').innerHTML=(VIEW.items||[]).map(function(i){
-    var holder=i.owner?chOf(i.owner):null,owned=holder&&isMine(holder.owner);
-    var b=[];if(i.war)b.push('武+'+i.war);if(i.lead)b.push('統+'+i.lead);if(i.int)b.push('智+'+i.int);
-    var status=holder?(owned?('裝備於 '+holder.name):('（'+(facOf(holder.owner)||{}).name+'持有）')):'寶庫';
-    var btn='';
-    if(!holder||owned){ if(holder)btn='<button class="btn sm" onclick="call(\'unequip\',{itemId:\''+i.id+'\'})">卸下</button>';
-      else if(selCharId)btn='<button class="btn sm" onclick="call(\'equip\',{charId:selCharId,itemId:\''+i.id+'\'})">裝備給'+(chOf(selCharId)||{}).name+'</button>';}
-    return '<div class="itemcard"><b>'+i.name+'</b> <span class="tag">'+b.join(' ')+'</span><br><span class="tag">'+i.desc+' · '+status+'</span><br>'+btn+'</div>';
-  }).join('');
+var portraitCb=null, pSel={}, pSeed=0, pJob='fighter', pCooling=false, pHasImg=false;
+function openPortrait(job,cb){
+  portraitCb=cb;pJob=job;POPTS.forEach(function(g){pSel[g[0]]=0;});pSeed=Math.floor(Math.random()*1e6);pHasImg=false;pCooling=false;
+  var h='<button class="close" onclick="closePortrait()">✕</button><h2>🎨 建立頭像</h2><p class="sub">選外型 → 生成 → 不喜歡就重生 → 用這張。職業裝束會自動套用。</p>';
+  h+='<div class="pbox" id="ppic"><div class="ph">👇 選好後點<br>「生成立繪」</div></div>';
+  h+='<div id="popts" style="margin-top:12px"></div>';
+  h+='<details><summary>看目前的生圖提示詞</summary><pre id="pprompt"></pre></details>';
+  h+='<div class="rowbtns" style="margin-top:12px"><button class="btn re" id="pgen">🖌️ 生成立繪</button><button class="btn ok" id="puse">✅ 用這張</button></div>';
+  psheet.innerHTML=h;
+  var oe=document.getElementById('popts');
+  oe.innerHTML=POPTS.map(function(g){return '<div class="card" style="padding:9px 10px"><div class="glab">'+g[1]+'</div><div class="chips" data-k="'+g[0]+'">'+
+    g[2].map(function(o,i){return '<span class="chip'+(i===0?' on':'')+'" data-i="'+i+'">'+o[0]+'</span>';}).join('')+'</div></div>';}).join('');
+  Array.prototype.forEach.call(oe.querySelectorAll('.chips'),function(row){var k=row.dataset.k;
+    Array.prototype.forEach.call(row.children,function(chip){chip.onclick=function(){pSel[k]=+chip.dataset.i;
+      Array.prototype.forEach.call(row.children,function(c){c.classList.remove('on');});chip.classList.add('on');pRefresh();};});});
+  document.getElementById('pgen').onclick=pDoGen;
+  document.getElementById('puse').onclick=function(){if(!pHasImg){toast('請先生成一張頭像');return;}var img=document.getElementById('ppic').querySelector('img');closePortrait();if(portraitCb)portraitCb({portrait:img.src,seed:pSeed});};
+  pRefresh();pmodal.classList.add('show');
+}
+function closePortrait(){pmodal.classList.remove('show');}
+function pUrl(){return "https://image.pollinations.ai/prompt/"+encodeURIComponent(buildPPrompt(pJob,pSel))+"?width=512&height=512&nologo=true&model=flux&seed="+pSeed;}
+function pRefresh(){var el=document.getElementById('pprompt');if(el)el.textContent=buildPPrompt(pJob,pSel)+"\n(seed:"+pSeed+")";}
+function pDoGen(){
+  if(pCooling)return;pSeed=Math.floor(Math.random()*1e6);pRefresh();
+  var box=document.getElementById('ppic');box.innerHTML='<div class="ph"><div class="ring"></div>生成中…（約 3~8 秒）</div>';
+  var img=new Image();img.onload=function(){box.innerHTML='';box.appendChild(img);pHasImg=true;};
+  img.onerror=function(){box.innerHTML='<div class="ph">😵 生成失敗<br>5 秒後可再試</div>';};
+  img.src=pUrl();
+  pCooling=true;var b=document.getElementById('pgen');b.disabled=true;var n=5;b.textContent='⏳ '+n+' 秒';
+  var t=setInterval(function(){n--;if(n<=0){clearInterval(t);pCooling=false;b.disabled=false;b.textContent='🎲 重新生成';}else b.textContent='⏳ '+n+' 秒';},1000);
 }
 
-function toggleSoul(id){openSoul[id]=!openSoul[id];renderChars();}
-function selectChar(id){selCharId=id;selTargetId=null;render();}
-function onTerritoryClick(id){
-  if(!selCharId){var g=(VIEW.chars||[]).filter(function(c){return c.loc===id&&isMine(c.owner)&&!c.acted;})[0];if(g)selectChar(g.id);return;}
-  selTargetId=(selTargetId===id?null:id);render();
+// ============ 城鎮 ============
+function topbar(){return '<div class="bar"><div class="t">🏰 傭兵之城<small> · '+P.nick+'</small></div><div class="spacer"></div>'+
+  '<div class="pill">🪙 <span>'+P.gold+'</span></div><div class="pill">⬇️ 第 '+(P.deepest||0)+' 層</div></div>';}
+var BLDG=[
+  ['team','🧭','隊伍編成','出戰 4 + 後勤 2'],
+  ['equip','🎒','裝備','武器/防具/飾品'],
+  ['tavern','🍺','酒館','招募夥伴'],
+  ['shop','🛡️','武器防具飾品店','購買裝備'],
+  ['inn','🛏️','旅館','休息回血'],
+  ['roster','📜','冒險者名冊','看大家的進度']
+];
+function renderTown(){
+  var hero=heroOf();
+  var h=topbar()+'<div class="pad">';
+  h+='<div class="u" style="background:linear-gradient(180deg,#4a3a52,#33291f)"><div class="av">'+avatarHTML(hero)+'</div>'+
+    '<div class="info"><b>'+hero.name+' <span class="tag">Lv'+hero.level+'</span></b><small>'+cinfo(hero.job).ico+' '+cinfo(hero.job).nm+' ・ HP '+hero.hp+'/'+hero.maxhp+' ・ AC '+cStats(hero).ac+'</small></div></div>';
+  h+='<div class="grid">';
+  BLDG.forEach(function(b){h+='<div class="bldg" data-b="'+b[0]+'"><div class="ico">'+b[1]+'</div><div class="nm">'+b[2]+'</div><div class="ds">'+b[3]+'</div></div>';});
+  h+='</div>';
+  h+='<div class="grid" style="margin-top:10px"><div class="bldg wide" data-b="dungeon"><div class="ico">⬇️ 進入地下城</div><div class="ds">自動探索・可達第 '+(P.deepest||0)+' 層，挑戰更深</div></div></div>';
+  h+='</div>';
+  app.innerHTML=h;
+  Array.prototype.forEach.call(document.querySelectorAll('.bldg'),function(el){el.onclick=function(){openBldg(el.dataset.b);};});
 }
-function doAttack(){if(!selCharId||!selTargetId)return;var m=document.getElementById('march');var march=m?parseInt(m.value,10):0;var t=selTargetId;selTargetId=null;call('attack',{charId:selCharId,targetId:t,marchTroops:march});}
-function doMove(){if(!selCharId||!selTargetId)return;var t=selTargetId;selTargetId=null;call('move',{charId:selCharId,targetId:t});}
-function endTurn(){selCharId=null;selTargetId=null;call('end_turn');}
-function newGame(){if(!confirm('確定重開新局？現有進度將重置。'))return;selCharId=null;selTargetId=null;openSoul={};call('new_game');}
+function openSheet(title,sub,body){sheet.innerHTML='<button class="close" onclick="closeSheet()">✕</button><h2>'+title+'</h2>'+(sub?'<p class="sub">'+sub+'</p>':'')+body;modal.classList.add('show');}
+function saveP(cb){srv('save',{player:P}).then(function(pl){P=pl;if(cb)cb();}).catch(function(e){toast('存檔失敗：'+e.message);});}
 
-// 啟動：顯示登入頁，帶回上次的暱稱
-(function(){ try{ var s=localStorage.getItem('gas_player'); if(s) document.getElementById('pname').value=s; }catch(e){}
-  document.getElementById('pname').focus(); })();
+function openBldg(b){
+  if(b==='dungeon')return openDungeon();
+  if(b==='team')return openTeam();
+  if(b==='equip')return openEquip();
+  if(b==='tavern')return openTavern();
+  if(b==='shop')return openShop();
+  if(b==='inn')return openInn();
+  if(b==='roster')return openRoster();
+}
+
+// ---- 隊伍編成 ----
+function openTeam(){
+  var body='<div class="glab">戰鬥位（'+P.team.battle.length+'/'+BATTLE_MAX+'）— 會下場戰鬥</div>';
+  P.roster.forEach(function(c){
+    if(isSup(c.job))return;
+    var inB=P.team.battle.indexOf(c.id)>=0;
+    body+=uRow(c,(inB?'<button class="btn ok sm" data-rm="'+c.id+'">出戰中</button>':'<button class="btn dim sm" data-addb="'+c.id+'">上場</button>'));
+  });
+  body+='<div class="glab" style="margin-top:12px">後勤位（'+P.team.support.length+'/'+SUPPORT_MAX+'）— 不下場、給增益</div>';
+  var anySup=false;
+  P.roster.forEach(function(c){
+    if(!isSup(c.job))return;anySup=true;
+    var inS=P.team.support.indexOf(c.id)>=0;
+    body+=uRow(c,(inS?'<button class="btn ok sm" data-rms="'+c.id+'">後勤中</button>':'<button class="btn dim sm" data-adds="'+c.id+'">安排</button>'));
+  });
+  if(!anySup)body+='<div class="note">還沒有後勤職業夥伴，去酒館招募吟遊詩人 / 商人 / 學者 / 醫者 / 占卜師。</div>';
+  openSheet('🧭 隊伍編成','點角色安排上場或後勤',body);
+  bindTeam();
+}
+function bindTeam(){
+  function toggle(arr,id,max,add){var i=arr.indexOf(id);if(add){if(arr.length>=max){toast('位置已滿');return;}if(i<0)arr.push(id);}else{if(i>=0)arr.splice(i,1);}saveP(openTeam);}
+  q('[data-addb]',function(el){toggle(P.team.battle,el.dataset.addb,BATTLE_MAX,true);});
+  q('[data-rm]',function(el){toggle(P.team.battle,el.dataset.rm,BATTLE_MAX,false);});
+  q('[data-adds]',function(el){toggle(P.team.support,el.dataset.adds,SUPPORT_MAX,true);});
+  q('[data-rms]',function(el){toggle(P.team.support,el.dataset.rms,SUPPORT_MAX,false);});
+}
+function q(sel,fn){Array.prototype.forEach.call(sheet.querySelectorAll(sel),function(el){el.onclick=function(){fn(el);};});}
+function uRow(c,btn){var st=isSup(c.job)?null:cStats(c);var ci=cinfo(c.job);
+  var sub=isSup(c.job)?(SUPPORT[c.job].desc):('HP '+c.hp+'/'+c.maxhp+' ・ AC '+st.ac+' ・ 攻+'+st.atk);
+  var hpbar=isSup(c.job)?'':'<div class="hpbar"><i style="width:'+Math.max(0,c.hp/c.maxhp*100)+'%"></i></div>';
+  return '<div class="u"><div class="av">'+avatarHTML(c)+'</div><div class="info"><b>'+c.name+' <span class="tag">Lv'+c.level+'</span></b><small>'+ci.ico+' '+ci.nm+' ・ '+sub+'</small>'+hpbar+'</div>'+(btn||'')+'</div>';
+}
+
+// ---- 裝備 ----
+var equipSel=null;
+function openEquip(){
+  equipSel=equipSel||heroOf().id;
+  var body='<div class="glab">選擇角色</div><div class="chips" id="ec">';
+  P.roster.forEach(function(c){body+='<span class="chip'+(equipSel===c.id?' on':'')+'" data-c="'+c.id+'">'+cinfo(c.job).ico+' '+c.name+'</span>';});
+  body+='</div>';
+  var c=byId(equipSel);
+  ['weapon','armor','trinket'].forEach(function(slot){
+    var label={weapon:'🗡️ 武器',armor:'🛡️ 防具',trinket:'💍 飾品'}[slot];
+    var eq=c.equip[slot]?gById(c.equip[slot]):null;
+    body+='<div class="card"><div class="glab">'+label+'</div>';
+    body+='<div class="note" style="text-align:left;margin:0 0 6px">目前：'+(eq?eq.ico+' '+eq.nm:'（無）')+(eq?' <button class="btn dim sm" data-un="'+slot+'">卸下</button>':'')+'</div>';
+    var owned=(P.bag||[]).map(gById).filter(function(g){return g&&gSlot(g.id)===slot;});
+    if(!owned.length)body+='<div class="note">背包沒有可裝備的'+label.slice(2)+'，去商店買或地下城撿。</div>';
+    owned.forEach(function(g,idx){body+='<div class="u"><div class="av">'+g.ico+'</div><div class="info"><b>'+g.nm+'</b><small>'+gearDesc(g)+'</small></div><button class="btn ok sm" data-eq="'+slot+'" data-gid="'+g.id+'">裝上</button></div>';});
+    body+='</div>';
+  });
+  var st=isSup(c.job)?null:cStats(c);
+  body+='<div class="note" style="text-align:left">'+(st?('生命 '+cMaxHp(c)+' ・ AC '+st.ac+' ・ 攻擊 +'+st.atk+' ・ 傷害 '+st.dmg):'後勤職業不下場戰鬥')+'</div>';
+  openSheet('🎒 裝備','裝備會即時反映到能力值',body);
+  q('[data-c]',function(el){equipSel=el.dataset.c;openEquip();});
+  q('[data-un]',function(el){var slot=el.dataset.un;var c=byId(equipSel);P.bag.push(c.equip[slot]);c.equip[slot]=null;c.maxhp=cMaxHp(c);if(c.hp>c.maxhp)c.hp=c.maxhp;saveP(openEquip);});
+  q('[data-eq]',function(el){var slot=el.dataset.eq,gid=el.dataset.gid;var c=byId(equipSel);
+    if(c.equip[slot])P.bag.push(c.equip[slot]);
+    var i=P.bag.indexOf(gid);if(i>=0)P.bag.splice(i,1);
+    c.equip[slot]=gid;c.maxhp=cMaxHp(c);if(c.hp>c.maxhp)c.hp=c.maxhp;saveP(openEquip);});
+}
+function gSlot(id){if(id.indexOf('w_')===0)return'weapon';if(id.indexOf('a_')===0)return'armor';if(id.indexOf('t_')===0)return'trinket';}
+function gearDesc(g){if(g.dmg)return '傷害 '+g.dmg[0]+'d'+g.dmg[1]+(g.bonus?' +'+g.bonus:'');if(g.ac!=null)return '護甲 AC +'+g.ac;if(g.ab)return ABN[g.ab]+' +'+g.val;return '';}
+
+// ---- 商店 ----
+function openShop(){
+  var body='';
+  [['🗡️ 武器',WEAPONS],['🛡️ 防具',ARMORS],['💍 飾品',TRINKETS]].forEach(function(grp){
+    body+='<div class="glab">'+grp[0]+'</div>';
+    grp[1].forEach(function(g){body+='<div class="u"><div class="av">'+g.ico+'</div><div class="info"><b>'+g.nm+'</b><small>'+gearDesc(g)+'</small></div>'+
+      '<button class="btn gold sm" data-buy="'+g.id+'" data-price="'+g.price+'"'+(P.gold<g.price?' disabled':'')+'>買 '+g.price+'🪙</button></div>';});
+  });
+  openSheet('🛡️ 武器防具飾品店','買來的裝備放進背包，再到「裝備」裝上','<div class="note" style="text-align:left">🪙 目前金幣：'+P.gold+'</div>'+body);
+  q('[data-buy]',function(el){var price=+el.dataset.price;if(P.gold<price){toast('金幣不足');return;}P.gold-=price;P.bag.push(el.dataset.buy);saveP(openShop);toast('已購入');});
+}
+
+// ---- 酒館（招募）----
+function openTavern(){
+  var body='<div class="note" style="text-align:left">目前 '+P.roster.length+'/'+ROSTER_MAX+' 人。招募費依職業不同。</div>';
+  body+='<div class="glab">⚔️ 戰鬥職業</div>';
+  Object.keys(COMBAT).forEach(function(k){body+=recruitRow(k,120);});
+  body+='<div class="glab" style="margin-top:10px">🎒 後勤職業（不下場、給增益）</div>';
+  Object.keys(SUPPORT).forEach(function(k){body+=recruitRow(k,100);});
+  openSheet('🍺 酒館','選職業 → 建頭像 → 加入小隊',body);
+  q('[data-rec]',function(el){startRecruit(el.dataset.rec,+el.dataset.cost);});
+}
+function recruitRow(job,cost){var c=cinfo(job);var desc=isSup(job)?SUPPORT[job].desc:(COMBAT[job].blurb+'・招牌技「'+COMBAT[job].skill+'」');
+  return '<div class="u"><div class="av">'+c.ico+'</div><div class="info"><b>'+c.nm+'</b><small>'+desc+'</small></div>'+
+    '<button class="btn ok sm" data-rec="'+job+'" data-cost="'+cost+'"'+(P.gold<cost||P.roster.length>=ROSTER_MAX?' disabled':'')+'>招募 '+cost+'🪙</button></div>';}
+function startRecruit(job,cost){
+  if(P.roster.length>=ROSTER_MAX){toast('倉庫已滿，請先遣散');return;}
+  if(P.gold<cost){toast('金幣不足');return;}
+  var name=prompt('幫這位'+cinfo(job).nm+'取個名字：','');
+  if(name===null)return;name=(name||'').trim().slice(0,16)||cinfo(job).nm;
+  openPortrait(job,function(r){
+    srv('recruit',{nick:P.nick,name:name,job:job,portrait:r.portrait,seed:r.seed,cost:cost}).then(function(res){
+      P=res.player;toast(name+' 加入了小隊！');openTavern();
+    }).catch(function(e){toast('招募失敗：'+e.message);});
+  });
+}
+
+// ---- 旅館 ----
+function openInn(){
+  var cost=15+(P.deepest||0)*2;
+  var hurt=P.roster.some(function(c){return c.hp<c.maxhp;});
+  var body='<div class="u"><div class="av">🛏️</div><div class="info"><b>住宿一晚</b><small>回滿全隊生命、救回陣亡者</small></div>'+
+    '<button class="btn gold sm" id="rest"'+(P.gold<cost?' disabled':'')+'>休息 '+cost+'🪙</button></div>'+
+    '<div class="note">'+(hurt?'有夥伴受傷了，好好休息再出發。':'全隊狀態良好。')+'</div>';
+  openSheet('🛏️ 旅館','旅店老闆熱情招呼你',body);
+  var r=document.getElementById('rest');if(r)r.onclick=function(){if(P.gold<cost)return;P.gold-=cost;P.roster.forEach(function(c){c.hp=c.maxhp;});saveP(function(){openSheet('🛏️ 旅館','','<div class="note" style="font-size:14px">😴 一夜好眠，全隊生龍活虎！</div>');});};
+}
+
+// ---- 冒險者名冊（觀戰）----
+function openRoster(){
+  openSheet('📜 冒險者名冊','大家的探索進度與隊伍（唯讀）','<div class="note">讀取中…</div>');
+  srv('roster',{}).then(function(r){
+    var body='';
+    r.players.forEach(function(pl,ix){
+      var me=pl.nick===P.nick;
+      body+='<div class="card"'+(me?' style="border-color:var(--gold)"':'')+'><b>'+(ix+1===1?'👑 ':'')+'#'+(ix+1)+' '+pl.nick+(me?' <span class="tag">你</span>':'')+'</b>'+
+        '<div class="note" style="text-align:left;margin:4px 0 8px">⬇️ 最深第 '+pl.deepest+' 層 ・ 🪙 '+pl.gold+'</div><div class="chips">';
+      (pl.members||[]).forEach(function(m){body+='<span class="chip" style="cursor:default">'+(m.portrait?'🖼️':m.ico)+' '+m.name+' Lv'+m.level+'</span>';});
+      body+='</div></div>';
+    });
+    sheet.innerHTML='<button class="close" onclick="closeSheet()">✕</button><h2>📜 冒險者名冊</h2><p class="sub">大家的探索進度與隊伍（唯讀）</p>'+(body||'<div class="note">還沒有其他冒險者</div>');
+  }).catch(function(e){toast('讀取失敗：'+e.message);});
+}
+
+// ============ 地下城 ============
+function openDungeon(){
+  var suggest=(P.deepest||0)+1; if(suggest>MAX_FLOOR)suggest=MAX_FLOOR;
+  var battle=P.team.battle.length, sup=P.team.support.length;
+  var body='<div class="note" style="text-align:left">目前隊伍：戰鬥 '+battle+'/'+BATTLE_MAX+' ・ 後勤 '+sup+'/'+SUPPORT_MAX+'　'+(battle?'':'<b style="color:var(--hp)">（至少要 1 名戰鬥位！）</b>')+'</div>';
+  body+='<div class="card"><div class="glab">要挑戰到第幾層？（最深已達 '+(P.deepest||0)+'）</div>'+
+    '<input class="inp" id="tf" type="number" min="1" max="'+MAX_FLOOR+'" value="'+suggest+'">'+
+    '<div class="note" style="text-align:left;margin-top:8px">每 5 層有頭目。中途全滅會撤退失敗，但撿到的都帶得走。</div></div>';
+  body+='<button class="btn ok" id="dive"'+(battle?'':' disabled')+'>⚔️ 自動探索出發</button>';
+  openSheet('⬇️ 地下城','GAS 會擲骰跑完整場，回你戰報',body);
+  var dv=document.getElementById('dive');if(dv)dv.onclick=function(){
+    var t=Math.max(1,Math.min(MAX_FLOOR,parseInt(document.getElementById('tf').value,10)||1));
+    dv.disabled=true;dv.textContent='探索中…擲骰計算';
+    srv('dungeon',{nick:P.nick,target:t}).then(function(res){P=res.player;modal.classList.remove('show');renderReport(res.report);})
+      .catch(function(e){dv.disabled=false;dv.textContent='⚔️ 自動探索出發';toast('錯誤：'+e.message);});
+  };
+}
+function renderReport(rep){
+  var head=rep.wiped?'💀 小隊全滅撤退':(rep.cleared?'🎉 探索成功！':'🏳️ 探索結束');
+  var h=topbar()+'<div class="pad" style="background:radial-gradient(120% 80% at 50% -10%,#2a2140,transparent 55%)">';
+  h+='<h1>'+head+'</h1><p class="lead">目標第 '+rep.target+' 層 ・ 實際抵達第 '+rep.reached+' 層</p>';
+  h+='<div class="card"><b>結算</b><div class="note" style="text-align:left;margin-top:6px">'+
+    '🪙 金幣 +'+rep.gold+'　⭐ 經驗 +'+rep.xp+'　🎁 掉落 '+(rep.loot.length||0)+' 件</div>';
+  if(rep.levelUps&&rep.levelUps.length){h+='<div class="note" style="text-align:left;color:var(--gold)">⬆️ '+rep.levelUps.map(function(u){return u.name+' → Lv'+u.level;}).join('、')+'</div>';}
+  if(rep.loot&&rep.loot.length){h+='<div class="note" style="text-align:left">戰利品：'+rep.loot.map(function(id){var g=gById(id);return g?g.ico+g.nm:id;}).join('、')+'</div>';}
+  h+='</div>';
+  h+='<details open><summary>逐層戰報</summary><div style="margin-top:8px">';
+  rep.floors.forEach(function(f){
+    var enemies=(f.encounters&&f.encounters[0]&&f.encounters[0].enemies||[]).map(function(e){return e.ico;}).join('');
+    h+='<div class="rep-floor"><div class="fh">'+(f.boss?'👑 ':'')+'第 '+f.floor+' 層 '+enemies+'</div><div class="fl">';
+    if(f.event)h+=f.event+'<br>';
+    if(f.wipe)h+='<b style="color:var(--hp)">小隊在此全滅…</b>';
+    else h+='擊敗 '+((f.encounters[0]||{}).killed||0)+' 隻 ・ +'+f.gold+'🪙 ・ +'+f.xp+'⭐'+((f.loot&&f.loot.length)?' ・ 掉落 '+f.loot.map(function(g){return g.ico+g.nm;}).join(''):'');
+    h+='</div></div>';
+  });
+  h+='</div></details>';
+  h+='<button class="btn gold" id="back" style="margin-top:12px">🏰 回到城鎮</button></div>';
+  app.innerHTML=h;
+  document.getElementById('back').onclick=renderTown;
+}
+
+// ============ 啟動 ============
+renderLogin();
 </script>
 </body>
 </html>
