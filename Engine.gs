@@ -21,15 +21,18 @@ function validBase_(base){
   for (var i=0;i<ABILITIES.length;i++){ var v=base[ABILITIES[i]]; if (typeof v!=='number' || v<3 || v>18) return false; }
   return true;
 }
-function makeChar(name, job, portrait, seed, base){
+function makeChar(name, job, portrait, seed, base, race){
   var ci = classInfo(job);
   if (!ci) throw new Error('未知職業：' + job);
   var useBase = validBase_(base);
   var bb = {};
   ABILITIES.forEach(function(a){ bb[a] = useBase ? base[a] : roll4d6dropLow(); });
+  // 種族一次性屬性加值（創角時套用）
+  var ri = raceInfo(race);
+  if (ri){ for (var a in ri.grow){ bb[a] = Math.min(20, (bb[a]||10) + ri.grow[a]); } }
   base = bb;
   var c = {
-    id: uid(), name: (name||'無名').slice(0,16), job: job, support: isSupport(job),
+    id: uid(), name: (name||'無名').slice(0,16), job: job, race: (ri? race : 'human'), support: isSupport(job),
     portrait: portrait || '', seed: seed || 0,
     level: 1, xp: 0, base: base,
     equip: { weapon:null, armor:null, trinket:null },

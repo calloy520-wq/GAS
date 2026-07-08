@@ -114,6 +114,18 @@ var SUPPORT={
   medic:{nm:'醫者',ico:'⛑️',hd:8,dmg:[1,6],desc:'每層自動治療全隊 35%'},
   diviner:{nm:'占卜師',ico:'🍀',hd:6,dmg:[1,4],desc:'全隊暴擊+10%、避陷阱'}
 };
+var RACES={
+  human:{nm:'人類',ico:'🧑',grow:{str:1,dex:1,con:1,int:1,wis:1,cha:1},perk:'全屬性 +1'},
+  elf:{nm:'精靈',ico:'🧝',grow:{dex:2,int:1},perk:'敏捷+2 智力+1'},
+  darkelf:{nm:'黑暗精靈',ico:'🌑',grow:{dex:2,cha:1},perk:'敏捷+2 魅力+1'},
+  beast:{nm:'獸耳',ico:'🐾',grow:{str:2,con:1},perk:'力量+2 體質+1'},
+  dragon:{nm:'龍族',ico:'🐲',grow:{str:2,cha:1},perk:'力量+2 魅力+1'},
+  demon:{nm:'魔族',ico:'😈',grow:{cha:2,int:1},perk:'魅力+2 智力+1'},
+  angel:{nm:'天使',ico:'😇',grow:{wis:2,cha:1},perk:'睿知+2 魅力+1'},
+  vampire:{nm:'吸血鬼',ico:'🧛',grow:{cha:2,dex:1},perk:'魅力+2 敏捷+1'}
+};
+var RACE_KEYS=['human','elf','darkelf','beast','dragon','demon','angel','vampire']; // 與立繪種族選項同序
+function effBase(raw,race){var o={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){o[a]=Math.min(20,(raw[a]||10)+(g[a]||0));});return o;}
 var WEAPONS=[
   {id:'w_dagger',nm:'匕首',ico:'🔪',dmg:[1,4],bonus:0,price:20,tier:1},
   {id:'w_short',nm:'短劍',ico:'🗡️',dmg:[1,6],bonus:0,price:45,tier:1},
@@ -166,12 +178,12 @@ function mock(action,p){return new Promise(function(res,rej){
   function put(pl){DB[pl.nick]=pl;localStorage.setItem('merc_db',JSON.stringify(DB));}
   function roll(){var a=[d6(),d6(),d6(),d6()].sort(function(x,y){return x-y;});return a[1]+a[2]+a[3];}
   function d6(){return 1+Math.floor(Math.random()*6);}
-  function mk(name,job,portrait,seed,pbase){var base={};AB.forEach(function(a){base[a]=(pbase&&pbase[a])||roll();});var c={id:'c'+Math.random().toString(36).slice(2,9),name:name,job:job,support:isSup(job),portrait:portrait||'',seed:seed||0,level:1,xp:0,base:base,equip:{weapon:null,armor:null,trinket:null},hp:0,maxhp:0};c.maxhp=cMaxHp(c);c.hp=c.maxhp;return c;}
+  function mk(name,job,portrait,seed,pbase,race){var base={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){base[a]=Math.min(20,((pbase&&pbase[a])||roll())+(g[a]||0));});var c={id:'c'+Math.random().toString(36).slice(2,9),name:name,job:job,race:race||'human',support:isSup(job),portrait:portrait||'',seed:seed||0,level:1,xp:0,base:base,equip:{weapon:null,armor:null,trinket:null},hp:0,maxhp:0};c.maxhp=cMaxHp(c);c.hp=c.maxhp;return c;}
   setTimeout(function(){try{
     if(action==='login'){var pl=DB[p.nick.trim()]||null;return res({exists:!!pl,player:pl});}
-    if(action==='create'){var h=mk(p.name,p.job,p.portrait,p.seed,p.base);var pl={nick:p.nick.trim(),gold:120,deepest:0,heroId:h.id,roster:[h],bag:[],team:{battle:[h.id],support:[]}};put(pl);return res(pl);}
+    if(action==='create'){var h=mk(p.name,p.job,p.portrait,p.seed,p.base,p.race);var pl={nick:p.nick.trim(),gold:120,deepest:0,heroId:h.id,roster:[h],bag:[],team:{battle:[h.id],support:[]}};put(pl);return res(pl);}
     if(action==='save'){put(p.player);return res(p.player);}
-    if(action==='recruit'){var pl=DB[p.nick.trim()];if(pl.roster.length>=10)return rej(new Error('倉庫已滿'));if(pl.gold<p.cost)return rej(new Error('金幣不足'));var c=mk(p.name,p.job,p.portrait,p.seed);pl.gold-=p.cost;pl.roster.push(c);put(pl);return res({player:pl,recruited:c});}
+    if(action==='recruit'){var pl=DB[p.nick.trim()];if(pl.roster.length>=10)return rej(new Error('倉庫已滿'));if(pl.gold<p.cost)return rej(new Error('金幣不足'));var c=mk(p.name,p.job,p.portrait,p.seed,p.base,p.race);pl.gold-=p.cost;pl.roster.push(c);put(pl);return res({player:pl,recruited:c});}
     if(action==='dungeon'){var pl=DB[p.nick.trim()];var g=0,x=0,fl=[];var reached=0;for(var f=1;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2}]});}pl.gold+=g;var rep={target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};if(reached>pl.deepest)pl.deepest=reached;rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
     if(action==='roster'){return res({players:Object.keys(DB).map(function(k){var pl=DB[k];var team=pl.team.battle.concat(pl.team.support);var by={};pl.roster.forEach(function(c){by[c.id]=c;});return{nick:k,deepest:pl.deepest,gold:pl.gold,updated:0,members:team.map(function(id){var c=by[id];return c?{name:c.name,job:c.job,ico:(cinfo(c.job)||{}).ico,level:c.level,portrait:c.portrait}:null;}).filter(Boolean)};})});}
     rej(new Error('mock 未支援：'+action));
@@ -209,39 +221,44 @@ function doLogin(){
 }
 
 // ============ 創角 ============
-var newNick='', createSel={job:'fighter'}, createBase=null, createPortrait='', createSeed=0;
+var newNick='', createSel={job:'fighter'}, createRace='human', createBase=null, createPortrait='', createSeed=0;
 function rollAll(){createBase={};AB.forEach(function(a){var arr=[rd6(),rd6(),rd6(),rd6()].sort(function(x,y){return x-y;});createBase[a]=arr[1]+arr[2]+arr[3];});}
 function rd6(){return 1+Math.floor(Math.random()*6);}
 function renderCreate(){
   if(!createBase)rollAll();
-  var previewChar={job:createSel.job,level:1,base:createBase,equip:{weapon:null,armor:null,trinket:null}};
+  var eff=effBase(createBase,createRace);
+  var previewChar={job:createSel.job,level:1,base:eff,equip:{weapon:null,armor:null,trinket:null}};
   var st=cStats(previewChar);
-  var h='<div class="pad"><h1>🎨 建立主角</h1><p class="lead">選職業 → 骰屬性 → 做頭像 → 確認</p>';
+  var h='<div class="pad"><h1>🎨 建立主角</h1><p class="lead">選種族/職業 → 骰屬性 → 做頭像 → 確認</p>';
   // 頭像
   h+='<div class="pbox" id="pbox">'+(createPortrait?'<img src="'+createPortrait+'">':'<div class="ph">尚未建立頭像<br>👇 點下方按鈕</div>')+'</div>';
   h+='<button class="btn re sm" style="width:auto;display:block;margin:10px auto 14px" id="mkport">🎨 建立頭像</button>';
   h+='<div class="card"><div class="glab">角色名</div><input class="inp" id="cname" maxlength="16" placeholder="幫主角取名"></div>';
+  // 種族（影響能力值）
+  h+='<div class="card"><div class="glab">種族（影響能力值）</div><div class="chips" id="racechips">';
+  RACE_KEYS.forEach(function(k){var r=RACES[k];h+='<span class="chip'+(createRace===k?' on':'')+'" data-r="'+k+'">'+r.ico+' '+r.nm+'</span>';});
+  h+='</div><div class="note" style="text-align:left;margin-top:8px">'+RACES[createRace].ico+' <b>'+RACES[createRace].nm+'</b>：'+RACES[createRace].perk+'</div></div>';
   // 職業
   h+='<div class="card"><div class="glab">職業（戰鬥位）</div><div class="chips" id="jobchips">';
   Object.keys(COMBAT).forEach(function(k){var c=COMBAT[k];h+='<span class="chip'+(createSel.job===k?' on':'')+'" data-j="'+k+'">'+c.ico+' '+c.nm+'</span>';});
   h+='</div><div class="note" style="text-align:left;margin-top:8px">'+COMBAT[createSel.job].ico+' <b>'+COMBAT[createSel.job].nm+'</b>：'+COMBAT[createSel.job].blurb+'　招牌技「'+COMBAT[createSel.job].skill+'」</div></div>';
-  // 屬性
-  h+='<div class="card"><div class="glab">屬性（4d6 去最低）　主攻：'+ABN[COMBAT[createSel.job].atk]+'</div><div class="abil">';
-  AB.forEach(function(a){var s=createBase[a];var m=cmod(s);h+='<div class="ab"><small>'+ABI[a]+' '+ABN[a]+'</small><b>'+s+'</b><span class="mm">'+(m>=0?'+':'')+m+'</span></div>';});
+  // 屬性（含種族加值）
+  h+='<div class="card"><div class="glab">屬性（4d6 去最低＋種族）　主攻：'+ABN[COMBAT[createSel.job].atk]+'</div><div class="abil">';
+  AB.forEach(function(a){var s=eff[a];var m=cmod(s);var rb=(RACES[createRace].grow[a]||0);h+='<div class="ab"><small>'+ABI[a]+' '+ABN[a]+'</small><b>'+s+(rb?' <span style="color:var(--good);font-size:11px">+'+rb+'</span>':'')+'</b><span class="mm">'+(m>=0?'+':'')+m+'</span></div>';});
   h+='</div><div class="rowbtns"><button class="btn dim sm" id="reroll" style="flex:1;width:auto">🎲 重骰全部</button></div>'+
     '<div class="note" style="text-align:left">生命 '+cMaxHp(previewChar)+' ・ 護甲 AC '+st.ac+' ・ 攻擊 +'+st.atk+' ・ 傷害 '+st.dmg+'</div></div>';
   h+='<button class="btn ok" id="confirm">✅ 確認建立</button></div>';
   app.innerHTML=h;
   Array.prototype.forEach.call(document.querySelectorAll('#jobchips .chip'),function(el){el.onclick=function(){createSel.job=el.dataset.j;renderCreate();};});
+  Array.prototype.forEach.call(document.querySelectorAll('#racechips .chip'),function(el){el.onclick=function(){createRace=el.dataset.r;renderCreate();};});
   document.getElementById('reroll').onclick=function(){rollAll();renderCreate();};
-  document.getElementById('mkport').onclick=function(){openPortrait(createSel.job,function(r){createPortrait=r.portrait;createSeed=r.seed;renderCreate();});};
+  document.getElementById('mkport').onclick=function(){openPortrait(createSel.job,function(r){createPortrait=r.portrait;createSeed=r.seed;renderCreate();},RACE_KEYS.indexOf(createRace));};
   document.getElementById('confirm').onclick=function(){
     var name=(document.getElementById('cname').value||'').trim();
     if(!name){toast('幫主角取個名字');return;}
     if(!createPortrait){toast('請先建立頭像');return;}
     var b=this;b.disabled=true;b.textContent='建立中…';
-    srv('create',{nick:newNick,name:name,job:createSel.job,portrait:createPortrait,seed:createSeed,base:createBase}).then(function(pl){
-      // 後端重骰屬性 → 直接採用後端角色
+    srv('create',{nick:newNick,name:name,job:createSel.job,race:createRace,portrait:createPortrait,seed:createSeed,base:createBase}).then(function(pl){
       P=pl;toast('歡迎來到傭兵之城！');renderTown();
     }).catch(function(e){b.disabled=false;b.textContent='✅ 確認建立';toast('錯誤：'+e.message);});
   };
@@ -278,17 +295,19 @@ function buildPPrompt(job,sel){
   return base+part('race')+", "+g('hair')+", "+g('style')+", "+g('eyes')+part('age')+part('figure')+", wearing "+outfit+part('expose')+", "+g('face')+floor;
 }
 var portraitCb=null, pSel={}, pSeed=0, pJob='fighter', pCooling=false, pHasImg=false;
-function openPortrait(job,cb){
-  portraitCb=cb;pJob=job;POPTS.forEach(function(g){pSel[g[0]]=0;});pSeed=Math.floor(Math.random()*1e6);pHasImg=false;pCooling=false;
-  var h='<button class="close" onclick="closePortrait()">✕</button><h2>🎨 建立頭像</h2><p class="sub">選外型 → 生成 → 不喜歡就重生 → 用這張。職業裝束會自動套用。</p>';
+function openPortrait(job,cb,raceIdx){
+  portraitCb=cb;pJob=job;POPTS.forEach(function(g){pSel[g[0]]=0;});
+  if(raceIdx>0)pSel.race=raceIdx;                 // 立繪外觀預設跟著機制種族（仍可改）
+  pSeed=Math.floor(Math.random()*1e6);pHasImg=false;pCooling=false;
+  var h='<button class="close" onclick="closePortrait()">✕</button><h2>🎨 建立頭像</h2><p class="sub">選外型 → 生成 → 不喜歡就重生 → 用這張。立繪只是外觀，不影響能力。</p>';
   h+='<div class="pbox" id="ppic"><div class="ph">👇 選好後點<br>「生成立繪」</div></div>';
   h+='<div id="popts" style="margin-top:12px"></div>';
   h+='<details><summary>看目前的生圖提示詞</summary><pre id="pprompt"></pre></details>';
   h+='<div class="rowbtns" style="margin-top:12px"><button class="btn re" id="pgen">🖌️ 生成立繪</button><button class="btn ok" id="puse">✅ 用這張</button></div>';
   psheet.innerHTML=h;
   var oe=document.getElementById('popts');
-  oe.innerHTML=POPTS.map(function(g){return '<div class="card" style="padding:9px 10px"><div class="glab">'+g[1]+'</div><div class="chips" data-k="'+g[0]+'">'+
-    g[2].map(function(o,i){return '<span class="chip'+(i===0?' on':'')+'" data-i="'+i+'">'+o[0]+'</span>';}).join('')+'</div></div>';}).join('');
+  oe.innerHTML=POPTS.map(function(g){var si=pSel[g[0]]||0;return '<div class="card" style="padding:9px 10px"><div class="glab">'+g[1]+'</div><div class="chips" data-k="'+g[0]+'">'+
+    g[2].map(function(o,i){return '<span class="chip'+(i===si?' on':'')+'" data-i="'+i+'">'+o[0]+'</span>';}).join('')+'</div></div>';}).join('');
   Array.prototype.forEach.call(oe.querySelectorAll('.chips'),function(row){var k=row.dataset.k;
     Array.prototype.forEach.call(row.children,function(chip){chip.onclick=function(){pSel[k]=+chip.dataset.i;
       Array.prototype.forEach.call(row.children,function(c){c.classList.remove('on');});chip.classList.add('on');pRefresh();};});});
@@ -324,7 +343,7 @@ function renderTown(){
   var hero=heroOf();
   var h=topbar()+'<div class="pad">';
   h+='<div class="u" style="background:linear-gradient(180deg,#4a3a52,#33291f)"><div class="av">'+avatarHTML(hero)+'</div>'+
-    '<div class="info"><b>'+hero.name+' <span class="tag">Lv'+hero.level+'</span></b><small>'+cinfo(hero.job).ico+' '+cinfo(hero.job).nm+' ・ HP '+hero.hp+'/'+hero.maxhp+' ・ AC '+cStats(hero).ac+'</small></div></div>';
+    '<div class="info"><b>'+hero.name+' <span class="tag">Lv'+hero.level+'</span></b><small>'+(RACES[hero.race]?RACES[hero.race].ico+RACES[hero.race].nm+' ':'')+cinfo(hero.job).ico+cinfo(hero.job).nm+' ・ HP '+hero.hp+'/'+hero.maxhp+' ・ AC '+cStats(hero).ac+'</small></div></div>';
   h+='<div class="grid">';
   BLDG.forEach(function(b){h+='<div class="bldg" data-b="'+b[0]+'"><div class="ico">'+b[1]+'</div><div class="nm">'+b[2]+'</div><div class="ds">'+b[3]+'</div></div>';});
   h+='</div>';
@@ -376,7 +395,8 @@ function q(sel,fn){Array.prototype.forEach.call(sheet.querySelectorAll(sel),func
 function uRow(c,btn){var st=isSup(c.job)?null:cStats(c);var ci=cinfo(c.job);
   var sub=isSup(c.job)?(SUPPORT[c.job].desc):('HP '+c.hp+'/'+c.maxhp+' ・ AC '+st.ac+' ・ 攻+'+st.atk);
   var hpbar=isSup(c.job)?'':'<div class="hpbar"><i style="width:'+Math.max(0,c.hp/c.maxhp*100)+'%"></i></div>';
-  return '<div class="u"><div class="av">'+avatarHTML(c)+'</div><div class="info"><b>'+c.name+' <span class="tag">Lv'+c.level+'</span></b><small>'+ci.ico+' '+ci.nm+' ・ '+sub+'</small>'+hpbar+'</div>'+(btn||'')+'</div>';
+  var rc=RACES[c.race]?RACES[c.race].ico+RACES[c.race].nm+' ':'';
+  return '<div class="u"><div class="av">'+avatarHTML(c)+'</div><div class="info"><b>'+c.name+' <span class="tag">Lv'+c.level+'</span></b><small>'+rc+ci.ico+ci.nm+' ・ '+sub+'</small>'+hpbar+'</div>'+(btn||'')+'</div>';
 }
 
 // ---- 裝備 ----
@@ -435,16 +455,34 @@ function openTavern(){
 function recruitRow(job,cost){var c=cinfo(job);var desc=isSup(job)?SUPPORT[job].desc:(COMBAT[job].blurb+'・招牌技「'+COMBAT[job].skill+'」');
   return '<div class="u"><div class="av">'+c.ico+'</div><div class="info"><b>'+c.nm+'</b><small>'+desc+'</small></div>'+
     '<button class="btn ok sm" data-rec="'+job+'" data-cost="'+cost+'"'+(P.gold<cost||P.roster.length>=ROSTER_MAX?' disabled':'')+'>招募 '+cost+'🪙</button></div>';}
+var recruitJob=null, recruitCost=0, recruitRace='human', recruitPortrait='', recruitSeed=0;
 function startRecruit(job,cost){
   if(P.roster.length>=ROSTER_MAX){toast('倉庫已滿，請先遣散');return;}
   if(P.gold<cost){toast('金幣不足');return;}
-  var name=prompt('幫這位'+cinfo(job).nm+'取個名字：','');
-  if(name===null)return;name=(name||'').trim().slice(0,16)||cinfo(job).nm;
-  openPortrait(job,function(r){
-    srv('recruit',{nick:P.nick,name:name,job:job,portrait:r.portrait,seed:r.seed,cost:cost}).then(function(res){
+  recruitJob=job;recruitCost=cost;recruitRace='human';recruitPortrait='';recruitSeed=0;window._rname='';
+  renderRecruitForm();
+}
+function renderRecruitForm(){
+  var job=recruitJob, ci=cinfo(job);
+  var body='<div class="pbox" id="rpbox" style="width:min(46vw,170px)">'+(recruitPortrait?'<img src="'+recruitPortrait+'">':'<div class="ph">尚未建立頭像</div>')+'</div>';
+  body+='<button class="btn re sm" style="width:auto;display:block;margin:10px auto 12px" id="rmkport">🎨 建立頭像</button>';
+  body+='<div class="glab">名字</div><input class="inp" id="rname" maxlength="16" placeholder="'+ci.nm+'" value="'+(window._rname||'')+'">';
+  body+='<div class="glab" style="margin-top:10px">種族（影響能力值）</div><div class="chips" id="rrace">';
+  RACE_KEYS.forEach(function(k){var r=RACES[k];body+='<span class="chip'+(recruitRace===k?' on':'')+'" data-rr="'+k+'">'+r.ico+' '+r.nm+'</span>';});
+  body+='</div><div class="note" style="text-align:left">'+RACES[recruitRace].ico+' '+RACES[recruitRace].perk+'　職業：'+ci.ico+' '+ci.nm+'</div>';
+  body+='<button class="btn ok" id="rhire" style="margin-top:6px">✅ 招募（'+recruitCost+'🪙）</button>';
+  openSheet(ci.ico+' 招募 '+ci.nm,'屬性由後端擲骰＋種族加值，立繪只是外觀',body);
+  var rn=document.getElementById('rname');rn.addEventListener('input',function(){window._rname=rn.value;});
+  q('[data-rr]',function(el){recruitRace=el.dataset.rr;renderRecruitForm();});
+  document.getElementById('rmkport').onclick=function(){openPortrait(recruitJob,function(r){recruitPortrait=r.portrait;recruitSeed=r.seed;renderRecruitForm();},RACE_KEYS.indexOf(recruitRace));};
+  document.getElementById('rhire').onclick=function(){
+    if(!recruitPortrait){toast('請先建立頭像');return;}
+    var name=(window._rname||'').trim().slice(0,16)||ci.nm;
+    var b=this;b.disabled=true;b.textContent='招募中…';
+    srv('recruit',{nick:P.nick,name:name,job:recruitJob,race:recruitRace,portrait:recruitPortrait,seed:recruitSeed,cost:recruitCost}).then(function(res){
       P=res.player;toast(name+' 加入了小隊！');openTavern();
-    }).catch(function(e){toast('招募失敗：'+e.message);});
-  });
+    }).catch(function(e){b.disabled=false;b.textContent='✅ 招募（'+recruitCost+'🪙）';toast('招募失敗：'+e.message);});
+  };
 }
 
 // ---- 旅館 ----

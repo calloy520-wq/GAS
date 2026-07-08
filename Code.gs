@@ -42,7 +42,7 @@ function apiMeta_(){
   return {
     cfg: CFG,
     combatClasses: COMBAT_CLASSES,
-    supportClasses: SUPPORT_CLASSES,
+    supportClasses: SUPPORT_CLASSES, races: RACES,
     weapons: WEAPONS, armors: ARMORS, trinkets: TRINKETS,
     abilities: ABILITIES, abilityName: ABILITY_NAME, abilityIcon: ABILITY_ICON
   };
@@ -61,7 +61,7 @@ function apiCreate_(p){
   if (!nick) throw new Error('請輸入暱稱');
   if (loadPlayer(nick)) throw new Error('這個暱稱已經有存檔了');
   if (!COMBAT_CLASSES[p.job]) throw new Error('主角必須是戰鬥職業');
-  var hero = makeChar(p.name, p.job, p.portrait, p.seed, p.base);
+  var hero = makeChar(p.name, p.job, p.portrait, p.seed, p.base, p.race);
   var player = {
     nick: nick, created: Date.now(), updated: Date.now(),
     gold: CFG.START_GOLD, deepest: 0,
@@ -91,7 +91,7 @@ function apiRecruit_(p){
   if ((player.roster||[]).length >= CFG.ROSTER_MAX) throw new Error('倉庫已滿（上限 '+CFG.ROSTER_MAX+' 人），請先遣散');
   var cost = Math.max(0, p.cost|0);
   if ((player.gold||0) < cost) throw new Error('金幣不足');
-  var c = makeChar(p.name, p.job, p.portrait, p.seed);
+  var c = makeChar(p.name, p.job, p.portrait, p.seed, p.base, p.race);
   player.gold -= cost;
   player.roster.push(c);
   cleanPlayer_(player);

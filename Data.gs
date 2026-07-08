@@ -61,6 +61,19 @@ var SUPPORT_CLASSES = {
 function classInfo(job){ return COMBAT_CLASSES[job] || SUPPORT_CLASSES[job] || null; }
 function isSupport(job){ return !!SUPPORT_CLASSES[job]; }
 
+// ---- 種族庫（創角時一次性屬性加值；與立繪外觀無關）----
+var RACES = {
+  human:   { nm:'人類', ico:'🧑', grow:{str:1,dex:1,con:1,int:1,wis:1,cha:1}, perk:'萬能：全屬性 +1' },
+  elf:     { nm:'精靈', ico:'🧝', grow:{dex:2,int:1}, perk:'敏銳：敏捷+2 智力+1' },
+  darkelf: { nm:'黑暗精靈', ico:'🌑', grow:{dex:2,cha:1}, perk:'魅影：敏捷+2 魅力+1' },
+  beast:   { nm:'獸耳', ico:'🐾', grow:{str:2,con:1}, perk:'野性：力量+2 體質+1' },
+  dragon:  { nm:'龍族', ico:'🐲', grow:{str:2,cha:1}, perk:'龍血：力量+2 魅力+1' },
+  demon:   { nm:'魔族', ico:'😈', grow:{cha:2,int:1}, perk:'魔性：魅力+2 智力+1' },
+  angel:   { nm:'天使', ico:'😇', grow:{wis:2,cha:1}, perk:'聖佑：睿知+2 魅力+1' },
+  vampire: { nm:'吸血鬼', ico:'🧛', grow:{cha:2,dex:1}, perk:'夜裔：魅力+2 敏捷+1' }
+};
+function raceInfo(r){ return RACES[r] || null; }
+
 // ---- 裝備 ----
 // 武器：dmg 傷害骰 [n,d] 即 nDd；bonus 命中/傷害加值
 var WEAPONS = [
