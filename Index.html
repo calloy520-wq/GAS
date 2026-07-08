@@ -551,15 +551,31 @@ function gSlot(id){if(id.indexOf('w_')===0)return'weapon';if(id.indexOf('a_')===
 function gearDesc(g){if(g.dmg)return '傷害 '+g.dmg[0]+'d'+g.dmg[1]+(g.bonus?' +'+g.bonus:'');if(g.ac!=null)return '護甲 AC +'+g.ac;if(g.ab)return ABN[g.ab]+' +'+g.val;return '';}
 
 // ---- 商店 ----
+var shopTab='buy';
+function sellPrice(g){return Math.max(5,Math.round(g.price*0.5));}
 function openShop(){
-  var body='';
-  [['🗡️ 武器',WEAPONS],['🛡️ 防具',ARMORS],['💍 飾品',TRINKETS]].forEach(function(grp){
-    body+='<div class="glab">'+grp[0]+'</div>';
-    grp[1].forEach(function(g){body+='<div class="u"><div class="av">'+g.ico+'</div><div class="info"><b>'+g.nm+'</b><small>'+gearDesc(g)+'</small></div>'+
-      '<button class="btn gold sm" data-buy="'+g.id+'" data-price="'+g.price+'"'+(P.gold<g.price?' disabled':'')+'>買 '+g.price+'🪙</button></div>';});
-  });
-  openSheet('🛡️ 武器防具飾品店','買來的裝備放進背包，再到「裝備」裝上','<div class="note" style="text-align:left">🪙 目前金幣：'+P.gold+'</div>'+body);
+  var body='<div class="chips" style="margin-bottom:10px"><span class="chip'+(shopTab==='buy'?' on':'')+'" data-tab="buy">🛒 購買</span><span class="chip'+(shopTab==='sell'?' on':'')+'" data-tab="sell">💰 賣出（背包 '+(P.bag||[]).length+'）</span></div>';
+  if(shopTab==='buy'){
+    [['🗡️ 武器',WEAPONS],['🛡️ 防具',ARMORS],['💍 飾品',TRINKETS]].forEach(function(grp){
+      body+='<div class="glab">'+grp[0]+'</div>';
+      grp[1].forEach(function(g){body+='<div class="u"><div class="av">'+g.ico+'</div><div class="info"><b>'+g.nm+'</b><small>'+gearDesc(g)+'</small></div>'+
+        '<button class="btn gold sm" data-buy="'+g.id+'" data-price="'+g.price+'"'+(P.gold<g.price?' disabled':'')+'>買 '+g.price+'🪙</button></div>';});
+    });
+  }else{
+    // 背包依 id 分組計數
+    var cnt={};(P.bag||[]).forEach(function(id){cnt[id]=(cnt[id]||0)+1;});
+    var ids=Object.keys(cnt);
+    if(!ids.length)body+='<div class="note">背包是空的。地下城掉落、商店買的裝備會放這裡。</div>';
+    ids.forEach(function(id){var g=gById(id);if(!g)return;
+      body+='<div class="u"><div class="av">'+g.ico+'</div><div class="info"><b>'+g.nm+(cnt[id]>1?' ×'+cnt[id]:'')+'</b><small>'+gearDesc(g)+'</small></div>'+
+        '<button class="btn ok sm" data-sell="'+id+'">賣 '+sellPrice(g)+'🪙</button></div>';});
+    if(ids.length>1)body+='<button class="btn dim sm" id="sellall" style="margin-top:6px">一鍵賣掉全部（未裝備）</button>';
+  }
+  openSheet('🛡️ 武器防具飾品店','買賣裝備・賣出價為售價一半','<div class="note" style="text-align:left">🪙 目前金幣：<span id="shopgold">'+P.gold+'</span></div>'+body);
+  q('[data-tab]',function(el){shopTab=el.dataset.tab;openShop();});
   q('[data-buy]',function(el){var price=+el.dataset.price;if(P.gold<price){toast('金幣不足');return;}P.gold-=price;P.bag.push(el.dataset.buy);saveP(openShop);toast('已購入');});
+  q('[data-sell]',function(el){var id=el.dataset.sell,i=P.bag.indexOf(id);if(i<0)return;P.bag.splice(i,1);var g=gById(id);P.gold+=sellPrice(g);saveP(openShop);toast('賣出 '+g.nm+' +'+sellPrice(g)+'🪙');});
+  var sa=document.getElementById('sellall');if(sa)sa.onclick=function(){if(!(P.bag||[]).length)return;if(!confirm('賣掉背包所有未裝備的裝備？'))return;var tot=0;P.bag.forEach(function(id){var g=gById(id);if(g)tot+=sellPrice(g);});P.bag=[];P.gold+=tot;saveP(openShop);toast('全部賣出 +'+tot+'🪙');};
 }
 
 // ---- 酒館（招募）----
@@ -729,7 +745,7 @@ function renderReport(rep){
   var h=topbar()+'<div class="pad" style="background:radial-gradient(120% 80% at 50% -10%,#2a2140,transparent 55%)">';
   h+='<h1>'+head+'</h1><p class="lead">從第 '+(rep.start||1)+' 層探索 → 目標第 '+rep.target+' 層 ・ 實際抵達第 '+rep.reached+' 層</p>';
   h+='<div class="card"><b>結算</b><div class="note" style="text-align:left;margin-top:6px">'+
-    '🪙 金幣 +'+rep.gold+'　⭐ 經驗 +'+rep.xp+'　🎁 掉落 '+(rep.loot.length||0)+' 件</div>';
+    '🪙 金幣 +'+rep.gold+'　⭐ 經驗 +'+rep.xp+'<br>⚔️ 擊敗 '+(rep.kills||0)+' 隻　🎁 掉落 '+(rep.loot.length||0)+' 件　🏛️ 探索 '+(rep.floors?rep.floors.length:0)+' 層</div>';
   if(rep.rankUp)h+='<div class="note" style="text-align:left;color:var(--gold);font-weight:800">🎖️ 晉升為「'+rep.rankUp.to+'」！ +'+rep.rankUp.reward+'🪙</div>';
   if(rep.questDone)h+='<div class="note" style="text-align:left;color:var(--good);font-weight:800">📜 委託完成【'+rep.questDone.name+'】 +'+rep.questDone.reward+'🪙</div>';
   if(rep.levelUps&&rep.levelUps.length){h+='<div class="note" style="text-align:left;color:var(--gold)">⬆️ '+rep.levelUps.map(function(u){return u.name+' → Lv'+u.level;}).join('、')+'</div>';}
@@ -739,7 +755,7 @@ function renderReport(rep){
   if(rep.rankUp&&STORY.rank[rep.rankUp.ix])story.push(STORY.rank[rep.rankUp.ix]);
   (rep.newBosses||[]).forEach(function(bf){if(STORY.boss[bf])story.push(STORY.boss[bf]);});
   if(story.length)h+='<div class="card" style="border-color:var(--gold-d)"><b>📖 劇情</b>'+story.map(function(s){return '<div class="note" style="text-align:left;margin-top:6px;line-height:1.75;color:#f0d6ad;white-space:pre-line">'+s+'</div>';}).join('')+'</div>';
-  h+='<details open><summary>逐層戰報</summary><div style="margin-top:8px">';
+  h+='<details><summary>📋 展開逐層戰報（'+(rep.floors?rep.floors.length:0)+' 層）</summary><div style="margin-top:8px">';
   rep.floors.forEach(function(f){
     var enc=f.encounters&&f.encounters[0];
     var enemies=(enc&&enc.enemies||[]).map(function(e){return e.ico;}).join('');
