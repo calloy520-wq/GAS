@@ -63,6 +63,34 @@
   .bldg.wide{grid-column:1/3;background:linear-gradient(180deg,#4a2c3a,#331c26);border-color:#7a3c52}
   .badge{position:absolute;top:8px;right:8px;background:var(--hp);color:#fff;font-size:10px;font-weight:800;padding:1px 7px;border-radius:9px}
 
+  /* 主城場景（手繪打底＋AI 背景疊加） */
+  .scene{position:relative;height:178px;overflow:hidden;border-bottom:2px solid var(--gold-d);
+    background:linear-gradient(180deg,#332e52 0%,#6d5a6e 46%,#c77b43 82%,#eaa659 100%)}
+  .scene .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .9s ease}
+  .scene .bg.on{opacity:1}
+  .scene .sun{position:absolute;left:50%;top:33%;transform:translate(-50%,-50%);width:52px;height:52px;border-radius:50%;
+    background:radial-gradient(circle,#fff1c9,#f6b45a 72%);box-shadow:0 0 46px 14px rgba(246,170,80,.5)}
+  .scene .star{position:absolute;width:2px;height:2px;border-radius:50%;background:#fff;opacity:.75}
+  .scene .sil{position:absolute;left:0;right:0;bottom:0;text-align:center;font-size:46px;line-height:1;letter-spacing:-4px;
+    filter:drop-shadow(0 3px 3px rgba(0,0,0,.4));opacity:.95}
+  .scene .title{position:absolute;left:0;right:0;bottom:10px;text-align:center;color:#fff;z-index:3;
+    font-weight:800;font-size:20px;letter-spacing:2px;text-shadow:0 2px 8px rgba(0,0,0,.75)}
+  .scene .title small{display:block;font-size:11px;font-weight:600;color:#ffe6c0;letter-spacing:1px;opacity:.92;text-shadow:0 1px 4px rgba(0,0,0,.7)}
+
+  /* 招牌式建築 */
+  .signs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .sign{position:relative;background:linear-gradient(180deg,#8a5a34,#5e3a21);border:2px solid #3f2814;border-radius:13px;
+    padding:12px 10px 13px;cursor:pointer;text-align:center;box-shadow:0 5px 0 #3a2413, inset 0 1px 0 rgba(255,220,170,.22)}
+  .sign:active{transform:translateY(2px);box-shadow:0 3px 0 #3a2413, inset 0 1px 0 rgba(255,220,170,.22)}
+  .sign::before,.sign::after{content:'';position:absolute;top:-7px;width:2px;height:7px;background:#3f2814}
+  .sign::before{left:24px}.sign::after{right:24px}
+  .sign .ico{font-size:29px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.45))}
+  .sign .nm{font-weight:800;font-size:15px;margin-top:3px;color:#ffe9c9}
+  .sign .ds{color:#e7c6a0;font-size:10.5px;margin-top:1px}
+  .sign .badge{background:var(--hp)}
+  .sign.gate{grid-column:1/3;background:linear-gradient(180deg,#5a2f3f,#361c26);border-color:#7a3c52;box-shadow:0 5px 0 #2a1620}
+  .sign.gate .nm{color:#ffd0dd}
+
   .u{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:9px;margin-bottom:8px}
   .u .av{width:44px;height:44px;border-radius:10px;object-fit:cover;background:#241d14;flex:none;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden}
   .u .av img{width:100%;height:100%;object-fit:cover}
@@ -185,7 +213,7 @@ function mock(action,p){return new Promise(function(res,rej){
     if(action==='save'){put(p.player);return res(p.player);}
     if(action==='recruit'){var pl=DB[p.nick.trim()];if(pl.roster.length>=10)return rej(new Error('倉庫已滿'));if(pl.gold<p.cost)return rej(new Error('金幣不足'));var c=mk(p.name,p.job,p.portrait,p.seed,p.base,p.race);pl.gold-=p.cost;pl.roster.push(c);put(pl);return res({player:pl,recruited:c});}
     if(action==='dismiss'){var pl=DB[p.nick.trim()];if(p.id===pl.heroId)return rej(new Error('主角無法遣散'));var tc=pl.roster.filter(function(c){return c.id===p.id;})[0]||{level:1};var cost=20+tc.level*10;if(pl.gold<cost)return rej(new Error('遣散費不足'));pl.roster=pl.roster.filter(function(c){return c.id!==p.id;});pl.gold-=cost;pl.team.battle=pl.team.battle.filter(function(x){return x!==p.id;});pl.team.support=pl.team.support.filter(function(x){return x!==p.id;});put(pl);return res({player:pl,cost:cost});}
-    if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};if(reached>pl.deepest)pl.deepest=reached;rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
+    if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2,lines:['R1','⚔️ 隊長 擊中 👺哥布林 −5','🩸 👺哥布林 打中 隊長 −3','R2','✦ 隊長 擊中 👺哥布林 −9（暴擊！） 💀']}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};if(reached>pl.deepest)pl.deepest=reached;rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
     if(action==='roster'){return res({players:Object.keys(DB).map(function(k){var pl=DB[k];var team=pl.team.battle.concat(pl.team.support);var by={};pl.roster.forEach(function(c){by[c.id]=c;});return{nick:k,deepest:pl.deepest,gold:pl.gold,updated:0,members:team.map(function(id){var c=by[id];return c?{name:c.name,job:c.job,ico:(cinfo(c.job)||{}).ico,level:c.level,portrait:c.portrait}:null;}).filter(Boolean)};})});}
     rej(new Error('mock 未支援：'+action));
   }catch(e){rej(e);}},250);
@@ -341,18 +369,29 @@ var BLDG=[
   ['inn','🛏️','旅館','休息回血'],
   ['roster','📜','冒險者名冊','看大家的進度']
 ];
+// 主城 AI 背景（固定 seed → 全城一致；載不出就用手繪打底）
+var TOWN_BG_URL="https://image.pollinations.ai/prompt/"+encodeURIComponent("cozy fantasy medieval town square at golden dusk, warm glowing lanterns, tavern blacksmith market stalls, castle spires in the background, anime background art, studio ghibli style scenery, no people, no text, wide establishing shot")+"?width=768&height=384&nologo=true&model=flux&seed=777";
+function starDots(){var s=[[10,20],[24,10],[40,26],[58,12],[72,22],[86,9],[33,15],[66,28],[92,20],[17,32]];return s.map(function(p){return '<div class="star" style="left:'+p[0]+'%;top:'+p[1]+'%"></div>';}).join('');}
 function renderTown(){
   var hero=heroOf();
-  var h=topbar()+'<div class="pad">';
-  h+='<div class="u" style="background:linear-gradient(180deg,#4a3a52,#33291f)"><div class="av">'+avatarHTML(hero)+'</div>'+
+  var h=topbar();
+  // 場景橫幅
+  h+='<div class="scene" id="scene"><div class="sun"></div>'+starDots()+
+    '<div class="sil">🌲🏠🏰🏪🏠🌲</div>'+
+    '<img class="bg" id="townbg" alt="">'+
+    '<div class="title">🏰 傭兵之城<small>黃昏的傭兵城鎮 · '+P.nick+'</small></div></div>';
+  h+='<div class="pad" style="padding-top:12px">';
+  h+='<div class="u" style="background:linear-gradient(180deg,#4a3a52,#33291f)"><div class="av" data-detail="'+hero.id+'" style="cursor:pointer">'+avatarHTML(hero)+'</div>'+
     '<div class="info"><b>'+hero.name+' <span class="tag">Lv'+hero.level+'</span></b><small>'+(RACES[hero.race]?RACES[hero.race].ico+RACES[hero.race].nm+' ':'')+cinfo(hero.job).ico+cinfo(hero.job).nm+' ・ HP '+hero.hp+'/'+hero.maxhp+' ・ AC '+cStats(hero).ac+'</small></div></div>';
-  h+='<div class="grid">';
-  BLDG.forEach(function(b){h+='<div class="bldg" data-b="'+b[0]+'"><div class="ico">'+b[1]+'</div><div class="nm">'+b[2]+'</div><div class="ds">'+b[3]+'</div></div>';});
+  h+='<div class="signs">';
+  BLDG.forEach(function(b){var badge=(b[0]==='inn'&&P.roster.some(function(c){return c.hp<c.maxhp;}))?'<span class="badge">傷</span>':'';h+='<div class="sign" data-b="'+b[0]+'">'+badge+'<div class="ico">'+b[1]+'</div><div class="nm">'+b[2]+'</div><div class="ds">'+b[3]+'</div></div>';});
   h+='</div>';
-  h+='<div class="grid" style="margin-top:10px"><div class="bldg wide" data-b="dungeon"><div class="ico">⬇️ 進入地下城</div><div class="ds">自動探索・可達第 '+(P.deepest||0)+' 層，挑戰更深</div></div></div>';
+  h+='<div class="signs" style="margin-top:10px"><div class="sign gate" data-b="dungeon"><div class="ico">⬇️🏚️</div><div class="nm">進入地下城</div><div class="ds">自動探索・可達第 '+(P.deepest||0)+' 層，挑戰更深</div></div></div>';
   h+='</div>';
   app.innerHTML=h;
-  Array.prototype.forEach.call(document.querySelectorAll('.bldg'),function(el){el.onclick=function(){openBldg(el.dataset.b);};});
+  var bg=document.getElementById('townbg');if(bg){bg.onload=function(){bg.classList.add('on');};bg.src=TOWN_BG_URL;}
+  Array.prototype.forEach.call(document.querySelectorAll('.sign'),function(el){el.onclick=function(){openBldg(el.dataset.b);};});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-detail]'),function(el){el.onclick=function(){charSheet(el.dataset.detail);};});
 }
 function openSheet(title,sub,body){sheet.innerHTML='<button class="close" onclick="closeSheet()">✕</button><h2>'+title+'</h2>'+(sub?'<p class="sub">'+sub+'</p>':'')+body;modal.classList.add('show');}
 // 樂觀更新：先畫面立即反應（cb），存檔在背景去抖動寫入，不卡手
@@ -566,6 +605,7 @@ function openDungeon(){
       .catch(function(e){dv.disabled=false;dv.textContent='⚔️ 自動探索出發';toast('錯誤：'+e.message);});
   };
 }
+function fmtLog(lines){return lines.map(function(l){var m=/^R(\d+)$/.exec(l);return m?'<div style="color:var(--soft);font-size:11px;margin-top:6px;font-weight:700;border-top:1px dashed var(--d-line);padding-top:4px">— 第 '+m[1]+' 回合 —</div>':'<div style="font-size:12px;line-height:1.6">'+l+'</div>';}).join('');}
 function renderReport(rep){
   var head=rep.wiped?'💀 小隊全滅撤退':(rep.cleared?'🎉 探索成功！':'🏳️ 探索結束');
   var h=topbar()+'<div class="pad" style="background:radial-gradient(120% 80% at 50% -10%,#2a2140,transparent 55%)">';
@@ -577,12 +617,15 @@ function renderReport(rep){
   h+='</div>';
   h+='<details open><summary>逐層戰報</summary><div style="margin-top:8px">';
   rep.floors.forEach(function(f){
-    var enemies=(f.encounters&&f.encounters[0]&&f.encounters[0].enemies||[]).map(function(e){return e.ico;}).join('');
+    var enc=f.encounters&&f.encounters[0];
+    var enemies=(enc&&enc.enemies||[]).map(function(e){return e.ico;}).join('');
     h+='<div class="rep-floor"><div class="fh">'+(f.boss?'👑 ':'')+'第 '+f.floor+' 層 '+enemies+'</div><div class="fl">';
     if(f.event)h+=f.event+'<br>';
     if(f.wipe)h+='<b style="color:var(--hp)">小隊在此全滅…</b>';
-    else h+='擊敗 '+((f.encounters[0]||{}).killed||0)+' 隻 ・ +'+f.gold+'🪙 ・ +'+f.xp+'⭐'+((f.loot&&f.loot.length)?' ・ 掉落 '+f.loot.map(function(g){return g.ico+g.nm;}).join(''):'');
-    h+='</div></div>';
+    else h+='擊敗 '+((enc||{}).killed||0)+' 隻 ・ +'+f.gold+'🪙 ・ +'+f.xp+'⭐'+((f.loot&&f.loot.length)?' ・ 掉落 '+f.loot.map(function(g){return g.ico+g.nm;}).join(''):'');
+    h+='</div>';
+    if(enc&&enc.lines&&enc.lines.length){h+='<details style="margin-top:4px"><summary>📜 詳細戰記</summary><div class="fl" style="margin-top:4px">'+fmtLog(enc.lines)+'</div></details>';}
+    h+='</div>';
   });
   h+='</div></details>';
   h+='<button class="btn gold" id="back" style="margin-top:12px">🏰 回到城鎮</button></div>';
