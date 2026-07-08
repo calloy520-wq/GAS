@@ -212,12 +212,12 @@ function grantSea_(pl, track, xp){
   return { track:track, gain:gain, ups:ups, lv:t.lv, nm:(track==='nav'?'航海術':'商業') };
 }
 // 效果
-function navDaysMul_(pl){ ensureSea_(pl); return Math.max(0.55, 1 - 0.024*(pl.nav.lv-1)); }  // Lv20 約 -46% 航程
+function navDaysMul_(pl){ ensureSea_(pl); return Math.max(0.4, 1 - 0.024*(pl.nav.lv-1) - 0.015*officerRank_(pl,'navigator')); }  // 航海長進一步縮短航程
 function navGunBonus_(pl){ ensureSea_(pl); return Math.floor((pl.nav.lv-1)/3); }             // 每 3 級 +1 砲擊
-function navLuck_(pl){ ensureSea_(pl); return Math.min(0.14, 0.011*(pl.nav.lv-1)); }         // 海上事件偏向好運
+function navLuck_(pl){ ensureSea_(pl); return Math.min(0.2, 0.011*(pl.nav.lv-1) + 0.008*officerRank_(pl,'navigator')); }  // 航海長更好運
 function comBuyMul_(pl){ ensureSea_(pl); return Math.max(0.72, 1 - 0.0075*(pl.com.lv-1)); }  // 進貨更便宜
 function comSellMul_(pl){ ensureSea_(pl); return Math.min(1.30, 1 + 0.011*(pl.com.lv-1)); }  // 賣貨更高價
-function tradeDisc_(pl){ ensureSea_(pl); var has=teamHasSkill_(pl,'persuasion'); var home=(pl.holdings&&pl.holdings[pl.port])?0.03:0; return { buyMul:comBuyMul_(pl)*(has?0.97:1)*(1-home), sellMul:comSellMul_(pl)*(has?1.03:1)*(1+home), haggle:has, home:home>0 }; }
+function tradeDisc_(pl){ ensureSea_(pl); var has=teamHasSkill_(pl,'persuasion'); var home=(pl.holdings&&pl.holdings[pl.port])?0.03:0; var qm=officerRank_(pl,'quartermaster')*0.008; return { buyMul:comBuyMul_(pl)*(has?0.97:1)*(1-home)*(1-qm), sellMul:comSellMul_(pl)*(has?1.03:1)*(1+home)*(1+qm), haggle:has, home:home>0 }; }
 // 里程碑效果
 function fleetCap_(pl){ ensureSea_(pl); return FLEET_MAX + (pl.nav.lv>=4?1:0) + (pl.nav.lv>=8?1:0); }   // 5→7
 function dividendRate_(pl){ ensureSea_(pl); return 0.05 + (pl.com.lv>=4?0.02:0) + (pl.com.lv>=10?0.03:0); }
@@ -227,6 +227,11 @@ function mateInBattle_(pl){ return pl.mate && (pl.team.battle||[]).indexOf(pl.ma
 function mateNavalGun_(pl){ if (!mateInBattle_(pl)) return 0; return 1 + Math.floor(affLevel_(pl, pl.mate)/2); }   // +1~+3
 function mateNavalLine_(pl){ if (!mateInBattle_(pl)) return null; var m=(pl.roster||[]).filter(function(c){return c.id===pl.mate;})[0]; if (!m) return null;
   var lv=affLevel_(pl,pl.mate); var say=lv>=3?'包在我身上，左滿舵、全砲門開火！':'副手就位，聽我口令調度側舷！'; return '👩‍✈️ '+m.name+'：「'+say+'」'; }
+// ===== 船上職務（任何夥伴依能力值上任，給被動加成，讓每個招募都有用）=====
+var POSTS = { navigator:{nm:'航海長',ico:'🧭',ab:'wis',skill:'survival'}, gunner:{nm:'砲術長',ico:'💣',ab:'dex',skill:null}, quartermaster:{nm:'總管',ico:'💰',ab:'cha',skill:'persuasion'}, lookout:{nm:'瞭望手',ico:'🔭',ab:'wis',skill:'perception'} };
+function officerOf_(pl,key){ if(!pl.posts) return null; var id=pl.posts[key]; if(!id) return null; return (pl.roster||[]).filter(function(c){ return c&&c.id===id; })[0]||null; }
+function officerRank_(pl,key){ var c=officerOf_(pl,key); if(!c) return 0; var meta=POSTS[key]; var m=mod(abilityOf(c,meta.ab)); var sk=(meta.skill&&charSkills(c).indexOf(meta.skill)>=0)?1:0; return Math.max(0, Math.min(8, Math.floor((c.level||1)/4)+Math.max(0,m)+sk)); }
+function navalGun_(pl){ return navGunBonus_(pl)+mateNavalGun_(pl)+officerRank_(pl,'gunner'); }
 function tradeHaggle_(pl){ var has=(pl.roster||[]).some(function(c){ return charSkills(c).indexOf('persuasion')>=0; }); return has?{buyMul:0.95,sellMul:1.05}:{buyMul:1,sellMul:1}; }
 function tradeView_(pl, day, disc){
   ensureSea_(pl);
@@ -401,7 +406,7 @@ function apiNaval_(p){
   var ti = Math.max(0, Math.min(3, prog - 1 + rint(0,2)));
   var base = ENEMY_SHIPS[ti];
   var enemy = { nm:base.nm, ico:base.ico, hull:base.hull, cannon:base.cannon, speed:base.speed, gold:base.gold, loot:base.loot };
-  var r = resolveNaval_(player.ship, party, enemy, navGunBonus_(player)+mateNavalGun_(player), p.stance, base.speed);
+  var r = resolveNaval_(player.ship, party, enemy, navalGun_(player), p.stance, base.speed);
   injectMateLine_(player, r);
   player.ship.hull = r.playerHull;
   var report = { enemy:{nm:enemy.nm, ico:enemy.ico}, win:r.win, mode:r.mode, fled:r.fled, log:r.log, gold:0, loot:[], hull:player.ship.hull, hullMax:player.ship.hullMax };
@@ -495,7 +500,7 @@ function apiSea_(p){
     var party=(player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
     var enemy={ nm:npc.nm, ico:npc.ico, hull:npc.hull, cannon:npc.cannon, speed:npc.speed, gold:npc.gold, loot:npc.loot };
     var surp = consumeScout_(player, 'sea:'+p.id);
-    var r = resolveNaval_(player.ship, party, enemy, navGunBonus_(player)+mateNavalGun_(player), p.stance, npc.speed, surp);
+    var r = resolveNaval_(player.ship, party, enemy, navalGun_(player), p.stance, npc.speed, surp);
     injectMateLine_(player, r);
     player.ship.hull = r.playerHull;
     var report={ enemy:{nm:npc.nm, ico:npc.ico}, win:r.win, mode:r.mode, fled:r.fled, log:r.log, gold:0, loot:[], hull:player.ship.hull, hullMax:player.ship.hullMax };
@@ -526,7 +531,7 @@ function apiRaidPlayer_(p){
   var espeed = (target.ship.speed||6) + Math.floor(partyPower_(defParty)/8);
   var enemy = { nm:target.nick+'的商船', ico:'⛵', hull:(target.ship.hullMax||60), cannon:(target.ship.cannon||6)+Math.floor(partyPower_(defParty)/5), speed:espeed };
   var surpP = consumeScout_(me, 'pvp:'+target.nick);
-  var r = resolveNaval_(me.ship, party, enemy, navGunBonus_(me)+mateNavalGun_(me), p.stance, espeed, surpP);
+  var r = resolveNaval_(me.ship, party, enemy, navalGun_(me), p.stance, espeed, surpP);
   injectMateLine_(me, r);
   me.ship.hull = r.playerHull;
   var report = { target:target.nick, win:r.win, mode:r.mode, fled:r.fled, log:r.log, gold:0, loot:[], hull:me.ship.hull, hullMax:me.ship.hullMax };
@@ -574,7 +579,7 @@ function apiConquer_(p){
   var siegeShip = { hull:player.ship.hull, hullMax:player.ship.hullMax, cannon:(player.ship.cannon||6)+fleetGun, crew:player.ship.crew, speed:player.ship.speed };
   var enemy = { nm:gar.nm, ico:'🛡️', hull:gar.hull, cannon:gar.cannon, gold:gar.gold, loot:0, speed:99 };   // 駐軍不會逃
   var surpC = consumeScout_(player, 'port:'+pid);
-  var r = resolveNaval_(siegeShip, party, enemy, navGunBonus_(player)+mateNavalGun_(player), 'board', 99, surpC);
+  var r = resolveNaval_(siegeShip, party, enemy, navalGun_(player), 'board', 99, surpC);
   injectMateLine_(player, r);
   player.ship.hull = r.playerHull;
   var report = { port:pid, portNm:mk.nm, portIco:mk.ico, garrison:gar.nm, win:r.win, log:r.log, hull:player.ship.hull, hullMax:player.ship.hullMax, gold:0, fleetGun:fleetGun };
@@ -599,11 +604,12 @@ function apiHold_(p){
     var report = { earned:0, lines:[] };
     var mateBonus = (mateInBattle_(player)||player.mate) ? affLevel_(player, player.mate)*0.05 : 0;   // 副手當總管加成
     var comBonus = ((player.com&&player.com.lv>=10)?0.5:0);
+    var qmBonus = officerRank_(player,'quartermaster')*0.06;   // 總管職務加成
     Object.keys(player.holdings).forEach(function(pid){
       var h = player.holdings[pid], mk = MARKET_BY[pid]; if (!mk) return;
       var cycles = Math.min(24, Math.floor((now - (h.lastAt||now))/HOLD_CYCLE_MS));
       if (cycles<=0) return;
-      var per = Math.round(HOLD_TAX_BASE * h.lv * (1+mateBonus+comBonus));
+      var per = Math.round(HOLD_TAX_BASE * h.lv * (1+mateBonus+comBonus+qmBonus));
       var got = per * cycles;
       h.lastAt = (h.lastAt||now) + cycles*HOLD_CYCLE_MS;
       player.gold += got; report.earned += got;
@@ -659,10 +665,11 @@ function apiScout_(p){
   if (!player) throw new Error('找不到存檔');
   if (!player.ship) player.ship = startShip();
   var day = tradeDayBucket();
-  var perceive = teamHasSkill_(player,'perception') || teamHasSkill_(player,'stealth');
+  var look = officerRank_(player,'lookout');
+  var perceive = teamHasSkill_(player,'perception') || teamHasSkill_(player,'stealth') || look>0;
   var byId={}; (player.roster||[]).forEach(function(c){ byId[c.id]=c; });
   var party=(player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
-  var myGun = (player.ship.cannon||6) + bestDexMod_(party) + navGunBonus_(player) + mateNavalGun_(player);
+  var myGun = (player.ship.cannon||6) + bestDexMod_(party) + navalGun_(player);
   var enemy, key, extra={};
   if (p.kind==='sea'){ var n=npcTradersForDay(day).filter(function(x){ return x.id===p.id; })[0]; if(!n) throw new Error('該商船已離開海域'); enemy={ nm:n.nm, ico:n.ico, hull:n.hull, cannon:n.cannon, speed:n.speed }; key='sea:'+p.id; extra.loot=n.loot; extra.gold=n.gold; }
   else if (p.kind==='port'){ var gar=GARRISONS[p.port]; if(!gar) throw new Error('未知港口'); var fg=(player.fleet||[]).reduce(function(a,s){ return a+Math.floor((s.cannon||0)/2); },0); myGun+=fg; enemy={ nm:gar.nm, ico:'🛡️', hull:gar.hull, cannon:gar.cannon, speed:99 }; key='port:'+p.port; extra.fleetGun=fg; }
@@ -671,7 +678,7 @@ function apiScout_(p){
   var est = winEstimate_(myGun, player.ship.hull, enemy);
   var rec = (player.ship.hull < enemy.hull*0.6) ? 'kite' : (myGun >= enemy.cannon+6 ? 'board' : 'sink');
   var spotted = !perceive && Math.random()<0.3;   // 沒有察覺/隱匿專長，有機率暴露行蹤
-  player.scout = spotted ? null : { key:key, gun: perceive?4:2 };
+  player.scout = spotted ? null : { key:key, gun: (perceive?4:2)+Math.floor(look/2) };
   cleanPlayer_(player); savePlayer(player);
   return { player:player, intel:{ nm:enemy.nm, ico:enemy.ico, hull:enemy.hull, cannon:enemy.cannon, speed:enemy.speed, winEst:est, rec:rec, extra:extra, spotted:spotted, surprise:!spotted, perceive:perceive } };
 }

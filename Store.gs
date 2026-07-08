@@ -125,6 +125,7 @@ function ensureShape_(pl){
   if (typeof pl.invest !== 'number') pl.invest = 0;
   if (!Array.isArray(pl.fleet)) pl.fleet = [];
   if (!pl.holdings || typeof pl.holdings !== 'object') pl.holdings = {};   // 領地
+  if (!pl.posts || typeof pl.posts !== 'object') pl.posts = {};           // 船上職務
   ensureSea_(pl);   // 航海術 / 商業 等級
   pl.roster.forEach(function(c){
     if (!c) return;

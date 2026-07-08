@@ -271,7 +271,7 @@ function srv(action,payload){
 function mock(action,p){return new Promise(function(res,rej){
   var DB=JSON.parse(localStorage.getItem('merc_db')||'{}');
   function put(pl){DB[pl.nick]=pl;localStorage.setItem('merc_db',JSON.stringify(DB));}
-  function ensureC(pl){if(!pl.port)pl.port='merc';if(!pl.cargo)pl.cargo={};if(typeof pl.clues!=='number')pl.clues=0;if(!pl.ship)pl.ship=startShipC();if(typeof pl.ship.hull!=='number')pl.ship.hull=pl.ship.hullMax;if(typeof pl.ship.speed!=='number')pl.ship.speed=6;if(typeof pl.invest!=='number')pl.invest=0;if(!pl.holdings)pl.holdings={};ensureSeaC(pl);}
+  function ensureC(pl){if(!pl.port)pl.port='merc';if(!pl.cargo)pl.cargo={};if(typeof pl.clues!=='number')pl.clues=0;if(!pl.ship)pl.ship=startShipC();if(typeof pl.ship.hull!=='number')pl.ship.hull=pl.ship.hullMax;if(typeof pl.ship.speed!=='number')pl.ship.speed=6;if(typeof pl.invest!=='number')pl.invest=0;if(!pl.holdings)pl.holdings={};if(!pl.posts)pl.posts={};ensureSeaC(pl);}
   function roll(){var a=[d6(),d6(),d6(),d6()].sort(function(x,y){return x-y;});return a[1]+a[2]+a[3];}
   function d6(){return 1+Math.floor(Math.random()*6);}
   function mk(name,job,portrait,seed,pbase,race){var base={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){base[a]=Math.min(20,((pbase&&pbase[a])||roll())+(g[a]||0));});var c={id:'c'+Math.random().toString(36).slice(2,9),name:name,job:job,race:race||'human',support:isSup(job),portrait:portrait||'',seed:seed||0,level:1,xp:0,base:base,equip:{weapon:null,armor:null,trinket:null},hp:0,maxhp:0};c.maxhp=cMaxHp(c);c.hp=c.maxhp;return c;}
@@ -304,13 +304,13 @@ function mock(action,p){return new Promise(function(res,rej){
       var prog=Math.min(3,Math.floor((pl.deepest||0)/8)),ti=Math.max(0,Math.min(3,prog-1+Math.floor(Math.random()*3))),base=ES[ti];
       var by={};pl.roster.forEach(function(c){by[c.id]=c;});var party=(pl.team.battle||[]).map(function(id){return by[id];}).filter(Boolean);
       var enemy={nm:base.nm,ico:base.ico,hull:base.hull,cannon:base.cannon,speed:base.speed,gold:base.gold,loot:base.loot};
-      var r=resolveNavalC(pl.ship,party,enemy,navGunBonusC(pl)+mateNavalGunP(pl),p.stance,base.speed);injectMateLineC(pl,r);pl.ship.hull=r.playerHull;
+      var r=resolveNavalC(pl.ship,party,enemy,navalGunC(pl),p.stance,base.speed);injectMateLineC(pl,r);pl.ship.hull=r.playerHull;
       var rep={enemy:{nm:enemy.nm,ico:enemy.ico},win:r.win,mode:r.mode,fled:r.fled,log:r.log,gold:0,loot:[],hull:pl.ship.hull,hullMax:pl.ship.hullMax};
       rep.sea=grantSeaC(pl,'nav',r.fled?4:(r.win?(8+Math.floor(enemy.hull/6)):3));applyNavalRewardC(pl,enemy,r,rep);pl.gold=Math.max(0,pl.gold);put(pl);return res({player:pl,report:rep});}
     if(action==='prize'){var pl=DB[p.nick.trim()];ensureC(pl);if(!pl.pendingPrize)return rej(new Error('沒有待處置的戰利品船'));if(!pl.fleet)pl.fleet=[];var pz=pl.pendingPrize,kept;if(p.decision==='fleet'&&pl.fleet.length<fleetCapC(pl)){delete pz.scrapGold;pl.fleet.push(pz);kept={mode:'fleet',nm:pz.nm};}else{var sg=pz.scrapGold||Math.round((pz.hullMax+pz.cannon*8)/2);pl.gold+=sg;kept={mode:'scrap',gold:sg};}delete pl.pendingPrize;put(pl);return res({player:pl,kept:kept});}
-    if(action==='conquer'){var pl=DB[p.nick.trim()];ensureC(pl);if(pl.ship.hull<=0)return rej(new Error('船身破損，請先到船塢修理'));var mk=MARKET_BYC[p.port];if(!mk)return rej(new Error('未知港口'));if(pl.holdings[p.port])return rej(new Error('這座港口已是你的領地'));var gar=GARRISONS_C[p.port]||GARRISONS_C.merc;var by={};pl.roster.forEach(function(c){by[c.id]=c;});var party=(pl.team.battle||[]).map(function(id){return by[id];}).filter(Boolean);var fg=(pl.fleet||[]).reduce(function(a,s){return a+Math.floor((s.cannon||0)/2);},0);var siege={hull:pl.ship.hull,hullMax:pl.ship.hullMax,cannon:(pl.ship.cannon||6)+fg,crew:pl.ship.crew,speed:pl.ship.speed};var enemy={nm:gar.nm,ico:'🛡️',hull:gar.hull,cannon:gar.cannon,gold:gar.gold,loot:0,speed:99};var surpC=consumeScoutC(pl,'port:'+p.port);var r=resolveNavalC(siege,party,enemy,navGunBonusC(pl)+mateNavalGunP(pl),'board',99,surpC);injectMateLineC(pl,r);pl.ship.hull=r.playerHull;var rep={port:p.port,portNm:mk.nm,portIco:mk.ico,garrison:gar.nm,win:r.win,log:r.log,hull:pl.ship.hull,hullMax:pl.ship.hullMax,gold:0,fleetGun:fg};rep.sea=grantSeaC(pl,'nav',r.win?(12+Math.floor(gar.hull/6)):4);if(r.win){var g=gar.gold[0]+Math.floor(Math.random()*(gar.gold[1]-gar.gold[0]+1));pl.gold+=g;rep.gold=g;pl.holdings[p.port]={lv:1,since:Date.now(),lastAt:Date.now()};rep.captured=true;}else{var pen=Math.min(pl.gold,30+Math.floor(Math.random()*50));pl.gold-=pen;rep.lostGold=pen;}pl.gold=Math.max(0,pl.gold);put(pl);return res({player:pl,report:rep});}
+    if(action==='conquer'){var pl=DB[p.nick.trim()];ensureC(pl);if(pl.ship.hull<=0)return rej(new Error('船身破損，請先到船塢修理'));var mk=MARKET_BYC[p.port];if(!mk)return rej(new Error('未知港口'));if(pl.holdings[p.port])return rej(new Error('這座港口已是你的領地'));var gar=GARRISONS_C[p.port]||GARRISONS_C.merc;var by={};pl.roster.forEach(function(c){by[c.id]=c;});var party=(pl.team.battle||[]).map(function(id){return by[id];}).filter(Boolean);var fg=(pl.fleet||[]).reduce(function(a,s){return a+Math.floor((s.cannon||0)/2);},0);var siege={hull:pl.ship.hull,hullMax:pl.ship.hullMax,cannon:(pl.ship.cannon||6)+fg,crew:pl.ship.crew,speed:pl.ship.speed};var enemy={nm:gar.nm,ico:'🛡️',hull:gar.hull,cannon:gar.cannon,gold:gar.gold,loot:0,speed:99};var surpC=consumeScoutC(pl,'port:'+p.port);var r=resolveNavalC(siege,party,enemy,navalGunC(pl),'board',99,surpC);injectMateLineC(pl,r);pl.ship.hull=r.playerHull;var rep={port:p.port,portNm:mk.nm,portIco:mk.ico,garrison:gar.nm,win:r.win,log:r.log,hull:pl.ship.hull,hullMax:pl.ship.hullMax,gold:0,fleetGun:fg};rep.sea=grantSeaC(pl,'nav',r.win?(12+Math.floor(gar.hull/6)):4);if(r.win){var g=gar.gold[0]+Math.floor(Math.random()*(gar.gold[1]-gar.gold[0]+1));pl.gold+=g;rep.gold=g;pl.holdings[p.port]={lv:1,since:Date.now(),lastAt:Date.now()};rep.captured=true;}else{var pen=Math.min(pl.gold,30+Math.floor(Math.random()*50));pl.gold-=pen;rep.lostGold=pen;}pl.gold=Math.max(0,pl.gold);put(pl);return res({player:pl,report:rep});}
     if(action==='holdings'){var pl=DB[p.nick.trim()];ensureC(pl);var now=Date.now();
-      if(p.op==='collect'){var rep={earned:0,lines:[]};var mb=pl.mate?affLevelP(pl,pl.mate)*0.05:0,cb=(pl.com&&pl.com.lv>=10)?0.5:0;Object.keys(pl.holdings).forEach(function(pid){var h=pl.holdings[pid],mk=MARKET_BYC[pid];if(!mk)return;var cy=Math.min(24,Math.floor((now-(h.lastAt||now))/HOLD_CYCLE_MS_C));if(cy<=0)return;var per=Math.round(HOLD_TAX_BASE_C*h.lv*(1+mb+cb)),got=per*cy;h.lastAt=(h.lastAt||now)+cy*HOLD_CYCLE_MS_C;pl.gold+=got;rep.earned+=got;rep.lines.push(mk.ico+mk.nm+'（治理 Lv'+h.lv+'）稅收 '+cy+' 期 → +'+got+'🪙');});put(pl);return res({player:pl,report:rep});}
+      if(p.op==='collect'){var rep={earned:0,lines:[]};var mb=pl.mate?affLevelP(pl,pl.mate)*0.05:0,cb=(pl.com&&pl.com.lv>=10)?0.5:0,qm=officerRankC(pl,'quartermaster')*0.06;Object.keys(pl.holdings).forEach(function(pid){var h=pl.holdings[pid],mk=MARKET_BYC[pid];if(!mk)return;var cy=Math.min(24,Math.floor((now-(h.lastAt||now))/HOLD_CYCLE_MS_C));if(cy<=0)return;var per=Math.round(HOLD_TAX_BASE_C*h.lv*(1+mb+cb+qm)),got=per*cy;h.lastAt=(h.lastAt||now)+cy*HOLD_CYCLE_MS_C;pl.gold+=got;rep.earned+=got;rep.lines.push(mk.ico+mk.nm+'（治理 Lv'+h.lv+'）稅收 '+cy+' 期 → +'+got+'🪙');});put(pl);return res({player:pl,report:rep});}
       if(p.op==='upgrade'){var h2=pl.holdings[p.port];if(!h2)return rej(new Error('這不是你的領地'));if(h2.lv>=HOLD_LV_MAX_C)return rej(new Error('治理已達上限'));var cost=holdUpCostC(h2.lv);if(pl.gold<cost)return rej(new Error('金幣不足（需 '+cost+'🪙）'));pl.gold-=cost;h2.lv++;put(pl);return res({player:pl,lv:h2.lv});}
       if(p.op==='abandon'){delete pl.holdings[p.port];put(pl);return res({player:pl});}
       return res({player:pl});}
@@ -321,12 +321,12 @@ function mock(action,p){return new Promise(function(res,rej){
       rumors.push({ico:'🌊',t:'這幾天海象平穩，正是出海跑商的好時機。'});
       if(persuade&&Math.random()<0.5){pl.clues=(pl.clues||0)+1;rumors.push({ico:'🗺️',t:'一名醉醺醺的老水手塞給你一張海圖碎片…秘寶線索 +1！'});}
       put(pl);return res({player:pl,rumors:rumors,cost:cost,persuade:persuade});}
-    if(action==='scout'){var pl=DB[p.nick.trim()];ensureC(pl);var day=tradeDayC(),perceive=teamHasSkillC(pl,'perception')||teamHasSkillC(pl,'stealth');var myGun=myGunC(pl),enemy,key,extra={};
+    if(action==='scout'){var pl=DB[p.nick.trim()];ensureC(pl);var day=tradeDayC(),perceive=teamHasSkillC(pl,'perception')||teamHasSkillC(pl,'stealth')||officerRankC(pl,'lookout')>0;var myGun=myGunC(pl),enemy,key,extra={};
       if(p.kind==='sea'){var ES=[{nm:'小商船',ico:'⛵',hull:45,cannon:4,speed:8,gold:[30,70],loot:2},{nm:'武裝商船',ico:'🚢',hull:80,cannon:7,speed:6,gold:[70,150],loot:3},{nm:'海盜船',ico:'🏴‍☠️',hull:120,cannon:11,speed:7,gold:[120,240],loot:4},{nm:'私掠艦',ico:'⚓',hull:185,cannon:16,speed:5,gold:[220,420],loot:6}],NP=['信天翁號','黑珍珠號','晨曦號','海燕號','金鹿號','南風號','翡翠號','浪花號','北極星號','女王復仇號'];var idx=parseInt((p.id||'npc0').replace('npc',''),10)||0;var seed=day*97+idx*31,es=ES[seed%ES.length];enemy={nm:NP[seed%NP.length],ico:es.ico,hull:es.hull,cannon:es.cannon,speed:es.speed};key='sea:'+p.id;extra.loot=es.loot;extra.gold=es.gold;}
       else if(p.kind==='port'){var gar=GARRISONS_C[p.port];if(!gar)return rej(new Error('未知港口'));var fg=(pl.fleet||[]).reduce(function(a,s){return a+Math.floor((s.cannon||0)/2);},0);myGun+=fg;enemy={nm:gar.nm,ico:'🛡️',hull:gar.hull,cannon:gar.cannon,speed:99};key='port:'+p.port;extra.fleetGun=fg;}
       else if(p.kind==='pvp'){var tg=DB[(p.target||'').trim()];if(!tg)return rej(new Error('目標無效'));ensureC(tg);enemy={nm:tg.nick+'的商船',ico:'⛵',hull:tg.ship.hullMax||60,cannon:tg.ship.cannon||6,speed:tg.ship.speed||6};key='pvp:'+tg.nick;extra.gold=tg.gold;extra.cargo=cargoCountC(tg);}
       else return rej(new Error('未知偵查目標'));
-      var est=winEstimateC(myGun,pl.ship.hull,enemy),rec=(pl.ship.hull<enemy.hull*0.6)?'kite':(myGun>=enemy.cannon+6?'board':'sink');var spotted=!perceive&&Math.random()<0.3;pl.scout=spotted?null:{key:key,gun:perceive?4:2};put(pl);return res({player:pl,intel:{nm:enemy.nm,ico:enemy.ico,hull:enemy.hull,cannon:enemy.cannon,speed:enemy.speed,winEst:est,rec:rec,extra:extra,spotted:spotted,surprise:!spotted,perceive:perceive}});}
+      var est=winEstimateC(myGun,pl.ship.hull,enemy),rec=(pl.ship.hull<enemy.hull*0.6)?'kite':(myGun>=enemy.cannon+6?'board':'sink');var spotted=!perceive&&Math.random()<0.3;pl.scout=spotted?null:{key:key,gun:(perceive?4:2)+Math.floor(officerRankC(pl,'lookout')/2)};put(pl);return res({player:pl,intel:{nm:enemy.nm,ico:enemy.ico,hull:enemy.hull,cannon:enemy.cannon,speed:enemy.speed,winEst:est,rec:rec,extra:extra,spotted:spotted,surprise:!spotted,perceive:perceive}});}
     if(action==='ship'){var pl=DB[p.nick.trim()];ensureC(pl);var s=pl.ship;if(p.op==='repair'){var m=s.hullMax-s.hull,c=Math.ceil(m*2);if(m<=0)return rej(new Error('船身完好'));if(pl.gold<c)return rej(new Error('金幣不足'));pl.gold-=c;s.hull=s.hullMax;}else if(p.op==='upgrade'){var u=SHIP_UP_C[p.kind];s._t=s._t||{};var t=s._t[p.kind]||0,c2=upCostC(p.kind,t);if(pl.gold<c2)return rej(new Error('金幣不足'));pl.gold-=c2;s[u.stat]=(s[u.stat]||0)+u.step;s._t[p.kind]=t+1;if(p.kind==='hull')s.hull=s.hullMax;}else if(p.op==='invest'){var a=Math.max(0,p.amount|0);if(pl.gold<a)return rej(new Error('金幣不足'));pl.gold-=a;pl.invest=(pl.invest||0)+a;}else if(p.op==='withdraw'){var w=Math.min(pl.invest||0,Math.max(0,p.amount|0));pl.invest-=w;pl.gold+=w;}put(pl);return res({player:pl});}
     if(action==='shipbuy'){var pl=DB[p.nick.trim()];ensureC(pl);if(!pl.fleet)pl.fleet=[];var sc=SHIP_CLASSES_C.filter(function(s){return s.cls===p.cls;})[0];if(!sc)return rej(new Error('未知船種'));if(pl.fleet.length>=fleetCapC(pl))return rej(new Error('艦隊已滿（上限 '+fleetCapC(pl)+' 艘，提升航海術可擴編）'));if(pl.gold<sc.price)return rej(new Error('金幣不足'));pl.gold-=sc.price;pl.fleet.push({id:'f'+Math.random().toString(36).slice(2,8),cls:sc.cls,nm:sc.nm,ico:sc.ico,hullMax:sc.hullMax,hull:sc.hullMax,cannon:sc.cannon,cargoBonus:sc.cargoBonus,speed:sc.speed||6,role:'idle',route:null,escort:false,lastAt:0});put(pl);return res({player:pl});}
     if(action==='fleet'){var pl=DB[p.nick.trim()];ensureC(pl);if(!pl.fleet)pl.fleet=[];var now=Date.now(),day=tradeDayC(),by={};pl.fleet.forEach(function(s){by[s.id]=s;});
@@ -336,7 +336,7 @@ function mock(action,p){return new Promise(function(res,rej){
       else if(p.op==='collect'){var rep={earned:0,lines:[]};pl.fleet.forEach(function(s){if(s.role!=='trade'||!s.route)return;var cy=Math.min(8,Math.floor((now-(s.lastAt||now))/TRADE_CYCLE_MS_C));if(cy<=0)return;var best=0;GOODS_C.forEach(function(g){var bu=tradePriceC(s.route.from,g.id,day),se=Math.round(tradePriceC(s.route.to,g.id,day)*0.92);if(se-bu>best)best=se-bu;});var per=Math.max(0,Math.round(best*s.cargoBonus*0.7)),got=0,lost=0;for(var i=0;i<cy;i++){if(Math.random()<(s.escort?0.08:0.25))lost++;else got+=per;}s.lastAt=(s.lastAt||now)+cy*TRADE_CYCLE_MS_C;pl.gold+=got;rep.earned+=got;rep.lines.push(s.ico+s.nm+'（'+MARKET_BYC[s.route.from].nm+'→'+MARKET_BYC[s.route.to].nm+'）跑 '+cy+' 趟'+(lost?('，'+lost+' 趟遭劫'):'')+' → +'+got+'🪙');});if(rep.earned>0)rep.sea=grantSeaC(pl,'com',Math.floor(rep.earned/45));put(pl);return res({player:pl,report:rep});}
       put(pl);return res({player:pl});}
     if(action==='sea'){var pl=DB[p.nick.trim()];ensureC(pl);var day=tradeDayC();function npcs(){var ES=[{nm:'小商船',ico:'⛵',hull:45,cannon:4,speed:8,gold:[30,70],loot:2},{nm:'武裝商船',ico:'🚢',hull:80,cannon:7,speed:6,gold:[70,150],loot:3},{nm:'海盜船',ico:'🏴‍☠️',hull:120,cannon:11,speed:7,gold:[120,240],loot:4},{nm:'私掠艦',ico:'⚓',hull:185,cannon:16,speed:5,gold:[220,420],loot:6}],NP=['信天翁號','黑珍珠號','晨曦號','海燕號','金鹿號','南風號','翡翠號','浪花號','北極星號','女王復仇號'],out=[];for(var i=0;i<5;i++){var seed=day*97+i*31,es=ES[seed%ES.length],port=MARKETS_C[seed%MARKETS_C.length];out.push({id:'npc'+i,nm:NP[seed%NP.length],ico:es.ico,portNm:port.nm,portIco:port.ico,hull:es.hull,cannon:es.cannon,speed:es.speed,gold:es.gold,loot:es.loot});}return out;}
-      if(p.op==='raid'){if(pl.ship.hull<=0)return rej(new Error('船身破損，先修理'));var n=npcs().filter(function(x){return x.id===p.id;})[0];if(!n)return rej(new Error('已離開海域'));if(!pl.raided)pl.raided={};var rk=day+'_'+p.id;if(pl.raided[rk])return rej(new Error('今天已搶過這艘商船'));var by={};pl.roster.forEach(function(c){by[c.id]=c;});var party=(pl.team.battle||[]).map(function(id){return by[id];}).filter(Boolean);var enemy={nm:n.nm,ico:n.ico,hull:n.hull,cannon:n.cannon,speed:n.speed,gold:n.gold,loot:n.loot};var surp=consumeScoutC(pl,'sea:'+p.id);var r=resolveNavalC(pl.ship,party,enemy,navGunBonusC(pl)+mateNavalGunP(pl),p.stance,n.speed,surp);injectMateLineC(pl,r);pl.ship.hull=r.playerHull;var rep={enemy:{nm:n.nm,ico:n.ico},win:r.win,mode:r.mode,fled:r.fled,log:r.log,gold:0,loot:[],hull:pl.ship.hull,hullMax:pl.ship.hullMax};rep.sea=grantSeaC(pl,'nav',r.fled?4:(r.win?(8+Math.floor(n.hull/6)):3));if(r.win&&!r.fled)pl.raided[rk]=true;applyNavalRewardC(pl,enemy,r,rep);pl.gold=Math.max(0,pl.gold);put(pl);return res({player:pl,report:rep});}
+      if(p.op==='raid'){if(pl.ship.hull<=0)return rej(new Error('船身破損，先修理'));var n=npcs().filter(function(x){return x.id===p.id;})[0];if(!n)return rej(new Error('已離開海域'));if(!pl.raided)pl.raided={};var rk=day+'_'+p.id;if(pl.raided[rk])return rej(new Error('今天已搶過這艘商船'));var by={};pl.roster.forEach(function(c){by[c.id]=c;});var party=(pl.team.battle||[]).map(function(id){return by[id];}).filter(Boolean);var enemy={nm:n.nm,ico:n.ico,hull:n.hull,cannon:n.cannon,speed:n.speed,gold:n.gold,loot:n.loot};var surp=consumeScoutC(pl,'sea:'+p.id);var r=resolveNavalC(pl.ship,party,enemy,navalGunC(pl),p.stance,n.speed,surp);injectMateLineC(pl,r);pl.ship.hull=r.playerHull;var rep={enemy:{nm:n.nm,ico:n.ico},win:r.win,mode:r.mode,fled:r.fled,log:r.log,gold:0,loot:[],hull:pl.ship.hull,hullMax:pl.ship.hullMax};rep.sea=grantSeaC(pl,'nav',r.fled?4:(r.win?(8+Math.floor(n.hull/6)):3));if(r.win&&!r.fled)pl.raided[rk]=true;applyNavalRewardC(pl,enemy,r,rep);pl.gold=Math.max(0,pl.gold);put(pl);return res({player:pl,report:rep});}
       return res({player:pl,npcs:npcs()});}
     if(action==='treasure'){var pl=DB[p.nick.trim()];ensureC(pl);if((pl.clues||0)<5)return rej(new Error('海圖殘片不足（需 5 片）'));pl.clues-=5;var g=300+Math.floor(Math.random()*300);pl.gold+=g;var rep={gold:g,gear:null,goods:[]};if(Math.random()<0.6){rep.gear={ico:'🔥',nm:'烈焰之刃'};pl.bag.push('w_flame');}for(var i=0;i<3;i++){if(cargoCountC(pl)>=effCargoC(pl))break;var gd=GOODS_C[4+Math.floor(Math.random()*4)];pl.cargo[gd.id]=(pl.cargo[gd.id]||0)+1;rep.goods.push(gd.id);}put(pl);return res({player:pl,report:rep});}
     if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,skills:(f>st?['🔍 隊長 察覺發現暗格 +'+Math.round(gg*0.3)+'🪙']:[]),loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2,lines:['R1','⚔️ 隊長 擊中 👺哥布林 −5','🩸 👺哥布林 打中 隊長 −3','R2','✦ 隊長 擊中 👺哥布林 −9（暴擊！） 💀']}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,kills:fl.length*2,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};
@@ -352,7 +352,7 @@ function mock(action,p){return new Promise(function(res,rej){
     if(action==='raid'){var me=DB[p.nick.trim()];ensureC(me);if(me.ship.hull<=0)return rej(new Error('船身破損，先修理'));var tg=DB[(p.target||'').trim()];if(!tg||tg.nick===me.nick)return rej(new Error('目標無效'));ensureC(tg);if((tg.deepest||0)<3)return rej(new Error('對方是新手，受保護'));
       var mby={};me.roster.forEach(function(c){mby[c.id]=c;});var mparty=(me.team.battle||[]).map(function(id){return mby[id];}).filter(Boolean);var dby={};tg.roster.forEach(function(c){dby[c.id]=c;});var dparty=(tg.team.battle||[]).map(function(id){return dby[id];}).filter(Boolean);var dpw=0;dparty.forEach(function(c){dpw+=(c.level||1);});
       var espeed=(tg.ship.speed||6)+Math.floor(dpw/8);var enemy={nm:tg.nick+'的商船',ico:'⛵',hull:(tg.ship.hullMax||60),cannon:(tg.ship.cannon||6)+Math.floor(dpw/5),speed:espeed};
-      var surpP=consumeScoutC(me,'pvp:'+tg.nick);var r=resolveNavalC(me.ship,mparty,enemy,navGunBonusC(me)+mateNavalGunP(me),p.stance,espeed,surpP);injectMateLineC(me,r);me.ship.hull=r.playerHull;
+      var surpP=consumeScoutC(me,'pvp:'+tg.nick);var r=resolveNavalC(me.ship,mparty,enemy,navalGunC(me),p.stance,espeed,surpP);injectMateLineC(me,r);me.ship.hull=r.playerHull;
       var rep={target:tg.nick,pvp:true,win:r.win,mode:r.mode,fled:r.fled,log:r.log,gold:0,loot:[],hull:me.ship.hull,hullMax:me.ship.hullMax};rep.sea=grantSeaC(me,'nav',r.fled?4:(r.win?(8+Math.floor(enemy.hull/6)):3));
       if(r.fled){rep.fled=true;rep.note='成功脫離，全身而退。';}
       else if(r.win){var mul=r.capture?0.30:0.20;var steal=Math.min(tg.gold||0,Math.floor((tg.gold||0)*mul)+10+Math.floor(Math.random()*30));tg.gold-=steal;me.gold+=steal;rep.gold=steal;me.cargo=me.cargo||{};var maxTake=r.capture?5:3;var tgs=Object.keys(tg.cargo||{});for(var i=0;i<maxTake&&tgs.length;i++){var g=tgs[Math.floor(Math.random()*tgs.length)];if(tg.cargo[g]>0&&cargoCountC(me)<effCargoC(me)){tg.cargo[g]--;if(tg.cargo[g]<=0){delete tg.cargo[g];tgs=Object.keys(tg.cargo);}me.cargo[g]=(me.cargo[g]||0)+1;rep.loot.push(g);}}rep.boarded=r.capture;}
@@ -554,12 +554,18 @@ function ensureSeaC(pl){if(!pl.nav||typeof pl.nav!=='object')pl.nav={lv:1,xp:0};
 function teamHasSkillC(pl,sk){return (pl.roster||[]).some(function(c){return charSkills(c.job,c.race).indexOf(sk)>=0;});}
 function seaAffinityC(pl,track){if(track==='nav')return (teamHasSkillC(pl,'survival')||teamHasSkillC(pl,'perception'))?1.5:1;return teamHasSkillC(pl,'persuasion')?1.5:1;}
 function grantSeaC(pl,track,xp){ensureSeaC(pl);var gain=Math.max(0,Math.round((xp||0)*seaAffinityC(pl,track))),t=pl[track],ups=0;if(gain>0){t.xp+=gain;while(t.lv<SEA_LV_MAX_C&&t.xp>=seaXpNextC(t.lv)){t.xp-=seaXpNextC(t.lv);t.lv++;ups++;}if(t.lv>=SEA_LV_MAX_C)t.xp=0;}return{track:track,gain:gain,ups:ups,lv:t.lv,nm:(track==='nav'?'航海術':'商業')};}
-function navDaysMulC(pl){ensureSeaC(pl);return Math.max(0.55,1-0.024*(pl.nav.lv-1));}
+// 船上職務（客戶端鏡像）
+var POSTS_C={navigator:{nm:'航海長',ico:'🧭',ab:'wis',skill:'survival',desc:'縮短航程、海上更好運'},gunner:{nm:'砲術長',ico:'💣',ab:'dex',skill:null,desc:'海戰砲擊加成'},quartermaster:{nm:'總管',ico:'💰',ab:'cha',skill:'persuasion',desc:'買賣更好價、領地稅收提高'},lookout:{nm:'瞭望手',ico:'🔭',ab:'wis',skill:'perception',desc:'偵查不易暴露、奇襲更猛'}};
+var POST_KEYS=['navigator','gunner','quartermaster','lookout'];
+function officerOfC(pl,key){if(!pl.posts)return null;var id=pl.posts[key];if(!id)return null;return (pl.roster||[]).filter(function(c){return c&&c.id===id;})[0]||null;}
+function officerRankC(pl,key){var c=officerOfC(pl,key);if(!c)return 0;var meta=POSTS_C[key];var m=cmod(cab(c,meta.ab));var sk=(meta.skill&&charSkills(c.job,c.race).indexOf(meta.skill)>=0)?1:0;return Math.max(0,Math.min(8,Math.floor((c.level||1)/4)+Math.max(0,m)+sk));}
+function navalGunC(pl){return navGunBonusC(pl)+mateNavalGunP(pl)+officerRankC(pl,'gunner');}
+function navDaysMulC(pl){ensureSeaC(pl);return Math.max(0.4,1-0.024*(pl.nav.lv-1)-0.015*officerRankC(pl,'navigator'));}
 function navGunBonusC(pl){ensureSeaC(pl);return Math.floor((pl.nav.lv-1)/3);}
-function navLuckC(pl){ensureSeaC(pl);return Math.min(0.14,0.011*(pl.nav.lv-1));}
+function navLuckC(pl){ensureSeaC(pl);return Math.min(0.2,0.011*(pl.nav.lv-1)+0.008*officerRankC(pl,'navigator'));}
 function comBuyMulC(pl){ensureSeaC(pl);return Math.max(0.72,1-0.0075*(pl.com.lv-1));}
 function comSellMulC(pl){ensureSeaC(pl);return Math.min(1.30,1+0.011*(pl.com.lv-1));}
-function tradeDiscC(pl){ensureSeaC(pl);var has=teamHasSkillC(pl,'persuasion');var home=(pl.holdings&&pl.holdings[pl.port])?0.03:0;return {buyMul:comBuyMulC(pl)*(has?0.97:1)*(1-home),sellMul:comSellMulC(pl)*(has?1.03:1)*(1+home),haggle:has,home:home>0};}
+function tradeDiscC(pl){ensureSeaC(pl);var has=teamHasSkillC(pl,'persuasion');var home=(pl.holdings&&pl.holdings[pl.port])?0.03:0;var qm=officerRankC(pl,'quartermaster')*0.008;return {buyMul:comBuyMulC(pl)*(has?0.97:1)*(1-home)*(1-qm),sellMul:comSellMulC(pl)*(has?1.03:1)*(1+home)*(1+qm),haggle:has,home:home>0};}
 // 里程碑效果（客戶端鏡像）
 function fleetCapC(pl){ensureSeaC(pl);return FLEET_MAX_C+(pl.nav.lv>=4?1:0)+(pl.nav.lv>=8?1:0);}
 function dividendRateC(pl){ensureSeaC(pl);return 0.05+(pl.com.lv>=4?0.02:0)+(pl.com.lv>=10?0.03:0);}
@@ -575,7 +581,7 @@ function holdUpCostC(lv){return Math.round(300*Math.pow(1.7,lv-1));}
 var SEA_UNLOCKS_C={nav:[{lv:2,t:'夜航術：出航更安全、常撈到好東西'},{lv:4,t:'艦隊擴編 +1（可多養一艘船）'},{lv:6,t:'接舷好手：接舷俘虜更容易成功'},{lv:8,t:'艦隊擴編 +1（艦隊上限 7 艘）'},{lv:10,t:'遠洋霸權：航程再大幅縮短、砲擊更準'}],com:[{lv:2,t:'議價高手：進出貨更好價'},{lv:4,t:'商會人脈：投資分紅提高'},{lv:6,t:'囤貨倉庫：貨艙上限 +6'},{lv:8,t:'商隊網絡：自動商隊效率提升'},{lv:10,t:'商業帝國：領地稅收與分紅大幅提升'}]};
 function winEstimateC(myGun,myHull,enemy){return Math.round(Math.max(0.05,Math.min(0.95,0.5+(myGun-enemy.cannon)*0.03+(myHull-enemy.hull)*0.0025))*100);}
 function consumeScoutC(pl,key){if(pl.scout&&pl.scout.key===key){var g=pl.scout.gun||0;pl.scout=null;return g;}return 0;}
-function myGunC(pl){var by={};pl.roster.forEach(function(c){by[c.id]=c;});var party=(pl.team.battle||[]).map(function(id){return by[id];}).filter(Boolean);var dexm=0;party.forEach(function(c){dexm=Math.max(dexm,cmod(cab(c,'dex')));});return (pl.ship.cannon||6)+dexm+navGunBonusC(pl)+mateNavalGunP(pl);}
+function myGunC(pl){var by={};pl.roster.forEach(function(c){by[c.id]=c;});var party=(pl.team.battle||[]).map(function(id){return by[id];}).filter(Boolean);var dexm=0;party.forEach(function(c){dexm=Math.max(dexm,cmod(cab(c,'dex')));});return (pl.ship.cannon||6)+dexm+navalGunC(pl);}
 // 升級提示 + 海事技能小卡（給貿易/航海畫面共用）
 function seaToast(sea){if(sea&&sea.ups>0)toast((sea.track==='nav'?'⚓ 航海術':'💰 商業')+' 升到 Lv'+sea.lv+'！');}
 function seaBar(track){ensureSeaC(P);var t=P[track],nm=track==='nav'?'⚓ 航海術':'💰 商業',need=seaXpNextC(t.lv),pct=t.lv>=SEA_LV_MAX_C?100:Math.round(t.xp/need*100);var eff=track==='nav'?('航程 −'+Math.round((1-navDaysMulC(P))*100)+'%・砲擊 +'+navGunBonusC(P)+'・好運 +'+Math.round(navLuckC(P)*100)+'%'):('進貨 −'+Math.round((1-comBuyMulC(P))*100)+'%・售價 +'+Math.round((comSellMulC(P)-1)*100)+'%');return '<div class="card" style="margin-bottom:8px;border-color:#2f6b7a"><div class="note" style="text-align:left"><b>'+nm+' Lv'+t.lv+'</b>'+(t.lv>=SEA_LV_MAX_C?' <span class="tag">MAX</span>':'')+' <small style="color:var(--soft)">'+eff+'</small></div><div class="hpbar" style="margin-top:4px"><i style="width:'+pct+'%;background:linear-gradient(90deg,#3aa0b8,#7fe0ef)"></i></div></div>';}
@@ -702,6 +708,36 @@ function giftMenu(id){
   q('[data-gold]',function(el){var cost=+el.dataset.gold,af=+el.dataset.af;if(P.gold<cost){toast('金幣不足');return;}P.gold-=cost;addAff(id,af);refreshTopbar();giftMenu(id);});
   q('[data-good]',function(el){var k=el.dataset.good,af=+el.dataset.af;if(!P.cargo[k]){toast('沒有這個貨');return;}P.cargo[k]--;if(P.cargo[k]<=0)delete P.cargo[k];addAff(id,af);giftMenu(id);});
 }
+// ⚓ 船上職務
+function officerRankForChar(c,key){if(!c)return 0;var meta=POSTS_C[key];var m=cmod(cab(c,meta.ab));var sk=(meta.skill&&charSkills(c.job,c.race).indexOf(meta.skill)>=0)?1:0;return Math.max(0,Math.min(8,Math.floor((c.level||1)/4)+Math.max(0,m)+sk));}
+function openPosts(){
+  if(!P.posts)P.posts={};
+  var body='<div class="note" style="text-align:left">指派夥伴擔任船上職務，依其能力值給全隊被動加成（不必上場也生效，讓每個招募都有用）。一人只任一職。</div>';
+  POST_KEYS.forEach(function(key){
+    var meta=POSTS_C[key],c=officerOfC(P,key),rank=officerRankC(P,key);
+    body+='<div class="card"><b>'+meta.ico+' '+meta.nm+'</b> <span class="tag">效果 '+rank+'</span><div class="note" style="text-align:left;margin:2px 0">'+meta.desc+'（看 '+ABN[meta.ab]+(meta.skill?'＋'+SKILLS[meta.skill].nm:'')+'）</div>'+
+      (c?'<div class="u"><div class="av" data-detail="'+c.id+'" style="cursor:pointer">'+avatarHTML(c)+'</div><div class="info"><b>'+c.name+'</b><small>Lv'+c.level+' ・ '+ABN[meta.ab]+' '+cab(c,meta.ab)+'</small></div><button class="btn dim sm" data-clearpost="'+key+'">卸任</button></div>':'<div class="note">（未指派）</div>')+
+      '<button class="btn ok sm" data-setpost="'+key+'" style="margin-top:4px">'+(c?'換人':'指派夥伴')+'</button></div>';
+  });
+  openSheet('⚓ 船上職務','航海長／砲術長／總管／瞭望手',body);
+  q('[data-detail]',function(el){charSheet(el.dataset.detail);});
+  q('[data-clearpost]',function(el){delete P.posts[el.dataset.clearpost];saveP();openPosts();});
+  q('[data-setpost]',function(el){pickOfficer(el.dataset.setpost);});
+}
+function pickOfficer(key){
+  var meta=POSTS_C[key];
+  var body='<div class="note" style="text-align:left">選一位擔任 '+meta.ico+meta.nm+'（'+ABN[meta.ab]+' 越高越好'+(meta.skill?'，有「'+SKILLS[meta.skill].nm+'」技能再 +1':'')+'）</div>';
+  var rs=P.roster.slice().sort(function(a,b){return officerRankForChar(b,key)-officerRankForChar(a,key);});
+  rs.forEach(function(c){
+    var taken=null;POST_KEYS.forEach(function(k){if(P.posts[k]===c.id)taken=k;});
+    var rk=officerRankForChar(c,key);
+    var btn=P.posts[key]===c.id?'<button class="btn ok sm" disabled>在任</button>':(taken?'<button class="btn dim sm" data-pick="'+c.id+'">'+POSTS_C[taken].nm+'→改任（'+rk+'）</button>':'<button class="btn ok sm" data-pick="'+c.id+'">指派（效果 '+rk+'）</button>');
+    body+=uRow(c,btn);
+  });
+  openSheet('指派 '+meta.nm,'依 '+ABN[meta.ab]+' 排序',body);
+  q('[data-detail]',function(el){charSheet(el.dataset.detail);});
+  q('[data-pick]',function(el){var id=el.dataset.pick;POST_KEYS.forEach(function(k){if(P.posts[k]===id)delete P.posts[k];});P.posts[key]=id;saveP();toast('已指派 '+meta.nm);openPosts();});
+}
 // 副手閒聊：免費 AI（Pollinations 文字），失敗用模板
 function mateChat(c,cb){
   var ci=cinfo(c.job),race=RACES[c.race]?RACES[c.race].nm:'人類',aff=AFF_NM[affLevel(c.id)];
@@ -821,7 +857,8 @@ function openBldg(b){
 
 // ---- 隊伍編成 ----
 function openTeam(){
-  var body='<div class="glab">戰鬥位（'+P.team.battle.length+'/'+BATTLE_MAX+'）— 會下場戰鬥</div>';
+  var body='<button class="btn ok sm" id="toposts" style="margin-bottom:8px">⚓ 船上職務（航海長/砲術長/總管/瞭望手）</button>';
+  body+='<div class="glab">戰鬥位（'+P.team.battle.length+'/'+BATTLE_MAX+'）— 會下場戰鬥</div>';
   P.roster.forEach(function(c){
     if(isSup(c.job))return;
     var inB=P.team.battle.indexOf(c.id)>=0;
@@ -849,6 +886,7 @@ function openTeam(){
   dis.forEach(function(c){var cost=20+c.level*10;body+=uRow(c,'<button class="btn dim sm" data-dismiss="'+c.id+'" data-cost="'+cost+'"'+(P.gold<cost?' disabled':'')+'>遣散 '+cost+'🪙</button>');});
   body+='<div class="note">頭像可點開看詳細能力值。</div>';
   openSheet('🧭 隊伍編成','點頭像看詳情 · 安排上場/後勤/遣散',body);
+  var tp=document.getElementById('toposts');if(tp)tp.onclick=openPosts;
   bindTeam();
 }
 function bindTeam(){
