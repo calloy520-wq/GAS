@@ -27,12 +27,20 @@
   }
   /* 更大螢幕：整個機台放大、設施多欄（用 #app 提高優先序，壓過後面的基礎規則）*/
   @media(min-width:1000px){
-    #app{max-width:920px}
+    #app{max-width:1120px}
     #app .pad{padding:18px 20px 90px}
-    #app .signs{grid-template-columns:repeat(4,1fr)}
+    #app .signs{grid-template-columns:repeat(3,1fr)}
     #app .scene{height:240px}
     #app h1{font-size:26px}
+    #app .townwrap{display:flex;align-items:flex-start}
+    #app .townmain{flex:1;min-width:0}
+    #app .aside{display:block}
   }
+  .townwrap{display:block}
+  .aside{display:none;width:300px;flex:none;border-left:1px solid var(--line);padding:14px 12px;background:rgba(20,16,12,.35)}
+  .aside .ah{font-size:11px;color:var(--soft);font-weight:800;letter-spacing:1px;margin:12px 2px 6px}
+  .aside .ai{font-size:12px;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:6px 8px;margin-bottom:5px}
+  .aside .ai small{color:var(--soft)}
   h1{font-size:22px;text-align:center;margin:6px 0 2px}
   .lead{text-align:center;color:#f0d6ad;font-size:12.5px;margin:0 0 12px;opacity:.9}
   .pad{padding:14px 12px 30px}
@@ -514,15 +522,128 @@ function portNmC(id){var m=MARKET_BYC[id];return m?m.ico+m.nm:id;}
 // 主城 AI 背景（固定 seed → 全城一致；載不出就用手繪打底）
 var TOWN_BG_URL="https://image.pollinations.ai/prompt/"+encodeURIComponent("cozy fantasy medieval town square at golden dusk, warm glowing lanterns, tavern blacksmith market stalls, castle spires in the background, anime background art, studio ghibli style scenery, no people, no text, wide establishing shot")+"?width=768&height=384&nologo=true&model=flux&seed=777";
 function starDots(){var s=[[10,20],[24,10],[40,26],[58,12],[72,22],[86,9],[33,15],[66,28],[92,20],[17,32]];return s.map(function(p){return '<div class="star" style="left:'+p[0]+'%;top:'+p[1]+'%"></div>';}).join('');}
+// ==== 副手 / 好感 / 側欄 ====
+// 情境化建議：依當前狀態給提示（副手橫幅與建議面板共用）
+function getAdvice(){
+  var out=[];
+  if(P.roster.some(function(c){return c.id!==P.heroId&&!isSup(c.job)&&c.hp<c.maxhp&&c.hp>0;})||(heroOf()&&heroOf().hp<heroOf().maxhp))
+    out.push('🏨 有人掛彩了，先去旅館歇口氣再出發吧。');
+  if(P.roster.some(function(c){return c.hp<=0;}))
+    out.push('⚰️ 有夥伴倒下了…去旅館能讓他們恢復。');
+  var sh=P.ship||{};
+  if(sh.hullMax&&sh.hull<sh.hullMax*0.5)
+    out.push('⚓ 船身破損嚴重，出海前先到船塢修一修。');
+  if((P.clues||0)>=5)
+    out.push('🧭 秘寶線索湊齊了！快去黑市按線索挖寶。');
+  if(!P.quest)
+    out.push('📜 手上沒委託，去公會接一張順路賺賞金。');
+  if(cargoCountC(P)>=effCargoC(P))
+    out.push('📦 貨艙滿了，趁行情好出航到需求地脫手。');
+  var idle=(P.fleet||[]).filter(function(s){return s.role!=='trade';}).length;
+  if(idle>0)
+    out.push('🚢 有 '+idle+' 艘船閒置，派去自動跑商別讓它空等。');
+  var running=(P.fleet||[]).some(function(s){return s.role==='trade';});
+  if(running)
+    out.push('💰 商隊在路上跑商，記得回艦隊領收益。');
+  var ri=rankOf(P.deepest||0);
+  if(ri<RANKS.length-1)
+    out.push('⚔️ 下潛到第 '+RANKS[ri+1].floor+' 層就能晉升「'+RANKS[ri+1].nm+'」。');
+  if((P.gold||0)>=600&&(P.fleet||[]).length<FLEET_MAX_C)
+    out.push('🛳️ 金幣寬裕，可以到船商添購新船擴充艦隊。');
+  if(!out.length)out.push('☀️ 一切安好，想打想商想出海，隨你決定！');
+  return out;
+}
+// 好感度：分數→階級（送禮/相處累積）
+var AFF_NM=['萍水相逢','點頭之交','熟識','夥伴','知己','莫逆之交'];
+function affPts(id){return (P.affinity&&P.affinity[id])||0;}
+function affLevel(id){var p=affPts(id);var t=[0,30,90,200,400,700];var lv=0;for(var i=0;i<t.length;i++){if(p>=t[i])lv=i;}return lv;}
+function affHearts(id){var lv=affLevel(id);return '❤️'.repeat(lv)+'🤍'.repeat(5-lv);}
+function addAff(id,amt){if(!P.affinity)P.affinity={};var bef=affLevel(id);P.affinity[id]=(P.affinity[id]||0)+amt;var aft=affLevel(id);saveP();if(aft>bef){var c=byId(id);toast('💞 與 '+(c?c.name:'夥伴')+' 的關係提升為「'+AFF_NM[aft]+'」！');}}
+// 副手面板
+function openMate(){
+  var m=byId(P.mate);if(!m)return;
+  var ci=cinfo(m.job),ri=RACES[m.race];
+  var body='<div class="pbox" id="csp" style="width:min(40vw,140px)">'+(m.portrait?'<img src="'+m.portrait+'">':'<div class="ph" style="font-size:36px">'+ci.ico+'</div>')+'</div>';
+  body+='<div class="note" style="text-align:center;margin:6px 0 2px">'+(ri?ri.ico+ri.nm+' ':'')+ci.ico+ci.nm+' ・ Lv'+m.level+'</div>';
+  body+='<div class="note" style="text-align:center;font-size:15px">'+affHearts(m.id)+'<br><small style="color:var(--gold)">'+AFF_NM[affLevel(m.id)]+'</small></div>';
+  body+='<div class="card" style="border-color:#8a6fd0;margin-top:8px"><b>👩‍✈️ '+m.name+'</b><div class="note" id="matesay" style="text-align:left;margin-top:6px;line-height:1.75;color:#f0d6ad;min-height:44px">「'+(m.bio||'…（想聽聽她的想法嗎？）')+'」</div></div>';
+  body+='<div class="rowbtns" style="margin-top:10px"><button class="btn re" id="mchat">💬 閒聊</button><button class="btn ok" id="madvice">💡 給建議</button></div>';
+  body+='<div class="rowbtns"><button class="btn gold" id="mgift">🎁 送禮物</button><button class="btn dim" id="mswap">🔄 更換副手</button></div>';
+  openSheet('👩‍✈️ 副手 '+m.name,'你的左右手・會依情況給建議',body);
+  document.getElementById('mchat').onclick=function(){var el=document.getElementById('matesay');el.textContent='✨ '+m.name+' 想了想…';mateChat(m,function(t){var e2=document.getElementById('matesay');if(e2)e2.textContent='「'+t+'」';});};
+  document.getElementById('madvice').onclick=function(){var adv=getAdvice();var el=document.getElementById('matesay');el.innerHTML=adv.slice(0,4).map(function(a){return '<div style="margin:2px 0">'+a+'</div>';}).join('');};
+  document.getElementById('mgift').onclick=function(){giftMenu(m.id);};
+  document.getElementById('mswap').onclick=function(){swapMate();};
+}
+// 更換副手：從隊伍中挑一位
+function swapMate(){
+  var body='<div class="note" style="text-align:left">選一位夥伴當副手（會在城鎮橫幅給你建議、可閒聊送禮）</div>';
+  P.roster.forEach(function(c){
+    var cur=c.id===P.mate;
+    body+=uRow(c,cur?'<button class="btn ok sm" disabled>副手中</button>':'<button class="btn dim sm" data-setmate="'+c.id+'">設為副手</button>');
+  });
+  openSheet('🔄 更換副手','',body);
+  q('[data-setmate]',function(el){P.mate=el.dataset.setmate;saveP();var c=byId(P.mate);toast('已將 '+c.name+' 設為副手');openMate();});
+}
+// 送禮：金幣紅包 或 貨艙裡的貨物
+function giftMenu(id){
+  var c=byId(id);
+  var body='<div class="note" style="text-align:left">送禮能提升好感。'+c.name+' 目前：'+affHearts(id)+'</div>';
+  body+='<div class="glab">💰 送紅包</div>';
+  [[50,10],[150,35],[400,100]].forEach(function(g){body+='<div class="u"><div class="av">🧧</div><div class="info"><b>'+g[0]+' 金幣紅包</b><small>好感 +'+g[1]+'</small></div><button class="btn gold sm" data-gold="'+g[0]+'" data-af="'+g[1]+'"'+(P.gold<g[0]?' disabled':'')+'>送出</button></div>';});
+  var goods=Object.keys(P.cargo||{}).filter(function(k){return P.cargo[k]>0;});
+  body+='<div class="glab" style="margin-top:10px">📦 送貨艙好物</div>';
+  if(!goods.length)body+='<div class="note">貨艙沒有東西可送。</div>';
+  goods.forEach(function(k){var g=GOOD_BYC[k];if(!g)return;var af=Math.round(g.base/6);body+='<div class="u"><div class="av">'+g.ico+'</div><div class="info"><b>'+g.nm+' ×1</b><small>好感 +'+af+'（貨艙 '+P.cargo[k]+'）</small></div><button class="btn ok sm" data-good="'+k+'" data-af="'+af+'">送出</button></div>';});
+  openSheet('🎁 送禮物給 '+c.name,'',body);
+  q('[data-gold]',function(el){var cost=+el.dataset.gold,af=+el.dataset.af;if(P.gold<cost){toast('金幣不足');return;}P.gold-=cost;addAff(id,af);refreshTopbar();giftMenu(id);});
+  q('[data-good]',function(el){var k=el.dataset.good,af=+el.dataset.af;if(!P.cargo[k]){toast('沒有這個貨');return;}P.cargo[k]--;if(P.cargo[k]<=0)delete P.cargo[k];addAff(id,af);giftMenu(id);});
+}
+// 副手閒聊：免費 AI（Pollinations 文字），失敗用模板
+function mateChat(c,cb){
+  var ci=cinfo(c.job),race=RACES[c.race]?RACES[c.race].nm:'人類',aff=AFF_NM[affLevel(c.id)];
+  var ctx='玩家是傭兵團長，目前第'+(P.deepest||0)+'層、'+P.gold+'金幣'+(P.quest?'、正在進行委託':'');
+  var prompt='你是奇幻傭兵團的副手（'+race+ci.nm+'），名叫'+c.name+'，和團長關係是「'+aff+'」。用繁體中文說一句 30 字內、有你個性、像在對團長閒聊或關心的話。情境：'+ctx+'。只回那句話，不要引號或說明。';
+  var done=false,timer=setTimeout(function(){if(!done){done=true;cb(mateTemplate(c));}},9000);
+  fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){
+    if(done)return;done=true;clearTimeout(timer);t=(t||'').trim().replace(/^["「』』]+|["」『』]+$/g,'').slice(0,60);cb(t||mateTemplate(c));
+  }).catch(function(){if(!done){done=true;clearTimeout(timer);cb(mateTemplate(c));}});
+}
+function mateTemplate(c){
+  var lv=affLevel(c.id);
+  var pool=lv>=3?['團長，今天也跟著你，不管往哪我都不怕。','有你在前面，我把後背交給你就好。','下次分紅…請我喝一杯就行，嘿。']
+    :['團長，出發前記得清點裝備喔。','海上風向要變了，別小看那些海盜。','錢要花在刀口上，別亂買沒用的。'];
+  return pool[Math.floor((P.deepest||0+c.level)%pool.length)];
+}
+// 桌機右側欄：成員在幹嘛 + 艦隊狀態
+function asideHTML(){
+  var h='<div class="ah">🧭 隊伍動態</div>';
+  var bt=P.team.battle||[],sp=P.team.support||[];
+  if(!bt.length&&!sp.length)h+='<div class="ai"><small>還沒編隊，去隊伍編成安排。</small></div>';
+  bt.forEach(function(id){var c=byId(id);if(!c)return;var st=c.hp<=0?'⚰️ 倒下':(c.hp<c.maxhp?'🩹 待療 '+c.hp+'/'+c.maxhp:'⚔️ 備戰');h+='<div class="ai"><b>'+cinfo(c.job).ico+' '+c.name+'</b>'+(id===P.mate?' 👩‍✈️':'')+'<br><small>'+st+'</small></div>';});
+  sp.forEach(function(id){var c=byId(id);if(!c)return;h+='<div class="ai"><b>'+cinfo(c.job).ico+' '+c.name+'</b>'+(id===P.mate?' 👩‍✈️':'')+'<br><small>🎐 後勤待命</small></div>';});
+  h+='<div class="ah">🚢 艦隊</div>';
+  var fl=P.fleet||[];
+  h+='<div class="ai"><b>'+(P.ship?P.ship.ico+' 旗艦':'⛵ 旗艦')+'</b><br><small>船身 '+(P.ship?P.ship.hull+'/'+P.ship.hullMax:'—')+' ・ 📦 '+cargoCountC(P)+'/'+effCargoC(P)+'</small></div>';
+  if(!fl.length)h+='<div class="ai"><small>還沒有艦隊船，去船商添購。</small></div>';
+  fl.forEach(function(s){var st=s.role==='trade'?('🔁 '+portNmC(s.route.from)+'→'+portNmC(s.route.to)+(s.escort?' 🛡️':'')):'⚓ 閒置';h+='<div class="ai"><b>'+s.ico+' '+s.nm+'</b><br><small>'+st+'</small></div>';});
+  h+='<div class="ah">📍 現況</div><div class="ai"><small>🪙 '+P.gold+'　🏙️ '+portNmC(P.port||'merc')+'　⚔️ 最深 '+(P.deepest||0)+' 層　🧭 線索 '+(P.clues||0)+'/5</small></div>';
+  return h;
+}
 function renderTown(){
   var hero=heroOf();
+  if(!P.mate||!byId(P.mate))P.mate=P.heroId;
   var h=topbar();
+  h+='<div class="townwrap"><div class="townmain">';
   // 場景橫幅
   h+='<div class="scene" id="scene"><div class="sun"></div>'+starDots()+
     '<div class="sil">🌲🏠🏰🏪🏠🌲</div>'+
     '<img class="bg" id="townbg" alt="">'+
     '<div class="title">🏰 傭兵之城<small>黃昏的傭兵城鎮 · '+P.nick+'</small></div></div>';
   h+='<div class="pad" style="padding-top:12px">';
+  // 副手橫幅（點開商量）
+  var mate=byId(P.mate);
+  h+='<div class="card" id="matebar" style="border-color:#8a6fd0;cursor:pointer;display:flex;align-items:center;gap:10px"><div class="av" style="width:40px;height:40px;border-radius:10px;overflow:hidden;background:#241d14;display:flex;align-items:center;justify-content:center;font-size:22px">'+avatarHTML(mate)+'</div><div style="flex:1;min-width:0"><b style="font-size:13px">👩‍✈️ 副手 '+mate.name+'</b><div class="note" style="text-align:left;margin:0">「'+(getAdvice()[0]||'一切就緒，出發吧！')+'」點我商量 →</div></div></div>';
   h+='<div class="u" style="background:linear-gradient(180deg,#4a3a52,#33291f)"><div class="av" data-detail="'+hero.id+'" style="cursor:pointer">'+avatarHTML(hero)+'</div>'+
     '<div class="info"><b>'+hero.name+' <span class="tag">Lv'+hero.level+'</span></b><small>'+(RACES[hero.race]?RACES[hero.race].ico+RACES[hero.race].nm+' ':'')+cinfo(hero.job).ico+cinfo(hero.job).nm+' ・ HP '+hero.hp+'/'+hero.maxhp+' ・ AC '+cStats(hero).ac+'</small></div></div>';
   // 目標橫幅
@@ -535,9 +656,13 @@ function renderTown(){
   h+='</div>';
   h+='<div class="signs" style="margin-top:10px"><div class="sign gate" data-b="dungeon"><div class="ico">⬇️🏚️</div><div class="nm">進入地下城</div><div class="ds">自動探索・可達第 '+(P.deepest||0)+' 層，挑戰更深</div></div></div>';
   h+=tabsHTML();
-  h+='</div>';
+  h+='</div>';                       // /.pad
+  h+='</div>';                       // /.townmain
+  h+='<aside class="aside">'+asideHTML()+'</aside>';
+  h+='</div>';                       // /.townwrap
   app.innerHTML=h;
   var bg=document.getElementById('townbg');if(bg){bg.onload=function(){bg.classList.add('on');};bg.src=TOWN_BG_URL;}
+  var mb=document.getElementById('matebar');if(mb)mb.onclick=openMate;
   Array.prototype.forEach.call(document.querySelectorAll('.sign'),function(el){el.onclick=function(){openBldg(el.dataset.b);};});
   Array.prototype.forEach.call(document.querySelectorAll('[data-detail]'),function(el){el.onclick=function(){charSheet(el.dataset.detail);};});
   bindTabs();
@@ -657,7 +782,11 @@ function charSheet(id){
   body+='<div class="card" id="cbiocard" style="border-color:var(--gold-d);margin-top:10px"><b>🎭 個性</b>'+
     '<div class="note" id="cbio" style="text-align:left;margin-top:6px;line-height:1.75;color:#f0d6ad">'+(c.bio?c.bio:'<span style="color:var(--soft)">還不太認識這位夥伴…</span>')+'</div>'+
     (c.bio?'':'<button class="btn re sm" id="cbiogen" style="margin-top:6px">✨ 認識一下（AI 生成個性）</button>')+'</div>';
+  body+='<div class="note" style="text-align:left;margin-top:6px">💞 好感：'+affHearts(c.id)+' <small style="color:var(--gold)">'+AFF_NM[affLevel(c.id)]+'</small></div>';
+  body+='<div class="rowbtns" style="margin-top:8px">'+(c.id===P.mate?'<button class="btn ok sm" disabled>👩‍✈️ 現任副手</button>':'<button class="btn re sm" id="csetmate">👩‍✈️ 設為副手</button>')+'<button class="btn gold sm" id="csgift">🎁 送禮物</button></div>';
   openSheet('📋 '+c.name,'',body);
+  var sm=document.getElementById('csetmate');if(sm)sm.onclick=function(){P.mate=c.id;saveP();toast('已將 '+c.name+' 設為副手');closeSheet();};
+  var gf=document.getElementById('csgift');if(gf)gf.onclick=function(){giftMenu(c.id);};
   var bg=document.getElementById('cbiogen');
   if(bg)bg.onclick=function(){bg.disabled=true;bg.textContent='傾聽中…';var el=document.getElementById('cbio');el.textContent='✨ 傾聽 '+c.name+' 說話…';
     genBio(c,function(t){c.bio=t;var e2=document.getElementById('cbio');if(e2)e2.textContent=t;if(bg)bg.remove();saveP();});};
