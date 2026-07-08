@@ -524,8 +524,8 @@ function topbar(){return '<div class="bar"><div class="t">🏰 傭兵之城<smal
 function refreshTopbar(){var g=document.getElementById('topgold');if(g)g.textContent=P.gold;var d=document.getElementById('topdeep');if(d)d.textContent=(P.deepest||0);}
 var BLDG=[
   ['guild','🗡️','傭兵公會','接委託領獎'],
-  ['team','🧭','隊伍編成','出戰 4 + 後勤 2'],
-  ['equip','🎒','裝備','武器/防具/飾品'],
+  ['team','👥','人員 / 隊伍','編隊・職務・副手'],
+  ['inv','🎒','背包 / 倉庫','裝備・貨物・珍藏'],
   ['tavern','🍺','酒館','招募夥伴'],
   ['shop','🛡️','武器防具飾品店','購買裝備'],
   ['inn','🛏️','旅館','休息回血'],
@@ -812,7 +812,7 @@ function renderTown(){
   bindTabs();
   if(!P.tutSeen){ P.tutSeen=true; saveP(); setTimeout(showTutorial,400); }
 }
-var TABS=[['town','🏰','城鎮'],['map','🗺️','出航'],['trade','🏪','貿易'],['dungeon','⚔️','地城'],['team','🧭','隊伍'],['help','❓','教學']];
+var TABS=[['town','🏰','城鎮'],['map','🗺️','出航'],['trade','🏪','貿易'],['dungeon','⚔️','地城'],['team','👥','人員'],['help','❓','教學']];
 function tabsHTML(){return '<div class="tabbar" id="tabbar">'+TABS.map(function(t){return '<div class="tab" data-tab="'+t[0]+'"><div class="ti">'+t[1]+'</div>'+t[2]+'</div>';}).join('')+'</div>';}
 function bindTabs(){Array.prototype.forEach.call(document.querySelectorAll('#tabbar .tab'),function(el){el.onclick=function(){var t=el.dataset.tab;
   if(t==='town')renderTown();else if(t==='help')showTutorial();else if(t==='dungeon')openDungeon();else openBldg(t);};});}
@@ -847,7 +847,8 @@ function openBldg(b){
   if(b==='shipyard')return openShipyard();
   if(b==='shipbuy')return openShipMarket();
   if(b==='fleet')return openFleet();
-  if(b==='team')return openTeam();
+  if(b==='team')return openCrew();
+  if(b==='inv')return openInventory();
   if(b==='equip')return openEquip();
   if(b==='tavern')return openTavern();
   if(b==='shop')return openShop();
@@ -855,6 +856,35 @@ function openBldg(b){
   if(b==='roster')return openRoster();
 }
 
+// ---- 👥 人員清單（全體夥伴・角色分配一覽・各功能入口）----
+function crewRoles(c){
+  var b=[];
+  if(c.id===P.heroId)b.push('👑主角');
+  if(c.id===P.mate)b.push('👩‍✈️副手');
+  if((P.team.battle||[]).indexOf(c.id)>=0)b.push('⚔️出戰');
+  if((P.team.support||[]).indexOf(c.id)>=0)b.push('🎐後勤');
+  if(P.posts)POST_KEYS.forEach(function(k){if(P.posts[k]===c.id)b.push(POSTS_C[k].ico+POSTS_C[k].nm);});
+  return b;
+}
+function openCrew(){
+  var body='<div class="rowbtns"><button class="btn ok sm" id="cwteam">🧭 編隊</button><button class="btn ok sm" id="cwposts">⚓ 職務</button><button class="btn re sm" id="cwmate">👩‍✈️ 副手</button></div>';
+  body+='<div class="note" style="text-align:left">小隊 '+P.roster.length+'/'+ROSTER_MAX+' 人。點頭像看詳情；徽章＝目前擔任的角色。</div>';
+  var rs=P.roster.slice().sort(function(a,b){return (a.id===P.heroId?-1:0)-(b.id===P.heroId?-1:0)||(b.level-a.level);});
+  rs.forEach(function(c){
+    var badges=crewRoles(c).map(function(x){return '<span class="tag" style="margin:1px 3px 0 0">'+x+'</span>';}).join('');
+    var st=isSup(c.job)?null:cStats(c);
+    var rc=RACES[c.race]?RACES[c.race].ico:'';
+    var rr=c.rarity&&RARITY_C[c.rarity]?'<span style="color:'+rarC(c.rarity).color+'">'+rarC(c.rarity).star+'</span> ':'';
+    var aff=affLevel(c.id),hearts=aff>0?' '+'❤️'.repeat(aff):'';
+    var hpbar=st?'<div class="hpbar"><i style="width:'+Math.max(0,c.hp/c.maxhp*100)+'%"></i></div>':'';
+    body+='<div class="u"><div class="av" data-detail="'+c.id+'" style="cursor:pointer">'+avatarHTML(c)+'</div><div class="info"><b>'+rr+c.name+' <span class="tag">Lv'+c.level+'</span></b><small>'+rc+cinfo(c.job).ico+cinfo(c.job).nm+(st?' ・ HP '+c.hp+'/'+c.maxhp+' ・ 攻+'+st.atk:' ・ 後勤增益')+hearts+'</small><div style="margin-top:3px">'+(badges||'<span style="font-size:11px;color:var(--soft)">💤 待命中</span>')+'</div>'+hpbar+'</div></div>';
+  });
+  openSheet('👥 人員清單','全體夥伴・角色分配一覽',body);
+  document.getElementById('cwteam').onclick=openTeam;
+  document.getElementById('cwposts').onclick=openPosts;
+  document.getElementById('cwmate').onclick=openMate;
+  q('[data-detail]',function(el){charSheet(el.dataset.detail);});
+}
 // ---- 隊伍編成 ----
 function openTeam(){
   var body='<button class="btn ok sm" id="toposts" style="margin-bottom:8px">⚓ 船上職務（航海長/砲術長/總管/瞭望手）</button>';
@@ -980,6 +1010,58 @@ function openEquip(){
     if(c.equip[slot])P.bag.push(c.equip[slot]);
     var i=P.bag.indexOf(gid);if(i>=0)P.bag.splice(i,1);
     c.equip[slot]=gid;c.maxhp=cMaxHp(c);if(c.hp>c.maxhp)c.hp=c.maxhp;saveP(openEquip);});
+}
+// ---- 🎒 背包 / 倉庫（統一家當：裝備・貨物・珍藏）----
+var invTab='gear';
+function invValue(){var g=0;(P.bag||[]).forEach(function(id){var it=gById(id);if(it)g+=sellPrice(it);});return g;}
+function openInventory(){
+  var slotico={weapon:'🗡️',armor:'🛡️',trinket:'💍'};
+  var body='<div class="chips" style="margin-bottom:10px">'+
+    '<span class="chip'+(invTab==='gear'?' on':'')+'" data-it="gear">🎒 裝備（'+(P.bag||[]).filter(function(id){return id.indexOf("u_")!==0;}).length+'）</span>'+
+    '<span class="chip'+(invTab==='cargo'?' on':'')+'" data-it="cargo">📦 貨物（'+cargoCountC(P)+'）</span>'+
+    '<span class="chip'+(invTab==='special'?' on':'')+'" data-it="special">🏅 珍藏</span></div>';
+  if(invTab==='gear'){
+    body+='<button class="btn ok sm" id="invbychar" style="margin-bottom:8px">🔧 逐角色裝備管理</button>';
+    var cnt={};(P.bag||[]).forEach(function(id){if(id.indexOf('u_')!==0)cnt[id]=(cnt[id]||0)+1;});
+    var ids=Object.keys(cnt);
+    if(!ids.length)body+='<div class="note">背包沒有裝備。地下城掉落、商店購買、秘寶會放這裡。</div>';
+    ['weapon','armor','trinket'].forEach(function(sl){
+      var g4=ids.filter(function(id){return gSlot(id)===sl;});if(!g4.length)return;
+      body+='<div class="glab">'+slotico[sl]+' '+{weapon:'武器',armor:'防具',trinket:'飾品'}[sl]+'</div>';
+      g4.forEach(function(id){var g=gById(id);if(!g)return;
+        body+='<div class="u"><div class="av">'+g.ico+'</div><div class="info"><b>'+g.nm+(cnt[id]>1?' ×'+cnt[id]:'')+'</b><small>'+gearDesc(g)+' ・ 賣 '+sellPrice(g)+'🪙</small></div><div style="display:flex;gap:5px"><button class="btn ok sm" data-eqp="'+id+'">裝上</button><button class="btn dim sm" data-selli="'+id+'">賣</button></div></div>';});
+    });
+    if(ids.length)body+='<button class="btn dim sm" id="invsellall" style="margin-top:8px">💰 一鍵賣掉所有普通裝備（估 '+invValue()+'🪙）</button>';
+  } else if(invTab==='cargo'){
+    var day=tradeDayC(),here=P.port||'merc';
+    body+='<div class="note" style="text-align:left">貨艙 '+cargoCountC(P)+'/'+effCargoC(P)+'　停泊：'+portNmC(here)+'（到需求地賣最划算）</div>';
+    var keys=Object.keys(P.cargo||{}).filter(function(k){return P.cargo[k]>0;});
+    if(!keys.length)body+='<div class="note">貨艙是空的。到「🏪 貿易所」買貨，或海上掠奪撈貨。</div>';
+    keys.forEach(function(k){var g=GOOD_BYC[k];if(!g)return;var pr=Math.round(tradePriceC(here,k,day)*0.92);
+      body+='<div class="u"><div class="av">'+g.ico+'</div><div class="info"><b>'+g.nm+' ×'+P.cargo[k]+'</b><small>此地售價約 '+pr+'🪙/箱 ・ 共約 '+(pr*P.cargo[k])+'🪙</small></div></div>';});
+  } else {
+    var us=(P.bag||[]).filter(function(id){return id.indexOf('u_')===0;});
+    body+='<div class="note" style="text-align:left">唯一裝備（打地下城頭目才有的傳說珍藏）</div>';
+    if(!us.length)body+='<div class="note">還沒有唯一裝備。深入地下城打第 10/15/20/25 層頭目可得。</div>';
+    us.forEach(function(id){var g=gById(id);if(!g)return;body+='<div class="u" style="border-color:var(--gold)"><div class="av">'+g.ico+'</div><div class="info"><b style="color:var(--gold)">✦ '+g.nm+'</b><small>'+gearDesc(g)+'</small></div><button class="btn ok sm" data-eqp="'+id+'">裝上</button></div>';});
+    body+='<div class="glab" style="margin-top:10px">🏦 我的資產</div>';
+    body+='<div class="note" style="text-align:left">🪙 金幣 '+P.gold+'　🏦 投資 '+(P.invest||0)+'　🚢 艦隊 '+((P.fleet||[]).length)+' 艘　🚩 領地 '+(P.holdings?Object.keys(P.holdings).length:0)+' 座</div>';
+  }
+  openSheet('🎒 背包 / 倉庫','裝備・貨物・珍藏一次看',body);
+  q('[data-it]',function(el){invTab=el.dataset.it;openInventory();});
+  var ibc=document.getElementById('invbychar');if(ibc)ibc.onclick=openEquip;
+  q('[data-eqp]',function(el){invEquip(el.dataset.eqp);});
+  q('[data-selli]',function(el){var id=el.dataset.selli,i=(P.bag||[]).indexOf(id);if(i<0)return;P.bag.splice(i,1);var g=gById(id);P.gold+=sellPrice(g);saveP(openInventory);toast('賣出 '+g.nm+' +'+sellPrice(g)+'🪙');});
+  var sa=document.getElementById('invsellall');if(sa)sa.onclick=function(){if(!confirm('賣掉所有普通裝備（保留唯一珍藏）？'))return;var tot=0,keep=[];(P.bag||[]).forEach(function(id){if(id.indexOf('u_')===0){keep.push(id);return;}var g=gById(id);if(g)tot+=sellPrice(g);});P.bag=keep;P.gold+=tot;saveP(openInventory);toast('全部賣出 +'+tot+'🪙');};
+}
+function invEquip(gid){
+  var slot=gSlot(gid),g=gById(gid);if(!slot||!g){toast('無法裝備');return;}
+  var body='<div class="note" style="text-align:left">把 '+g.ico+g.nm+' 裝給哪位夥伴？</div>';
+  P.roster.forEach(function(c){var cur=c.equip[slot]?gById(c.equip[slot]):null;
+    body+=uRow(c,'<button class="btn ok sm" data-give="'+c.id+'">'+(cur?'換上':'裝上')+'</button>');});
+  openSheet('裝備給…','點頭像看詳情',body);
+  q('[data-detail]',function(el){charSheet(el.dataset.detail);});
+  q('[data-give]',function(el){var c=byId(el.dataset.give);if(c.equip[slot])P.bag.push(c.equip[slot]);var i=P.bag.indexOf(gid);if(i>=0)P.bag.splice(i,1);c.equip[slot]=gid;c.maxhp=cMaxHp(c);if(c.hp>c.maxhp)c.hp=c.maxhp;saveP(openInventory);toast('已裝備給 '+c.name);});
 }
 function gSlot(id){if(id.indexOf('t_')===0||id.indexOf('u_')===0)return'trinket';if(id.indexOf('w_')===0)return'weapon';if(id.indexOf('a_')===0)return'armor';}
 function gearDesc(g){if(g.dmg)return '傷害 '+g.dmg[0]+'d'+g.dmg[1]+(g.bonus?' +'+g.bonus:'');if(g.ac!=null)return '護甲 AC +'+g.ac;if(g.abs){var ps=[];for(var a in g.abs)ps.push(ABN[a]+'+'+g.abs[a]);return '✨'+ps.join(' ');}if(g.ab)return ABN[g.ab]+' +'+g.val;return '';}
