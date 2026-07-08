@@ -52,8 +52,8 @@ var SUPPORT_CLASSES = {
     desc:'尋寶：金幣與掉落率提升 40%' },
   scholar:{ nm:'學者', ico:'📖', buff:'xp', val:0.35, grow:{int:2,wis:1},
     desc:'博學：經驗值 +35%、自動鑑定戰利品' },
-  medic:{ nm:'醫者', ico:'⛑️', buff:'heal', val:0.35, grow:{wis:2,int:1},
-    desc:'照護：每層結束自動治療全隊 35% 生命' },
+  medic:{ nm:'醫者', ico:'⛑️', buff:'heal', val:0.12, grow:{wis:2,int:1},
+    desc:'照護：每層結束自動治療全隊 12% 生命' },
   diviner:{ nm:'占卜師', ico:'🍀', buff:'crit', val:0.1, grow:{wis:1,cha:2},
     desc:'預知：全隊暴擊率 +10%、迴避陷阱' }
 };

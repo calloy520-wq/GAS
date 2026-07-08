@@ -180,7 +180,7 @@ function runDungeon(team, startFloor, targetFloor){
       heroes.forEach(function(h){ if (h.hp>0){ var heal=Math.round(h.maxhp*buff.heal); h.hp=Math.min(h.maxhp,h.hp+heal); } });
     }
     var med = skillCheck(party,'medicine',dc);
-    if (med.pass){ heroes.forEach(function(h){ if (h.hp>0){ h.hp=Math.min(h.maxhp, h.hp+Math.round(h.maxhp*0.12)); } }); floorLog.skills.push('⛑️ '+med.by.name+' 施以急救，全隊小幅回復'); }
+    if (med.pass){ heroes.forEach(function(h){ if (h.hp>0){ h.hp=Math.min(h.maxhp, h.hp+Math.round(h.maxhp*0.05)); } }); floorLog.skills.push('⛑️ '+med.by.name+' 施以急救，全隊小幅回復'); }
 
     report.reached = f;
     report.floors.push(floorLog);
@@ -205,16 +205,16 @@ function spawnEnemies(floor, isBoss){
     var adds = Math.min(2, Math.floor(floor/8));
     for (var i=0;i<adds;i++) list.push(mkMonster(pick(MONSTERS), floor, false));
   } else {
-    var n = 1 + (Math.random()<0.55?1:0) + (floor>=6 && Math.random()<0.4?1:0);
+    var n = 1 + (Math.random()<0.55?1:0) + (floor>=6 && Math.random()<0.45?1:0) + (floor>=14 && Math.random()<0.5?1:0);
     for (var j=0;j<n;j++) list.push(mkMonster(pick(MONSTERS), floor, false));
   }
   return list;
 }
 function mkMonster(m, floor, boss){
-  var scale = 1 + (floor-1)*0.12;
+  var scale = 1 + (floor-1)*0.17;
   var maxhp = Math.round((m.hd*6 + m.hd) * scale);
-  return { nm:m.nm, ico:m.ico, ac:m.ac + Math.floor(floor/6), maxhp:maxhp, hp:maxhp,
-    atkBonus:m.atk + Math.floor(floor/5), dmg:m.dmg,
+  return { nm:m.nm, ico:m.ico, ac:m.ac + Math.floor(floor/5), maxhp:maxhp, hp:maxhp,
+    atkBonus:m.atk + Math.floor(floor/3), dmg:m.dmg,
     xp:Math.round(m.xp*scale), gold:rint(m.gold[0],m.gold[1]), boss:!!boss };
 }
 
@@ -246,7 +246,7 @@ function resolveCombat(heroes, enemies, buff, floor, surprise){
       var atk = natural + e.atkBonus;
       var cs = t._cs || combatStats(t);
       if (atk >= cs.ac || natural === 20){
-        var dmg = rollDice(e.dmg[0], e.dmg[1]) + Math.floor(floor/6);
+        var dmg = rollDice(e.dmg[0], e.dmg[1]) + Math.floor(floor/3);
         t.hp = Math.max(0, t.hp - dmg);
         log.lines.push('🩸 '+e.ico+e.nm+' 打中 '+t.name+' −'+dmg+(t.hp<=0?' 💀 倒下':''));
       } else {
