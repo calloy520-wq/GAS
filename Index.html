@@ -353,7 +353,12 @@ function renderTown(){
   Array.prototype.forEach.call(document.querySelectorAll('.bldg'),function(el){el.onclick=function(){openBldg(el.dataset.b);};});
 }
 function openSheet(title,sub,body){sheet.innerHTML='<button class="close" onclick="closeSheet()">✕</button><h2>'+title+'</h2>'+(sub?'<p class="sub">'+sub+'</p>':'')+body;modal.classList.add('show');}
-function saveP(cb){srv('save',{player:P}).then(function(pl){P=pl;if(cb)cb();}).catch(function(e){toast('存檔失敗：'+e.message);});}
+// 樂觀更新：先畫面立即反應（cb），存檔在背景去抖動寫入，不卡手
+var _saveTimer=null, _savePending=null;
+function saveP(cb){ if(cb)cb(); if(_saveTimer)clearTimeout(_saveTimer); _saveTimer=setTimeout(doSaveNow,300); }
+function doSaveNow(){ if(_saveTimer){clearTimeout(_saveTimer);_saveTimer=null;} _savePending=srv('save',{player:P}).then(function(pl){P=pl;}).catch(function(e){toast('存檔失敗：'+e.message);}); return _savePending; }
+// 呼叫會重讀試算表的伺服器動作前，先把待寫存檔沖掉，避免被舊資料覆蓋
+function flushSave(){ if(_saveTimer) return doSaveNow(); return _savePending||Promise.resolve(); }
 
 function openBldg(b){
   if(b==='dungeon')return openDungeon();
@@ -479,7 +484,7 @@ function renderRecruitForm(){
     if(!recruitPortrait){toast('請先建立頭像');return;}
     var name=(window._rname||'').trim().slice(0,16)||ci.nm;
     var b=this;b.disabled=true;b.textContent='招募中…';
-    srv('recruit',{nick:P.nick,name:name,job:recruitJob,race:recruitRace,portrait:recruitPortrait,seed:recruitSeed,cost:recruitCost}).then(function(res){
+    flushSave().then(function(){return srv('recruit',{nick:P.nick,name:name,job:recruitJob,race:recruitRace,portrait:recruitPortrait,seed:recruitSeed,cost:recruitCost});}).then(function(res){
       P=res.player;toast(name+' 加入了小隊！');openTavern();
     }).catch(function(e){b.disabled=false;b.textContent='✅ 招募（'+recruitCost+'🪙）';toast('招募失敗：'+e.message);});
   };
@@ -525,7 +530,7 @@ function openDungeon(){
   var dv=document.getElementById('dive');if(dv)dv.onclick=function(){
     var t=Math.max(1,Math.min(MAX_FLOOR,parseInt(document.getElementById('tf').value,10)||1));
     dv.disabled=true;dv.textContent='探索中…擲骰計算';
-    srv('dungeon',{nick:P.nick,target:t}).then(function(res){P=res.player;modal.classList.remove('show');renderReport(res.report);})
+    flushSave().then(function(){return srv('dungeon',{nick:P.nick,target:t});}).then(function(res){P=res.player;modal.classList.remove('show');renderReport(res.report);})
       .catch(function(e){dv.disabled=false;dv.textContent='⚔️ 自動探索出發';toast('錯誤：'+e.message);});
   };
 }
