@@ -170,6 +170,11 @@ function charSkills(job,race){var s={};(CLASS_SKILLS[job]||[]).forEach(function(
 function skillNames(job,race){return charSkills(job,race).map(function(k){return SKILLS[k].nm+'('+ABN[SKILLS[k].ab]+')';}).join('、');}
 var RANKS=[{nm:'見習傭兵',floor:0},{nm:'銅牌傭兵',floor:5},{nm:'銀牌傭兵',floor:10},{nm:'金牌傭兵',floor:15},{nm:'白金傭兵',floor:20},{nm:'傳說傭兵',floor:25}];
 function rankOf(dp){var ix=0;for(var i=0;i<RANKS.length;i++){if((dp||0)>=RANKS[i].floor)ix=i;}return ix;}
+var STORY={
+  intro:"你是名初來乍到的傭兵，踏進了以地下城聞名的『傭兵之城』。\n\n城牆上張貼著領主的懸賞：地下城最深處盤踞著魔王，攪得四方不寧，至今無人生還歸來。\n\n在酒館招募夥伴、在公會接下委託，備好裝備，一步步向深淵挑戰吧 —— 或許成為傳說的，就是你。",
+  rank:['','領主聽聞你首次深入地下城，親手為你別上銅牌：「初露鋒芒，別鬆懈。」','你的名字開始在酒館被人提起。領主頷首：「銀牌傭兵，名副其實。」','商會與神殿都想結識你。領主：「金牌 —— 這座城已經少不了你了。」','你踏進了從沒人生還過的深度。領主神色凝重：「魔王就在下面……白金傭兵，你準備好了嗎？」','第 20 層的魔王灰飛煙滅，全城為你徹夜歡呼。從今往後，你的名字就是傳說。'],
+  boss:{5:'第 5 層 —— 哥布林王的巢穴。你踏過牠的斷角王座，通往深淵的階梯在腳下敞開。',10:'第 10 層 —— 巨魔領主的咆哮震落塵土。牠倒下時，牆上的古老壁畫指向了更深處。',15:'第 15 層 —— 骨龍盤踞在成山的白骨上。斬斷牠的那一刻，你聽見更深處傳來低語。',20:'第 20 層 —— 魔王【巫妖】現身。一切禍亂的源頭。這一戰，將決定傭兵之城的命運。',25:'比魔王更深的地方……傳說中無人抵達的領域，如今在你眼前。'}
+};
 function effBase(raw,race){var o={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){o[a]=Math.min(20,(raw[a]||10)+(g[a]||0));});return o;}
 var WEAPONS=[
   {id:'w_dagger',nm:'匕首',ico:'🔪',dmg:[1,4],bonus:0,price:20,tier:1},
@@ -232,7 +237,7 @@ function mock(action,p){return new Promise(function(res,rej){
     if(action==='dismiss'){var pl=DB[p.nick.trim()];if(p.id===pl.heroId)return rej(new Error('主角無法遣散'));var tc=pl.roster.filter(function(c){return c.id===p.id;})[0]||{level:1};var cost=20+tc.level*10;if(pl.gold<cost)return rej(new Error('遣散費不足'));pl.roster=pl.roster.filter(function(c){return c.id!==p.id;});pl.gold-=cost;pl.team.battle=pl.team.battle.filter(function(x){return x!==p.id;});pl.team.support=pl.team.support.filter(function(x){return x!==p.id;});put(pl);return res({player:pl,cost:cost});}
     if(action==='quest'){var pl=DB[p.nick.trim()];if(p.op==='accept'){var dd=Math.max(1,pl.deepest||0);var n=6+dd*2;pl.quest={id:'q'+Math.random().toString(36).slice(2,7),type:'kill',target:n,prog:0,name:'清剿 '+n+' 隻魔物',desc:'累積擊敗 '+n+' 隻敵人',reward:40+n*7};}else pl.quest=null;put(pl);return res({player:pl});}
     if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,skills:(f>st?['🔍 隊長 察覺發現暗格 +'+Math.round(gg*0.3)+'🪙']:[]),loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2,lines:['R1','⚔️ 隊長 擊中 👺哥布林 −5','🩸 👺哥布林 打中 隊長 −3','R2','✦ 隊長 擊中 👺哥布林 −9（暴擊！） 💀']}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,kills:fl.length*2,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};
-      var oldR=rankOf(pl.deepest||0);if(reached>pl.deepest)pl.deepest=reached;var newR=rankOf(pl.deepest||0);if(newR>oldR){var bn=newR*100;pl.gold+=bn;rep.rankUp={to:RANKS[newR].nm,reward:bn};}
+      var oldDeep=pl.deepest||0;var oldR=rankOf(oldDeep);if(reached>pl.deepest)pl.deepest=reached;var newR=rankOf(pl.deepest||0);if(newR>oldR){var bn=newR*100;pl.gold+=bn;rep.rankUp={to:RANKS[newR].nm,ix:newR,reward:bn};}rep.newBosses=[];[5,10,15,20,25].forEach(function(bf){if(oldDeep<bf&&(pl.deepest||0)>=bf)rep.newBosses.push(bf);});
       if(pl.quest){var q=pl.quest;if(q.type==='kill')q.prog+=rep.kills;else if(q.type==='depth')q.prog=Math.max(q.prog,reached);else q.prog+=rep.gold;if(q.prog>=q.target){pl.gold+=q.reward;pl.questsDone=(pl.questsDone||0)+1;rep.questDone={name:q.name,reward:q.reward};pl.quest=null;}}
       rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
     if(action==='roster'){return res({players:Object.keys(DB).map(function(k){var pl=DB[k];var team=pl.team.battle.concat(pl.team.support);var by={};pl.roster.forEach(function(c){by[c.id]=c;});return{nick:k,deepest:pl.deepest,gold:pl.gold,updated:0,members:team.map(function(id){var c=by[id];return c?{name:c.name,job:c.job,ico:(cinfo(c.job)||{}).ico,level:c.level,portrait:c.portrait}:null;}).filter(Boolean)};})});}
@@ -310,7 +315,7 @@ function renderCreate(){
     if(!createPortrait){toast('請先建立頭像');return;}
     var b=this;b.disabled=true;b.textContent='建立中…';
     srv('create',{nick:newNick,name:name,job:createSel.job,race:createRace,portrait:createPortrait,seed:createSeed,base:createBase}).then(function(pl){
-      P=pl;toast('歡迎來到傭兵之城！');renderTown();
+      P=pl;showIntro(function(){toast('歡迎來到傭兵之城！');renderTown();});
     }).catch(function(e){b.disabled=false;b.textContent='✅ 確認建立';toast('錯誤：'+e.message);});
   };
   // 讓創角時的名字輸入框保留值
@@ -379,6 +384,15 @@ function pDoGen(){
   var t=setInterval(function(){n--;if(n<=0){clearInterval(t);pCooling=false;b.disabled=false;b.textContent='🎲 重新生成';}else b.textContent='⏳ '+n+' 秒';},1000);
 }
 
+// ============ 序章劇情 ============
+function showIntro(cb){
+  var h='<div class="scene" style="height:150px"><div class="sun"></div>'+starDots()+'<div class="sil">🌲🏠🏰🏪🏠🌲</div><div class="title">🏰 傭兵之城<small>序章</small></div></div>';
+  h+='<div class="pad"><div class="card" style="border-color:var(--gold-d)"><b>📖 序章</b><div class="note" style="text-align:left;margin-top:8px;white-space:pre-line;line-height:1.85;color:#f0d6ad">'+STORY.intro+'</div></div>';
+  h+='<button class="btn gold" id="introgo">⚔️ 踏入城鎮</button></div>';
+  app.innerHTML=h;
+  document.getElementById('introgo').onclick=cb;
+}
+
 // ============ 城鎮 ============
 function topbar(){return '<div class="bar"><div class="t">🏰 傭兵之城<small> · '+P.nick+'</small></div><div class="spacer"></div>'+
   '<div class="pill">🪙 <span id="topgold">'+P.gold+'</span></div><div class="pill">⬇️ 第 <span id="topdeep">'+(P.deepest||0)+'</span> 層</div></div>';}
@@ -390,6 +404,7 @@ var BLDG=[
   ['tavern','🍺','酒館','招募夥伴'],
   ['shop','🛡️','武器防具飾品店','購買裝備'],
   ['inn','🛏️','旅館','休息回血'],
+  ['black','🕶️','黑市','稀有交易'],
   ['castle','🏰','領主城堡','主線・晉升'],
   ['roster','📜','冒險者名冊','看大家的進度']
 ];
@@ -434,6 +449,7 @@ function openBldg(b){
   if(b==='dungeon')return openDungeon();
   if(b==='guild')return openGuild();
   if(b==='castle')return openCastle();
+  if(b==='black')return openBlack();
   if(b==='team')return openTeam();
   if(b==='equip')return openEquip();
   if(b==='tavern')return openTavern();
@@ -617,6 +633,44 @@ function openGuild(){
   var ab=document.getElementById('qab');if(ab)ab.onclick=function(){if(!confirm('確定放棄目前委託？'))return;flushSave().then(function(){return srv('quest',{nick:P.nick,op:'abandon'});}).then(function(r){P=r.player;openGuild();}).catch(function(e){toast(e.message);});};
 }
 
+// ---- 黑市（稀有交易・輪替貨・交涉折扣）----
+function blackPool(){return [
+  {k:'ess_str',e:'💪',nm:'力量精華',ds:'指定角色 力量 +1（永久）',cost:180,type:'ess',ab:'str'},
+  {k:'ess_dex',e:'🎯',nm:'敏捷精華',ds:'指定角色 敏捷 +1（永久）',cost:180,type:'ess',ab:'dex'},
+  {k:'ess_con',e:'❤️',nm:'體質精華',ds:'指定角色 體質 +1（增加生命）',cost:200,type:'ess',ab:'con'},
+  {k:'ess_int',e:'🧠',nm:'智慧精華',ds:'指定角色 智力 +1（永久）',cost:180,type:'ess',ab:'int'},
+  {k:'ess_wis',e:'👁️',nm:'睿知精華',ds:'指定角色 睿知 +1（永久）',cost:180,type:'ess',ab:'wis'},
+  {k:'ess_cha',e:'💬',nm:'魅力精華',ds:'指定角色 魅力 +1（永久）',cost:180,type:'ess',ab:'cha'},
+  {k:'g_flame',e:'🔥',nm:'烈焰之刃',ds:'稀有武器 2d6+2',cost:520,type:'gear',id:'w_flame'},
+  {k:'g_dragon',e:'🐲',nm:'龍鱗鎧',ds:'稀有防具 護甲 +8',cost:560,type:'gear',id:'a_dragon'},
+  {k:'g_staff',e:'🪄',nm:'秘法杖',ds:'法系武器 1d8+2',cost:300,type:'gear',id:'w_staff'}
+];}
+function rollBlack(){var pool=blackPool().slice();for(var i=pool.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=pool[i];pool[i]=pool[j];pool[j]=t;}return pool.slice(0,4).map(function(o){return {k:o.k,sold:false};});}
+function blackDisc(){return P.roster.some(function(c){return charSkills(c.job,c.race).indexOf('persuasion')>=0;})?0.85:1;}
+function openBlack(){
+  if(!P.black||!P.black.length)P.black=rollBlack();
+  var disc=blackDisc(),map={};blackPool().forEach(function(o){map[o.k]=o;});
+  var body='';
+  P.black.forEach(function(it,i){var o=map[it.k];if(!o)return;var price=Math.round(o.cost*disc);
+    if(it.sold){body+='<div class="u" style="opacity:.45"><div class="av">'+o.e+'</div><div class="info"><b>'+o.nm+'</b><small>已售出</small></div></div>';return;}
+    body+='<div class="u"><div class="av">'+o.e+'</div><div class="info"><b>'+o.nm+'</b><small>'+o.ds+'</small></div><button class="btn gold sm" data-bk="'+i+'"'+(P.gold<price?' disabled':'')+'>買 '+price+'🪙</button></div>';
+  });
+  body+='<div class="note">🕶️ 「識貨的才懂。」每批貨有限，售完可花錢進新貨。'+(disc<1?'　✨ 隊上有人擅長交涉，已打折！':'')+'</div>';
+  body+='<button class="btn dim sm" id="brefresh"'+(P.gold<30?' disabled':'')+' style="margin-top:4px">🔄 進貨（30🪙 換一批）</button>';
+  openSheet('🕶️ 黑市','見不得光的稀有交易',body);
+  q('[data-bk]',function(el){var i=+el.dataset.bk,it=P.black[i],o=map[it.k],price=Math.round(o.cost*disc);
+    if(it.sold||P.gold<price)return;
+    if(o.type==='ess'){ chooseChar('用「'+o.nm+'」', function(id){var c=byId(id);c.base[o.ab]=Math.min(20,(c.base[o.ab]||10)+1);c.maxhp=cMaxHp(c);P.gold-=price;it.sold=true;saveP(function(){toast(c.name+' 的'+ABN[o.ab]+' +1！');openBlack();});}); }
+    else { P.gold-=price;P.bag.push(o.id);it.sold=true;saveP(function(){toast('入手 '+o.nm+'！放進背包了');openBlack();}); }
+  });
+  var rf=document.getElementById('brefresh');if(rf)rf.onclick=function(){if(P.gold<30)return;P.gold-=30;P.black=rollBlack();saveP(openBlack);};
+}
+function chooseChar(title,cb){
+  var body='';P.roster.forEach(function(c){body+='<div class="u"><div class="av">'+avatarHTML(c)+'</div><div class="info"><b>'+c.name+'</b><small>'+(RACES[c.race]?RACES[c.race].nm+' ':'')+cinfo(c.job).ico+cinfo(c.job).nm+' Lv'+c.level+'</small></div><button class="btn ok sm" data-pick="'+c.id+'">選他</button></div>';});
+  openSheet(title,'要用在哪位角色？',body);
+  q('[data-pick]',function(el){cb(el.dataset.pick);});
+}
+
 // ---- 領主城堡（主線・階級）----
 function openCastle(){
   var deep=P.deepest||0,ri=rankOf(deep),next=RANKS[ri+1];
@@ -681,6 +735,10 @@ function renderReport(rep){
   if(rep.levelUps&&rep.levelUps.length){h+='<div class="note" style="text-align:left;color:var(--gold)">⬆️ '+rep.levelUps.map(function(u){return u.name+' → Lv'+u.level;}).join('、')+'</div>';}
   if(rep.loot&&rep.loot.length){h+='<div class="note" style="text-align:left">戰利品：'+rep.loot.map(function(id){var g=gById(id);return g?g.ico+g.nm:id;}).join('、')+'</div>';}
   h+='</div>';
+  var story=[];
+  if(rep.rankUp&&STORY.rank[rep.rankUp.ix])story.push(STORY.rank[rep.rankUp.ix]);
+  (rep.newBosses||[]).forEach(function(bf){if(STORY.boss[bf])story.push(STORY.boss[bf]);});
+  if(story.length)h+='<div class="card" style="border-color:var(--gold-d)"><b>📖 劇情</b>'+story.map(function(s){return '<div class="note" style="text-align:left;margin-top:6px;line-height:1.75;color:#f0d6ad;white-space:pre-line">'+s+'</div>';}).join('')+'</div>';
   h+='<details open><summary>逐層戰報</summary><div style="margin-top:8px">';
   rep.floors.forEach(function(f){
     var enc=f.encounters&&f.encounters[0];

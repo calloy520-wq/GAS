@@ -168,16 +168,20 @@ function apiDungeon_(p){
   // 套用結果
   player.gold = (player.gold||0) + report.gold;
   report.loot.forEach(function(id){ player.bag.push(id); });
-  var oldRank = rankOf(player.deepest||0);
-  if (report.reached > (player.deepest||0)) player.deepest = report.reached;
+  var oldDeep = player.deepest||0;
+  var oldRank = rankOf(oldDeep);
+  if (report.reached > oldDeep) player.deepest = report.reached;
 
   // 主線晉升（靠最深層）
   var newRank = rankOf(player.deepest||0);
   if (newRank > oldRank){
     var bonus = newRank * 100;
     player.gold += bonus;
-    report.rankUp = { to: RANKS[newRank].nm, reward: bonus };
+    report.rankUp = { to: RANKS[newRank].nm, ix: newRank, reward: bonus };
   }
+  // 首次擊破頭目樓層 → 觸發劇情
+  report.newBosses = [];
+  [5,10,15,20,25].forEach(function(bf){ if (oldDeep < bf && (player.deepest||0) >= bf) report.newBosses.push(bf); });
   // 委託結算
   report.questDone = applyQuest_(player, report);
 
