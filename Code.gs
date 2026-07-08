@@ -34,6 +34,7 @@ function route_(action, p){
     case 'dismiss': return apiDismiss_(p);
     case 'quest':   return apiQuest_(p);
     case 'trade':   return apiTrade_(p);
+    case 'voyage':  return apiVoyage_(p);
     case 'dungeon': return apiDungeon_(p);
     case 'roster':  return { players: listPlayers() };
     case 'meta':    return apiMeta_();
@@ -211,6 +212,50 @@ function apiTrade_(p){
   }
   if (p.op){ cleanPlayer_(player); savePlayer(player); }   // 只有實際買/賣/移動才寫檔
   return { player: player, view: tradeView_(player, day, disc) };
+}
+
+// 航海：從目前港口航向另一港，途中觸發海上事件
+function portDist_(a,b){ var A=MARKET_BY[a],B=MARKET_BY[b]; var dx=A.x-B.x, dy=A.y-B.y; return Math.sqrt(dx*dx+dy*dy); }
+function voyageDays_(a,b){ return Math.max(1, Math.round(portDist_(a,b)/24)); }
+function rollSeaEvent_(pl, haggle){
+  var r = Math.random();
+  if (r < 0.20) return { ico:'🌊', t:'風平浪靜，航行順利。' };
+  if (r < 0.34) return { ico:'💨', t:'順風相助，船行如飛。' };
+  if (r < 0.50){ // 暴風雨
+    var gs = Object.keys(pl.cargo||{});
+    if (gs.length){ var g=gs[Math.floor(Math.random()*gs.length)]; var lose=Math.min(pl.cargo[g], 1+Math.floor(Math.random()*2)); pl.cargo[g]-=lose; if(pl.cargo[g]<=0)delete pl.cargo[g]; return {ico:'⛈️', t:'遭遇暴風雨，'+lose+' 箱'+GOOD_BY[g].nm+'落海！'}; }
+    var gl=Math.min(pl.gold||0, 10+Math.floor(Math.random()*30)); pl.gold=(pl.gold||0)-gl; return {ico:'⛈️', t:'暴風雨損壞船身，修補花了 '+gl+'🪙。'};
+  }
+  if (r < 0.64){ // 漂流物
+    var g2=GOODS[Math.floor(Math.random()*GOODS.length)]; var q=1+Math.floor(Math.random()*2);
+    if (cargoCount_(pl)+q <= CARGO_MAX){ pl.cargo[g2.id]=(pl.cargo[g2.id]||0)+q; return {ico:'📦', t:'撈起漂流貨物，獲得 '+q+' 箱'+g2.nm+'！'}; }
+    return {ico:'🌊', t:'看到漂流物，但貨艙已滿只能作罷。'};
+  }
+  if (r < 0.76){ var gg=15+Math.floor(Math.random()*40); pl.gold=(pl.gold||0)+gg; return {ico:'💰', t:'遇到友善商船交易，小賺 '+gg+'🪙。'}; }
+  if (r < 0.90){ // 海盜勒索
+    if (haggle) return {ico:'🏴‍☠️', t:'遇上海盜！靠著三寸不爛之舌全身而退。'};
+    var gs2=Object.keys(pl.cargo||{});
+    if (gs2.length){ var g3=gs2[Math.floor(Math.random()*gs2.length)]; var l2=Math.min(pl.cargo[g3], 1+Math.floor(Math.random()*2)); pl.cargo[g3]-=l2; if(pl.cargo[g3]<=0)delete pl.cargo[g3]; return {ico:'🏴‍☠️', t:'海盜勒索，被搶走 '+l2+' 箱'+GOOD_BY[g3].nm+'。'}; }
+    var gl2=Math.min(pl.gold||0, 20+Math.floor(Math.random()*30)); pl.gold=(pl.gold||0)-gl2; return {ico:'🏴‍☠️', t:'海盜勒索，交了 '+gl2+'🪙買路財。'};
+  }
+  pl.clues=(pl.clues||0)+1; return {ico:'🗺️', t:'撈到一片古老海圖殘片…秘寶線索 +1！'};
+}
+function apiVoyage_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (!player.port || !MARKET_BY[player.port]) player.port='merc';
+  if (!player.cargo) player.cargo={};
+  var to = p.to; if (!MARKET_BY[to]) throw new Error('未知港口');
+  if (to === player.port) throw new Error('你已經在這個港口了');
+  var from = player.port, days = voyageDays_(from, to);
+  var haggle = (player.roster||[]).some(function(c){ return charSkills(c).indexOf('persuasion')>=0; });
+  var voyage = { from:from, to:to, days:days, events:[] };
+  var n = 1 + Math.floor(Math.random()*Math.min(3, days));
+  for (var i=0;i<n;i++){ voyage.events.push(rollSeaEvent_(player, haggle)); }
+  player.port = to;
+  player.gold = Math.max(0, player.gold||0);
+  cleanPlayer_(player); savePlayer(player);
+  return { player: player, voyage: voyage };
 }
 
 // 地下城：後端跑完整探索，套用結果後存檔

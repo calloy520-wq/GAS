@@ -100,6 +100,17 @@
   .sign .badge{background:var(--hp)}
   .sign.gate{grid-column:1/3;background:linear-gradient(180deg,#5a2f3f,#361c26);border-color:#7a3c52;box-shadow:0 5px 0 #2a1620}
   .sign.gate .nm{color:#ffd0dd}
+  .sign.sea{grid-column:1/3;background:linear-gradient(180deg,#1f5478,#123249);border-color:#2e6a94}
+  .sign.sea .nm{color:#bfe4ff}
+  .omap{position:relative;width:100%;aspect-ratio:1/1.02;border-radius:16px;overflow:hidden;border:2px solid #2a4a6a;
+    background:radial-gradient(120% 90% at 28% 18%,#356690,#173753 58%,#0e2438);box-shadow:inset 0 0 46px rgba(0,0,0,.55)}
+  .omap .wv{position:absolute;inset:0;opacity:.10;background-image:repeating-linear-gradient(30deg,#fff 0 1px,transparent 1px 22px)}
+  .oport{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;cursor:pointer;width:70px;z-index:2}
+  .oport .pin{font-size:27px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.65))}
+  .oport .pn{font-size:10px;font-weight:800;color:#fff;text-shadow:0 1px 3px #000;white-space:nowrap;background:rgba(0,0,0,.4);padding:0 5px;border-radius:6px;margin-top:1px}
+  .oport.here .pin{filter:drop-shadow(0 0 7px #f4c34e) drop-shadow(0 0 2px #f4c34e)}
+  .oport.here .pn{background:#c8971f;color:#3a2600}
+  .oship{position:absolute;transform:translate(-50%,-150%);font-size:22px;filter:drop-shadow(0 2px 3px #000);pointer-events:none;z-index:3}
 
   .u{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:9px;margin-bottom:8px}
   .u .av{width:44px;height:44px;border-radius:10px;object-fit:cover;background:#241d14;flex:none;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden}
@@ -248,6 +259,16 @@ function mock(action,p){return new Promise(function(res,rej){
       else if(p.op==='buy'){if(!GOOD_BYC[p.good])return rej(new Error('未知商品'));var qty=Math.max(1,p.qty|0);var price=Math.round(tradePriceC(pl.port,p.good,day)*disc.buyMul);if(cargoCountC(pl)+qty>CARGO_MAX_C)return rej(new Error('貨艙不足'));var cost=price*qty;if(pl.gold<cost)return rej(new Error('金幣不足'));pl.gold-=cost;pl.cargo[p.good]=(pl.cargo[p.good]||0)+qty;}
       else if(p.op==='sell'){var q2=Math.max(1,p.qty|0);if(!pl.cargo[p.good]||pl.cargo[p.good]<q2)return rej(new Error('貨艙沒這麼多'));var sp=Math.round(tradePriceC(pl.port,p.good,day)*0.92*disc.sellMul);pl.gold+=sp*q2;pl.cargo[p.good]-=q2;if(pl.cargo[p.good]<=0)delete pl.cargo[p.good];}
       if(p.op)put(pl);return res({player:pl,view:tradeViewC(pl,day,disc)});}
+    if(action==='voyage'){var pl=DB[p.nick.trim()];if(!pl.port||!MARKET_BYC[pl.port])pl.port='merc';if(!pl.cargo)pl.cargo={};if(!MARKET_BYC[p.to])return rej(new Error('未知港口'));if(p.to===pl.port)return rej(new Error('你已在此港'));
+      function pd(a,b){var A=MARKET_BYC[a],B=MARKET_BYC[b];return Math.sqrt(Math.pow(A.x-B.x,2)+Math.pow(A.y-B.y,2));}
+      var from=pl.port,days=Math.max(1,Math.round(pd(from,p.to)/24)),hag=(pl.roster||[]).some(function(c){return charSkills(c.job,c.race).indexOf('persuasion')>=0;});
+      function sea(){var r=Math.random();if(r<0.2)return{ico:'🌊',t:'風平浪靜。'};if(r<0.34)return{ico:'💨',t:'順風相助。'};
+        if(r<0.5){var gs=Object.keys(pl.cargo);if(gs.length){var g=gs[Math.floor(Math.random()*gs.length)];var l=Math.min(pl.cargo[g],1+Math.floor(Math.random()*2));pl.cargo[g]-=l;if(pl.cargo[g]<=0)delete pl.cargo[g];return{ico:'⛈️',t:'暴風雨，'+l+' 箱'+GOOD_BYC[g].nm+'落海！'};}var gl=Math.min(pl.gold,10+Math.floor(Math.random()*30));pl.gold-=gl;return{ico:'⛈️',t:'暴風雨修船 -'+gl+'🪙。'};}
+        if(r<0.64){var g2=GOODS_C[Math.floor(Math.random()*GOODS_C.length)],q=1+Math.floor(Math.random()*2);if(cargoCountC(pl)+q<=CARGO_MAX_C){pl.cargo[g2.id]=(pl.cargo[g2.id]||0)+q;return{ico:'📦',t:'撈到漂流貨 +'+q+' 箱'+g2.nm+'！'};}return{ico:'🌊',t:'漂流物，但貨艙滿了。'};}
+        if(r<0.76){var gg=15+Math.floor(Math.random()*40);pl.gold+=gg;return{ico:'💰',t:'友善商船交易 +'+gg+'🪙。'};}
+        if(r<0.9){if(hag)return{ico:'🏴‍☠️',t:'遇海盜，靠口才脫身。'};var gs2=Object.keys(pl.cargo);if(gs2.length){var g3=gs2[Math.floor(Math.random()*gs2.length)],l2=Math.min(pl.cargo[g3],1+Math.floor(Math.random()*2));pl.cargo[g3]-=l2;if(pl.cargo[g3]<=0)delete pl.cargo[g3];return{ico:'🏴‍☠️',t:'海盜搶走 '+l2+' 箱'+GOOD_BYC[g3].nm+'。'};}var gl2=Math.min(pl.gold,20+Math.floor(Math.random()*30));pl.gold-=gl2;return{ico:'🏴‍☠️',t:'海盜勒索 -'+gl2+'🪙。'};}
+        pl.clues=(pl.clues||0)+1;return{ico:'🗺️',t:'撈到海圖殘片，秘寶線索 +1！'};}
+      var evs=[],n=1+Math.floor(Math.random()*Math.min(3,days));for(var vi=0;vi<n;vi++)evs.push(sea());pl.port=p.to;pl.gold=Math.max(0,pl.gold);put(pl);return res({player:pl,voyage:{from:from,to:p.to,days:days,events:evs}});}
     if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,skills:(f>st?['🔍 隊長 察覺發現暗格 +'+Math.round(gg*0.3)+'🪙']:[]),loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2,lines:['R1','⚔️ 隊長 擊中 👺哥布林 −5','🩸 👺哥布林 打中 隊長 −3','R2','✦ 隊長 擊中 👺哥布林 −9（暴擊！） 💀']}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,kills:fl.length*2,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};
       if(rep.wiped){var keep=Math.floor(g*0.5);var lost=g-keep;pl.gold-=lost;rep.gold=keep;rep.rescueGoldLost=lost;var kl=rep.loot.filter(function(){return Math.random()<0.5;});rep.rescueLootLost=rep.loot.length-kl.length;rep.loot=kl;}
       var oldDeep=pl.deepest||0;var oldR=rankOf(oldDeep);if(reached>pl.deepest)pl.deepest=reached;var newR=rankOf(pl.deepest||0);if(newR>oldR){var bn=newR*100;pl.gold+=bn;rep.rankUp={to:RANKS[newR].nm,ix:newR,reward:bn};}rep.newBosses=[];[5,10,15,20,25].forEach(function(bf){if(oldDeep<bf&&(pl.deepest||0)>=bf)rep.newBosses.push(bf);});
@@ -430,12 +451,13 @@ var BLDG=[
   ['inn','🛏️','旅館','休息回血'],
   ['black','🕶️','黑市','稀有交易'],
   ['trade','🏪','貿易所','跑商賺價差'],
+  ['map','🗺️','出航','航向其他港口'],
   ['castle','🏰','領主城堡','主線・晉升'],
   ['roster','📜','冒險者名冊','看大家的進度']
 ];
 // 貿易（客製顯示＋離線 mock 用）
 var GOODS_C=[{id:'salt',nm:'鹽',ico:'🧂',base:20},{id:'herb',nm:'藥草',ico:'🌿',base:35},{id:'iron',nm:'鐵礦',ico:'⚙️',base:55},{id:'wine',nm:'美酒',ico:'🍷',base:70},{id:'spice',nm:'香料',ico:'🌶️',base:48},{id:'silk',nm:'絲綢',ico:'🧵',base:95},{id:'china',nm:'瓷器',ico:'🏺',base:125},{id:'gem',nm:'寶石',ico:'💎',base:210}];
-var MARKETS_C=[{id:'merc',nm:'傭兵之城',ico:'🏰',cheap:['iron','herb'],dear:['silk','gem']},{id:'port',nm:'風帆港都',ico:'⛵',cheap:['silk','china'],dear:['spice','iron']},{id:'oasis',nm:'沙漠綠洲',ico:'🏜️',cheap:['spice','salt'],dear:['wine','herb']},{id:'snow',nm:'雪山商站',ico:'🏔️',cheap:['wine','gem'],dear:['salt','china']}];
+var MARKETS_C=[{id:'merc',nm:'傭兵之城',ico:'🏰',x:20,y:42,cheap:['iron','herb'],dear:['silk','gem'],blurb:'傭兵與冒險者的據點'},{id:'port',nm:'風帆港都',ico:'⛵',x:44,y:24,cheap:['silk','china'],dear:['spice','iron'],blurb:'船隻雲集的繁華貿易港'},{id:'gold',nm:'黃金港',ico:'🏛️',x:80,y:30,cheap:['china','gem'],dear:['salt','silk'],blurb:'富甲一方的黃金之都'},{id:'oasis',nm:'沙漠綠洲',ico:'🏜️',x:70,y:56,cheap:['spice','salt'],dear:['wine','herb'],blurb:'沙海中的香料集散地'},{id:'coral',nm:'珊瑚礁島',ico:'🏝️',x:56,y:82,cheap:['spice','wine'],dear:['china','iron'],blurb:'南方的熱帶島嶼'},{id:'snow',nm:'雪山商站',ico:'🏔️',x:26,y:72,cheap:['wine','gem'],dear:['salt','china'],blurb:'冰封山脈的邊境商站'}];
 var GOOD_BYC={};GOODS_C.forEach(function(g){GOOD_BYC[g.id]=g;});var MARKET_BYC={};MARKETS_C.forEach(function(m){MARKET_BYC[m.id]=m;});var CARGO_MAX_C=20;
 function hashNoiseC(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return ((h>>>0)%1000)/1000;}
 function tradeDayC(){return Math.floor(Date.now()/(1000*60*60*4));}
@@ -486,6 +508,7 @@ function openBldg(b){
   if(b==='castle')return openCastle();
   if(b==='black')return openBlack();
   if(b==='trade')return openTrade();
+  if(b==='map')return openMap();
   if(b==='team')return openTeam();
   if(b==='equip')return openEquip();
   if(b==='tavern')return openTavern();
@@ -774,9 +797,7 @@ function openTrade(){
 function renderTrade(v){
   var mk=v.markets.filter(function(m){return m.id===v.port;})[0]||v.markets[0];
   var body='<div class="note" style="text-align:left">目前所在：<b>'+mk.ico+' '+mk.nm+'</b>　🪙 '+P.gold+'　📦 貨艙 '+v.cargoCount+'/'+v.cargoMax+(v.haggle?'　✨交涉優惠':'')+'</div>';
-  body+='<div class="glab" style="margin-top:8px">⛵ 前往市集（價差就是利潤）</div><div class="chips" id="tports">';
-  v.markets.forEach(function(m){body+='<span class="chip'+(m.id===v.port?' on':'')+'" data-port="'+m.id+'">'+m.ico+' '+m.nm+'</span>';});
-  body+='</div>';
+  body+='<div class="note" style="text-align:left">要去別的港口買賣？用城裡的「🗺️ 出航」揚帆過去。</div>';
   body+='<div class="glab" style="margin-top:10px">'+mk.ico+' '+mk.nm+'　市價（買 / 賣）</div>';
   mk.goods.forEach(function(g){var have=(v.cargo||{})[g.id]||0;var tagc=g.tag==='產地'?'var(--good)':(g.tag==='搶手'?'var(--gold)':'var(--soft)');
     body+='<div class="u"><div class="av">'+g.ico+'</div><div class="info"><b>'+g.nm+(g.tag?' <span style="font-size:10px;color:'+tagc+'">'+g.tag+'</span>':'')+'</b><small>買 '+g.buy+'🪙 ・ 賣 '+g.sell+'🪙'+(have?'　📦'+have:'')+'</small></div>'+
@@ -792,6 +813,46 @@ function renderTrade(v){
 function tradeDo(op,good){
   var q=prompt((op==='buy'?'買入':'賣出')+' 數量：','1');if(q===null)return;q=Math.max(1,parseInt(q,10)||1);
   flushSave().then(function(){return srv('trade',{nick:P.nick,op:op,good:good,qty:q});}).then(function(r){P=r.player;refreshTopbar();renderTrade(r.view);toast(op==='buy'?'買入 ×'+q:'賣出 ×'+q);}).catch(function(e){toast(e.message);});
+}
+
+// ---- 世界地圖・出航 ----
+function portOf(id){return MARKETS_C.filter(function(m){return m.id===id;})[0];}
+function goodNames(ids){return ids.map(function(id){var g=GOOD_BYC[id];return g?g.ico+g.nm:id;}).join('、');}
+function voyDays(a,b){var A=portOf(a),B=portOf(b);var dx=A.x-B.x,dy=A.y-B.y;return Math.max(1,Math.round(Math.sqrt(dx*dx+dy*dy)/24));}
+function openMap(){
+  var here=P.port||'merc';
+  var body='<div class="omap" id="omap"><div class="wv"></div>';
+  MARKETS_C.forEach(function(m){
+    body+='<div class="oport'+(m.id===here?' here':'')+'" data-port="'+m.id+'" style="left:'+m.x+'%;top:'+m.y+'%"><div class="pin">'+m.ico+'</div><div class="pn">'+m.nm+'</div></div>';
+  });
+  var h=portOf(here);
+  body+='<div class="oship" style="left:'+h.x+'%;top:'+h.y+'%">⛵</div>';
+  body+='</div>';
+  body+='<div class="note" style="text-align:left;margin-top:10px">目前停泊：<b>'+h.ico+' '+h.nm+'</b>　🧭 秘寶線索：'+(P.clues||0)+'　📦 貨艙 '+cargoCountC(P)+'/'+CARGO_MAX_C+'</div>';
+  body+='<div class="note">點地圖上的港口 → 揚帆前往。航程中會遇到海上事件（暴風、漂流物、海盜、秘寶線索…）。</div>';
+  sheet.innerHTML='<button class="close" onclick="closeSheet()">✕</button><h2>🗺️ 世界地圖</h2><p class="sub">點港口揚帆・海上有事件</p>'+body;
+  modal.classList.add('show');
+  q('[data-port]',function(el){var id=el.dataset.port;if(id===(P.port||'merc')){toast('你已停泊在此港');return;}portInfo(id);});
+}
+function portInfo(id){
+  var m=portOf(id),here=P.port||'merc',days=voyDays(here,id);
+  var body='<div class="note" style="text-align:left;line-height:1.7">'+m.ico+' <b>'+m.nm+'</b> —— '+m.blurb+'<br>🟢 產地（便宜）：'+goodNames(m.cheap)+'<br>🟡 搶手（賣貴）：'+goodNames(m.dear)+'<br>⛵ 航程：約 '+days+' 天</div>';
+  body+='<button class="btn ok" id="setsail" style="margin-top:8px">⛵ 揚帆前往（約 '+days+' 天）</button>';
+  body+='<button class="btn dim sm" id="backmap" style="margin-top:6px">← 回地圖</button>';
+  openSheet(m.ico+' '+m.nm,'',body);
+  document.getElementById('backmap').onclick=openMap;
+  document.getElementById('setsail').onclick=function(){var b=this;b.disabled=true;b.textContent='揚帆中…';
+    flushSave().then(function(){return srv('voyage',{nick:P.nick,to:id});}).then(function(r){P=r.player;modal.classList.remove('show');refreshTopbar();renderVoyage(r.voyage);}).catch(function(e){b.disabled=false;b.textContent='⛵ 揚帆前往';toast(e.message);});};
+}
+function renderVoyage(v){
+  var from=portOf(v.from),to=portOf(v.to);
+  var h=topbar()+'<div class="pad" style="background:radial-gradient(120% 80% at 50% -10%,#173753,transparent 55%)">';
+  h+='<h1>⛵ 航海日誌</h1><p class="lead">'+from.ico+' '+from.nm+' → '+to.ico+' '+to.nm+' ・ 航行 '+v.days+' 天</p>';
+  h+='<div class="card">'+(v.events||[]).map(function(e){return '<div class="note" style="text-align:left;line-height:1.8">'+e.ico+' '+e.t+'</div>';}).join('')+'</div>';
+  h+='<div class="note">🧭 秘寶線索：'+(P.clues||0)+'　🪙 '+P.gold+'　📦 貨艙 '+cargoCountC(P)+'/'+CARGO_MAX_C+'</div>';
+  h+='<button class="btn gold" id="arrive" style="margin-top:10px">⚓ 抵達 '+to.nm+'</button></div>';
+  app.innerHTML=h;
+  document.getElementById('arrive').onclick=renderTown;
 }
 
 // ---- 領主城堡（主線・階級）----

@@ -222,12 +222,14 @@ var GOODS = [
   { id:'gem',   nm:'寶石', ico:'💎', base:210 }
 ];
 var GOOD_BY = {}; GOODS.forEach(function(g){ GOOD_BY[g.id]=g; });
-// 每個市集：cheap=產地(便宜) dear=需求地(貴)
+// 每個港口：x,y=世界地圖座標(%)；cheap=產地(便宜) dear=需求地(貴)
 var MARKETS = [
-  { id:'merc',  nm:'傭兵之城',  ico:'🏰', cheap:['iron','herb'],  dear:['silk','gem'] },
-  { id:'port',  nm:'風帆港都',  ico:'⛵', cheap:['silk','china'], dear:['spice','iron'] },
-  { id:'oasis', nm:'沙漠綠洲',  ico:'🏜️', cheap:['spice','salt'], dear:['wine','herb'] },
-  { id:'snow',  nm:'雪山商站',  ico:'🏔️', cheap:['wine','gem'],   dear:['salt','china'] }
+  { id:'merc',  nm:'傭兵之城', ico:'🏰', x:20, y:42, cheap:['iron','herb'],  dear:['silk','gem'],   blurb:'傭兵與冒險者的據點' },
+  { id:'port',  nm:'風帆港都', ico:'⛵', x:44, y:24, cheap:['silk','china'], dear:['spice','iron'], blurb:'船隻雲集的繁華貿易港' },
+  { id:'gold',  nm:'黃金港',   ico:'🏛️', x:80, y:30, cheap:['china','gem'],  dear:['salt','silk'],  blurb:'富甲一方的黃金之都' },
+  { id:'oasis', nm:'沙漠綠洲', ico:'🏜️', x:70, y:56, cheap:['spice','salt'], dear:['wine','herb'],  blurb:'沙海中的香料集散地' },
+  { id:'coral', nm:'珊瑚礁島', ico:'🏝️', x:56, y:82, cheap:['spice','wine'], dear:['china','iron'], blurb:'南方的熱帶島嶼' },
+  { id:'snow',  nm:'雪山商站', ico:'🏔️', x:26, y:72, cheap:['wine','gem'],   dear:['salt','china'], blurb:'冰封山脈的邊境商站' }
 ];
 var MARKET_BY = {}; MARKETS.forEach(function(m){ MARKET_BY[m.id]=m; });
 var CARGO_MAX = 20;
