@@ -95,8 +95,9 @@ function grantXp(c, amount){
 //  team: { battle:[char,...], support:[char,...] }  皆為完整角色物件的複本
 //  回傳完整戰報物件
 // ============================================================
-function runDungeon(team, targetFloor){
-  targetFloor = Math.max(1, Math.min(CFG.MAX_FLOOR, targetFloor|0));
+function runDungeon(team, startFloor, targetFloor){
+  startFloor = Math.max(1, Math.min(CFG.MAX_FLOOR, startFloor|0 || 1));
+  targetFloor = Math.max(startFloor, Math.min(CFG.MAX_FLOOR, targetFloor|0));
   var heroes = team.battle.filter(Boolean);
   var supports = team.support.filter(Boolean);
 
@@ -107,18 +108,18 @@ function runDungeon(team, targetFloor){
     buff[sc.buff] += sc.val;
   });
 
-  var report = { target:targetFloor, reached:0, cleared:false, wiped:false,
+  var report = { start:startFloor, target:targetFloor, reached:startFloor-1, cleared:false, wiped:false,
     gold:0, xp:0, loot:[], floors:[], levelUps:[] };
 
   // 復原戰鬥狀態（_allies 供牧師群補/復活使用）
   heroes.forEach(function(h){ if (h.hp<=0) h.hp = 1; h._cs = combatStats(h); h._charge = 0; h._allies = heroes; });
 
-  for (var f=1; f<=targetFloor; f++){
+  for (var f=startFloor; f<=targetFloor; f++){
     var floorLog = { floor:f, encounters:[], gold:0, xp:0, loot:[], boss:false, event:null };
     var isBoss = (f % 5 === 0);
 
-    // 事件（非首層有機率）
-    if (!isBoss && f>1){
+    // 事件（非起始層有機率）
+    if (!isBoss && f>startFloor){
       var er = Math.random();
       if (er < 0.14){ var tg = Math.round(rint(6,16) * (1+buff.gold)); report.gold+=tg; floorLog.gold+=tg; floorLog.event='💰 發現寶箱 +'+tg+'🪙'; }
       else if (er < 0.24){ var trapDmg = rint(2, 4+f); var victim = pickAlive(heroes);

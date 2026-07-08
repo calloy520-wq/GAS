@@ -184,7 +184,8 @@ function mock(action,p){return new Promise(function(res,rej){
     if(action==='create'){var h=mk(p.name,p.job,p.portrait,p.seed,p.base,p.race);var pl={nick:p.nick.trim(),gold:120,deepest:0,heroId:h.id,roster:[h],bag:[],team:{battle:[h.id],support:[]}};put(pl);return res(pl);}
     if(action==='save'){put(p.player);return res(p.player);}
     if(action==='recruit'){var pl=DB[p.nick.trim()];if(pl.roster.length>=10)return rej(new Error('倉庫已滿'));if(pl.gold<p.cost)return rej(new Error('金幣不足'));var c=mk(p.name,p.job,p.portrait,p.seed,p.base,p.race);pl.gold-=p.cost;pl.roster.push(c);put(pl);return res({player:pl,recruited:c});}
-    if(action==='dungeon'){var pl=DB[p.nick.trim()];var g=0,x=0,fl=[];var reached=0;for(var f=1;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2}]});}pl.gold+=g;var rep={target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};if(reached>pl.deepest)pl.deepest=reached;rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
+    if(action==='dismiss'){var pl=DB[p.nick.trim()];if(p.id===pl.heroId)return rej(new Error('主角無法遣散'));var tc=pl.roster.filter(function(c){return c.id===p.id;})[0]||{level:1};var cost=20+tc.level*10;if(pl.gold<cost)return rej(new Error('遣散費不足'));pl.roster=pl.roster.filter(function(c){return c.id!==p.id;});pl.gold-=cost;pl.team.battle=pl.team.battle.filter(function(x){return x!==p.id;});pl.team.support=pl.team.support.filter(function(x){return x!==p.id;});put(pl);return res({player:pl,cost:cost});}
+    if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};if(reached>pl.deepest)pl.deepest=reached;rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
     if(action==='roster'){return res({players:Object.keys(DB).map(function(k){var pl=DB[k];var team=pl.team.battle.concat(pl.team.support);var by={};pl.roster.forEach(function(c){by[c.id]=c;});return{nick:k,deepest:pl.deepest,gold:pl.gold,updated:0,members:team.map(function(id){var c=by[id];return c?{name:c.name,job:c.job,ico:(cinfo(c.job)||{}).ico,level:c.level,portrait:c.portrait}:null;}).filter(Boolean)};})});}
     rej(new Error('mock 未支援：'+action));
   }catch(e){rej(e);}},250);
@@ -330,7 +331,8 @@ function pDoGen(){
 
 // ============ 城鎮 ============
 function topbar(){return '<div class="bar"><div class="t">🏰 傭兵之城<small> · '+P.nick+'</small></div><div class="spacer"></div>'+
-  '<div class="pill">🪙 <span>'+P.gold+'</span></div><div class="pill">⬇️ 第 '+(P.deepest||0)+' 層</div></div>';}
+  '<div class="pill">🪙 <span id="topgold">'+P.gold+'</span></div><div class="pill">⬇️ 第 <span id="topdeep">'+(P.deepest||0)+'</span> 層</div></div>';}
+function refreshTopbar(){var g=document.getElementById('topgold');if(g)g.textContent=P.gold;var d=document.getElementById('topdeep');if(d)d.textContent=(P.deepest||0);}
 var BLDG=[
   ['team','🧭','隊伍編成','出戰 4 + 後勤 2'],
   ['equip','🎒','裝備','武器/防具/飾品'],
@@ -355,7 +357,7 @@ function renderTown(){
 function openSheet(title,sub,body){sheet.innerHTML='<button class="close" onclick="closeSheet()">✕</button><h2>'+title+'</h2>'+(sub?'<p class="sub">'+sub+'</p>':'')+body;modal.classList.add('show');}
 // 樂觀更新：先畫面立即反應（cb），存檔在背景去抖動寫入，不卡手
 var _saveTimer=null, _savePending=null;
-function saveP(cb){ if(cb)cb(); if(_saveTimer)clearTimeout(_saveTimer); _saveTimer=setTimeout(doSaveNow,300); }
+function saveP(cb){ if(cb)cb(); refreshTopbar(); if(_saveTimer)clearTimeout(_saveTimer); _saveTimer=setTimeout(doSaveNow,300); }
 function doSaveNow(){ if(_saveTimer){clearTimeout(_saveTimer);_saveTimer=null;} _savePending=srv('save',{player:P}).then(function(pl){P=pl;}).catch(function(e){toast('存檔失敗：'+e.message);}); return _savePending; }
 // 呼叫會重讀試算表的伺服器動作前，先把待寫存檔沖掉，避免被舊資料覆蓋
 function flushSave(){ if(_saveTimer) return doSaveNow(); return _savePending||Promise.resolve(); }
@@ -386,10 +388,21 @@ function openTeam(){
     body+=uRow(c,(inS?'<button class="btn ok sm" data-rms="'+c.id+'">後勤中</button>':'<button class="btn dim sm" data-adds="'+c.id+'">安排</button>'));
   });
   if(!anySup)body+='<div class="note">還沒有後勤職業夥伴，去酒館招募吟遊詩人 / 商人 / 學者 / 醫者 / 占卜師。</div>';
-  openSheet('🧭 隊伍編成','點角色安排上場或後勤',body);
+  // 遣散
+  body+='<div class="glab" style="margin-top:14px">🚪 遣散（付遣散費送走，主角除外）</div>';
+  var dis=P.roster.filter(function(c){return c.id!==P.heroId;});
+  if(!dis.length)body+='<div class="note">目前只有主角。</div>';
+  dis.forEach(function(c){var cost=20+c.level*10;body+=uRow(c,'<button class="btn dim sm" data-dismiss="'+c.id+'" data-cost="'+cost+'"'+(P.gold<cost?' disabled':'')+'>遣散 '+cost+'🪙</button>');});
+  body+='<div class="note">頭像可點開看詳細能力值。</div>';
+  openSheet('🧭 隊伍編成','點頭像看詳情 · 安排上場/後勤/遣散',body);
   bindTeam();
 }
 function bindTeam(){
+  q('[data-detail]',function(el){charSheet(el.dataset.detail);});
+  q('[data-dismiss]',function(el){var id=el.dataset.dismiss,cost=+el.dataset.cost;var c=byId(id);
+    if(!confirm('確定遣散 '+c.name+'？將付遣散費 '+cost+'🪙')) return;
+    flushSave().then(function(){return srv('dismiss',{nick:P.nick,id:id});}).then(function(res){P=res.player;toast('已遣散 '+c.name+'（-'+res.cost+'🪙）');refreshTopbar();openTeam();}).catch(function(e){toast('遣散失敗：'+e.message);});
+  });
   function toggle(arr,id,max,add){var i=arr.indexOf(id);if(add){if(arr.length>=max){toast('位置已滿');return;}if(i<0)arr.push(id);}else{if(i>=0)arr.splice(i,1);}saveP(openTeam);}
   q('[data-addb]',function(el){toggle(P.team.battle,el.dataset.addb,BATTLE_MAX,true);});
   q('[data-rm]',function(el){toggle(P.team.battle,el.dataset.rm,BATTLE_MAX,false);});
@@ -401,7 +414,22 @@ function uRow(c,btn){var st=isSup(c.job)?null:cStats(c);var ci=cinfo(c.job);
   var sub=isSup(c.job)?(SUPPORT[c.job].desc):('HP '+c.hp+'/'+c.maxhp+' ・ AC '+st.ac+' ・ 攻+'+st.atk);
   var hpbar=isSup(c.job)?'':'<div class="hpbar"><i style="width:'+Math.max(0,c.hp/c.maxhp*100)+'%"></i></div>';
   var rc=RACES[c.race]?RACES[c.race].ico+RACES[c.race].nm+' ':'';
-  return '<div class="u"><div class="av">'+avatarHTML(c)+'</div><div class="info"><b>'+c.name+' <span class="tag">Lv'+c.level+'</span></b><small>'+rc+ci.ico+ci.nm+' ・ '+sub+'</small>'+hpbar+'</div>'+(btn||'')+'</div>';
+  return '<div class="u"><div class="av" data-detail="'+c.id+'" style="cursor:pointer">'+avatarHTML(c)+'</div><div class="info"><b>'+c.name+' <span class="tag">Lv'+c.level+'</span></b><small>'+rc+ci.ico+ci.nm+' ・ '+sub+'</small>'+hpbar+'</div>'+(btn||'')+'</div>';
+}
+function cXpNext(level){return level*100+(level-1)*(level-1)*20;}
+function charSheet(id){
+  var c=byId(id);if(!c)return;var ci=cinfo(c.job);var ri=RACES[c.race];
+  var body='<div class="pbox" id="csp" style="width:min(46vw,160px)">'+(c.portrait?'<img src="'+c.portrait+'">':'<div class="ph" style="font-size:40px">'+ci.ico+'</div>')+'</div>';
+  body+='<div class="note" style="text-align:center;margin:8px 0 4px;font-size:13px">'+(ri?ri.ico+ri.nm+' ':'')+ci.ico+ci.nm+' ・ Lv'+c.level+'</div>';
+  body+='<div class="abil">';
+  AB.forEach(function(a){var s=cab(c,a);var m=cmod(s);body+='<div class="ab"><small>'+ABI[a]+' '+ABN[a]+'</small><b>'+s+'</b><span class="mm">'+(m>=0?'+':'')+m+'</span></div>';});
+  body+='</div>';
+  if(!isSup(c.job)){var st=cStats(c);body+='<div class="card" style="margin-top:10px"><div class="note" style="text-align:left">❤️ 生命 '+c.hp+'/'+c.maxhp+'　🛡️ AC '+st.ac+'　⚔️ 攻擊 +'+st.atk+'　🎯 傷害 '+st.dmg+'</div><div class="note" style="text-align:left">招牌技：'+COMBAT[c.job].skill+'</div></div>';}
+  else body+='<div class="card" style="margin-top:10px"><div class="note" style="text-align:left">後勤增益：'+SUPPORT[c.job].desc+'</div></div>';
+  body+='<div class="glab" style="margin-top:8px">裝備</div>';
+  ['weapon','armor','trinket'].forEach(function(slot){var eq=c.equip[slot]?gById(c.equip[slot]):null;var lb={weapon:'🗡️武器',armor:'🛡️防具',trinket:'💍飾品'}[slot];body+='<div class="note" style="text-align:left">'+lb+'：'+(eq?eq.ico+eq.nm+'（'+gearDesc(eq)+'）':'（無）')+'</div>';});
+  body+='<div class="note" style="text-align:left;margin-top:6px">經驗：'+c.xp+' / '+cXpNext(c.level)+'</div>';
+  openSheet('📋 '+c.name,'',body);
 }
 
 // ---- 裝備 ----
@@ -485,7 +513,7 @@ function renderRecruitForm(){
     var name=(window._rname||'').trim().slice(0,16)||ci.nm;
     var b=this;b.disabled=true;b.textContent='招募中…';
     flushSave().then(function(){return srv('recruit',{nick:P.nick,name:name,job:recruitJob,race:recruitRace,portrait:recruitPortrait,seed:recruitSeed,cost:recruitCost});}).then(function(res){
-      P=res.player;toast(name+' 加入了小隊！');openTavern();
+      P=res.player;toast(name+' 加入了小隊！');refreshTopbar();openTavern();
     }).catch(function(e){b.disabled=false;b.textContent='✅ 招募（'+recruitCost+'🪙）';toast('招募失敗：'+e.message);});
   };
 }
@@ -519,25 +547,29 @@ function openRoster(){
 
 // ============ 地下城 ============
 function openDungeon(){
-  var suggest=(P.deepest||0)+1; if(suggest>MAX_FLOOR)suggest=MAX_FLOOR;
+  var deep=P.deepest||0, maxStart=Math.max(1,deep);
+  var suggest=Math.min(MAX_FLOOR,deep+1);
   var battle=P.team.battle.length, sup=P.team.support.length;
   var body='<div class="note" style="text-align:left">目前隊伍：戰鬥 '+battle+'/'+BATTLE_MAX+' ・ 後勤 '+sup+'/'+SUPPORT_MAX+'　'+(battle?'':'<b style="color:var(--hp)">（至少要 1 名戰鬥位！）</b>')+'</div>';
-  body+='<div class="card"><div class="glab">要挑戰到第幾層？（最深已達 '+(P.deepest||0)+'）</div>'+
+  body+='<div class="card"><div class="glab">起始樓層（可從已解鎖的第 1～'+maxStart+' 層出發）</div>'+
+    '<input class="inp" id="sf" type="number" min="1" max="'+maxStart+'" value="1">'+
+    '<div class="glab" style="margin-top:10px">目標樓層（最深已達 '+deep+'）</div>'+
     '<input class="inp" id="tf" type="number" min="1" max="'+MAX_FLOOR+'" value="'+suggest+'">'+
-    '<div class="note" style="text-align:left;margin-top:8px">每 5 層有頭目。中途全滅會撤退失敗，但撿到的都帶得走。</div></div>';
+    '<div class="note" style="text-align:left;margin-top:8px">每 5 層有頭目。中途全滅會撤退失敗，但撿到的都帶得走。從深層出發可省去重打前段。</div></div>';
   body+='<button class="btn ok" id="dive"'+(battle?'':' disabled')+'>⚔️ 自動探索出發</button>';
   openSheet('⬇️ 地下城','GAS 會擲骰跑完整場，回你戰報',body);
   var dv=document.getElementById('dive');if(dv)dv.onclick=function(){
-    var t=Math.max(1,Math.min(MAX_FLOOR,parseInt(document.getElementById('tf').value,10)||1));
+    var s=Math.max(1,Math.min(maxStart,parseInt(document.getElementById('sf').value,10)||1));
+    var t=Math.max(s,Math.min(MAX_FLOOR,parseInt(document.getElementById('tf').value,10)||s));
     dv.disabled=true;dv.textContent='探索中…擲骰計算';
-    flushSave().then(function(){return srv('dungeon',{nick:P.nick,target:t});}).then(function(res){P=res.player;modal.classList.remove('show');renderReport(res.report);})
+    flushSave().then(function(){return srv('dungeon',{nick:P.nick,start:s,target:t});}).then(function(res){P=res.player;modal.classList.remove('show');renderReport(res.report);})
       .catch(function(e){dv.disabled=false;dv.textContent='⚔️ 自動探索出發';toast('錯誤：'+e.message);});
   };
 }
 function renderReport(rep){
   var head=rep.wiped?'💀 小隊全滅撤退':(rep.cleared?'🎉 探索成功！':'🏳️ 探索結束');
   var h=topbar()+'<div class="pad" style="background:radial-gradient(120% 80% at 50% -10%,#2a2140,transparent 55%)">';
-  h+='<h1>'+head+'</h1><p class="lead">目標第 '+rep.target+' 層 ・ 實際抵達第 '+rep.reached+' 層</p>';
+  h+='<h1>'+head+'</h1><p class="lead">從第 '+(rep.start||1)+' 層探索 → 目標第 '+rep.target+' 層 ・ 實際抵達第 '+rep.reached+' 層</p>';
   h+='<div class="card"><b>結算</b><div class="note" style="text-align:left;margin-top:6px">'+
     '🪙 金幣 +'+rep.gold+'　⭐ 經驗 +'+rep.xp+'　🎁 掉落 '+(rep.loot.length||0)+' 件</div>';
   if(rep.levelUps&&rep.levelUps.length){h+='<div class="note" style="text-align:left;color:var(--gold)">⬆️ '+rep.levelUps.map(function(u){return u.name+' → Lv'+u.level;}).join('、')+'</div>';}

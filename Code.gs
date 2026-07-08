@@ -30,6 +30,7 @@ function route_(action, p){
     case 'create':  return apiCreate_(p);
     case 'save':    return apiSave_(p);
     case 'recruit': return apiRecruit_(p);
+    case 'dismiss': return apiDismiss_(p);
     case 'dungeon': return apiDungeon_(p);
     case 'roster':  return { players: listPlayers() };
     case 'meta':    return apiMeta_();
@@ -99,19 +100,43 @@ function apiRecruit_(p){
   return { player: player, recruited: c };
 }
 
+// 遣散夥伴（付遣散費；主角不可遣散）
+function severanceCost(level){ return 20 + (level||1)*10; }
+function apiDismiss_(p){
+  var nick = (p.nick||'').trim();
+  var player = loadPlayer(nick);
+  if (!player) throw new Error('找不到存檔');
+  if (p.id === player.heroId) throw new Error('主角無法遣散');
+  var idx = -1;
+  for (var i=0;i<player.roster.length;i++){ if (player.roster[i].id === p.id){ idx=i; break; } }
+  if (idx < 0) throw new Error('找不到該角色');
+  var cost = severanceCost(player.roster[idx].level);
+  if ((player.gold||0) < cost) throw new Error('遣散費不足（需 '+cost+'🪙）');
+  player.gold -= cost;
+  player.roster.splice(idx, 1);
+  player.team.battle  = (player.team.battle||[]).filter(function(x){ return x !== p.id; });
+  player.team.support = (player.team.support||[]).filter(function(x){ return x !== p.id; });
+  cleanPlayer_(player);
+  savePlayer(player);
+  return { player: player, cost: cost };
+}
+
 // 地下城：後端跑完整探索，套用結果後存檔
 function apiDungeon_(p){
   var nick = (p.nick||'').trim();
   var player = loadPlayer(nick);
   if (!player) throw new Error('找不到存檔');
-  var target = Math.max(1, Math.min(CFG.MAX_FLOOR, (p.target|0) || 1));
+  // 起始層最多只能到「已解鎖的最深層」；目標層不得低於起始層
+  var maxStart = Math.max(1, player.deepest||1);
+  var start = Math.max(1, Math.min(maxStart, (p.start|0) || 1));
+  var target = Math.max(start, Math.min(CFG.MAX_FLOOR, (p.target|0) || start));
 
   var byId = {}; player.roster.forEach(function(c){ byId[c.id]=c; });
   var battle = (player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
   var support = (player.team.support||[]).map(function(id){ return byId[id]; }).filter(Boolean);
   if (!battle.length) throw new Error('至少要有一名戰鬥位角色');
 
-  var report = runDungeon({ battle:battle, support:support }, target);
+  var report = runDungeon({ battle:battle, support:support }, start, target);
 
   // 套用結果
   player.gold = (player.gold||0) + report.gold;
