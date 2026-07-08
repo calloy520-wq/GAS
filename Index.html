@@ -229,11 +229,13 @@ function mock(action,p){return new Promise(function(res,rej){
   function roll(){var a=[d6(),d6(),d6(),d6()].sort(function(x,y){return x-y;});return a[1]+a[2]+a[3];}
   function d6(){return 1+Math.floor(Math.random()*6);}
   function mk(name,job,portrait,seed,pbase,race){var base={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){base[a]=Math.min(20,((pbase&&pbase[a])||roll())+(g[a]||0));});var c={id:'c'+Math.random().toString(36).slice(2,9),name:name,job:job,race:race||'human',support:isSup(job),portrait:portrait||'',seed:seed||0,level:1,xp:0,base:base,equip:{weapon:null,armor:null,trinket:null},hp:0,maxhp:0};c.maxhp=cMaxHp(c);c.hp=c.maxhp;return c;}
+  function mockCand(pl){var rw=[['common',50],['fine',27],['rare',15],['epic',7],['legend',1]],tot=100,x=Math.random()*tot,rk='common';for(var i=0;i<rw.length;i++){x-=rw[i][1];if(x<0){rk=rw[i][0];break;}}var sup=Math.random()<0.32,pool=sup?Object.keys(SUPPORT):Object.keys(COMBAT);var job=pool[Math.floor(Math.random()*pool.length)],race=RACE_KEYS[Math.floor(Math.random()*RACE_KEYS.length)];var bonus={common:0,fine:0,rare:1,epic:1,legend:2}[rk],base={};AB.forEach(function(a){base[a]=Math.min(20,roll()+bonus);});var mul={common:1,fine:1.8,rare:3.4,epic:6,legend:11}[rk];var cost=Math.round((60+(pl.deepest||0)*8)*mul*(1+pl.roster.length*0.12));return {cid:'cand'+Math.random().toString(36).slice(2,8),job:job,race:race,rarity:rk,base:base,cost:cost};}
   setTimeout(function(){try{
     if(action==='login'){var pl=DB[p.nick.trim()]||null;return res({exists:!!pl,player:pl});}
     if(action==='create'){var h=mk(p.name,p.job,p.portrait,p.seed,p.base,p.race);var pl={nick:p.nick.trim(),gold:120,deepest:0,heroId:h.id,roster:[h],bag:[],team:{battle:[h.id],support:[]}};put(pl);return res(pl);}
     if(action==='save'){put(p.player);return res(p.player);}
-    if(action==='recruit'){var pl=DB[p.nick.trim()];if(pl.roster.length>=10)return rej(new Error('倉庫已滿'));if(pl.gold<p.cost)return rej(new Error('金幣不足'));var c=mk(p.name,p.job,p.portrait,p.seed,p.base,p.race);pl.gold-=p.cost;pl.roster.push(c);put(pl);return res({player:pl,recruited:c});}
+    if(action==='tavern'){var pl=DB[p.nick.trim()];if(p.op==='refresh'){if(pl.gold<30)return rej(new Error('金幣不足'));pl.gold-=30;pl.tavern=null;}if(!pl.tavern||!pl.tavern.length){pl.tavern=[mockCand(pl),mockCand(pl),mockCand(pl)];}put(pl);return res({player:pl});}
+    if(action==='recruit'){var pl=DB[p.nick.trim()];if(pl.roster.length>=10)return rej(new Error('倉庫已滿'));var idx=-1;(pl.tavern||[]).forEach(function(c,i){if(c.cid===p.cid)idx=i;});if(idx<0)return rej(new Error('候選人已不在'));var cand=pl.tavern[idx];if(pl.gold<cand.cost)return rej(new Error('金幣不足'));var c=mk(p.name,cand.job,p.portrait,p.seed,cand.base,cand.race);c.rarity=cand.rarity;pl.gold-=cand.cost;pl.roster.push(c);pl.tavern.splice(idx,1);put(pl);return res({player:pl,recruited:c});}
     if(action==='dismiss'){var pl=DB[p.nick.trim()];if(p.id===pl.heroId)return rej(new Error('主角無法遣散'));var tc=pl.roster.filter(function(c){return c.id===p.id;})[0]||{level:1};var cost=20+tc.level*10;if(pl.gold<cost)return rej(new Error('遣散費不足'));pl.roster=pl.roster.filter(function(c){return c.id!==p.id;});pl.gold-=cost;pl.team.battle=pl.team.battle.filter(function(x){return x!==p.id;});pl.team.support=pl.team.support.filter(function(x){return x!==p.id;});put(pl);return res({player:pl,cost:cost});}
     if(action==='quest'){var pl=DB[p.nick.trim()];if(p.op==='accept'){var dd=Math.max(1,pl.deepest||0);var n=6+dd*2;pl.quest={id:'q'+Math.random().toString(36).slice(2,7),type:'kill',target:n,prog:0,name:'清剿 '+n+' 隻魔物',desc:'累積擊敗 '+n+' 隻敵人',reward:40+n*7};}else pl.quest=null;put(pl);return res({player:pl});}
     if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,skills:(f>st?['🔍 隊長 察覺發現暗格 +'+Math.round(gg*0.3)+'🪙']:[]),loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2,lines:['R1','⚔️ 隊長 擊中 👺哥布林 −5','🩸 👺哥布林 打中 隊長 −3','R2','✦ 隊長 擊中 👺哥布林 −9（暴擊！） 💀']}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,kills:fl.length*2,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};
@@ -500,13 +502,14 @@ function uRow(c,btn){var st=isSup(c.job)?null:cStats(c);var ci=cinfo(c.job);
   var sub=isSup(c.job)?(SUPPORT[c.job].desc):('HP '+c.hp+'/'+c.maxhp+' ・ AC '+st.ac+' ・ 攻+'+st.atk);
   var hpbar=isSup(c.job)?'':'<div class="hpbar"><i style="width:'+Math.max(0,c.hp/c.maxhp*100)+'%"></i></div>';
   var rc=RACES[c.race]?RACES[c.race].ico+RACES[c.race].nm+' ':'';
-  return '<div class="u"><div class="av" data-detail="'+c.id+'" style="cursor:pointer">'+avatarHTML(c)+'</div><div class="info"><b>'+c.name+' <span class="tag">Lv'+c.level+'</span></b><small>'+rc+ci.ico+ci.nm+' ・ '+sub+'</small>'+hpbar+'</div>'+(btn||'')+'</div>';
+  var rr=c.rarity&&RARITY_C[c.rarity]?'<span style="color:'+rarC(c.rarity).color+'">'+rarC(c.rarity).star+'</span> ':'';
+  return '<div class="u"><div class="av" data-detail="'+c.id+'" style="cursor:pointer">'+avatarHTML(c)+'</div><div class="info"><b>'+rr+c.name+' <span class="tag">Lv'+c.level+'</span></b><small>'+rc+ci.ico+ci.nm+' ・ '+sub+'</small>'+hpbar+'</div>'+(btn||'')+'</div>';
 }
 function cXpNext(level){return level*100+(level-1)*(level-1)*20;}
 function charSheet(id){
   var c=byId(id);if(!c)return;var ci=cinfo(c.job);var ri=RACES[c.race];
   var body='<div class="pbox" id="csp" style="width:min(46vw,160px)">'+(c.portrait?'<img src="'+c.portrait+'">':'<div class="ph" style="font-size:40px">'+ci.ico+'</div>')+'</div>';
-  body+='<div class="note" style="text-align:center;margin:8px 0 4px;font-size:13px">'+(ri?ri.ico+ri.nm+' ':'')+ci.ico+ci.nm+' ・ Lv'+c.level+'</div>';
+  body+='<div class="note" style="text-align:center;margin:8px 0 4px;font-size:13px">'+(c.rarity&&RARITY_C[c.rarity]?'<span style="color:'+rarC(c.rarity).color+'">'+rarC(c.rarity).star+'</span> ':'')+(ri?ri.ico+ri.nm+' ':'')+ci.ico+ci.nm+' ・ Lv'+c.level+'</div>';
   body+='<div class="abil">';
   AB.forEach(function(a){var s=cab(c,a);var m=cmod(s);body+='<div class="ab"><small>'+ABI[a]+' '+ABN[a]+'</small><b>'+s+'</b><span class="mm">'+(m>=0?'+':'')+m+'</span></div>';});
   body+='</div>';
@@ -578,46 +581,58 @@ function openShop(){
   var sa=document.getElementById('sellall');if(sa)sa.onclick=function(){if(!(P.bag||[]).length)return;if(!confirm('賣掉背包所有未裝備的裝備？'))return;var tot=0;P.bag.forEach(function(id){var g=gById(id);if(g)tot+=sellPrice(g);});P.bag=[];P.gold+=tot;saveP(openShop);toast('全部賣出 +'+tot+'🪙');};
 }
 
-// ---- 酒館（招募）----
+// ---- 酒館（稀有度招募・輪替候選）----
+var RARITY_C={common:{nm:'常見',star:'⭐',color:'#b6a892'},fine:{nm:'精良',star:'⭐⭐',color:'#7cc36a'},rare:{nm:'稀有',star:'⭐⭐⭐',color:'#5a9ee5'},epic:{nm:'史詩',star:'⭐⭐⭐⭐',color:'#b06fe0'},legend:{nm:'傳說',star:'⭐⭐⭐⭐⭐',color:'#f4c34e'}};
+function rarC(k){return RARITY_C[k]||RARITY_C.common;}
+function candStats(cand){return {job:cand.job,race:cand.race,level:1,base:cand.base,equip:{weapon:null,armor:null,trinket:null}};}
 function openTavern(){
-  var body='<div class="note" style="text-align:left">目前 '+P.roster.length+'/'+ROSTER_MAX+' 人。招募費依職業不同。</div>';
-  body+='<div class="glab">⚔️ 戰鬥職業</div>';
-  Object.keys(COMBAT).forEach(function(k){body+=recruitRow(k,120);});
-  body+='<div class="glab" style="margin-top:10px">🎒 後勤職業（不下場、給增益）</div>';
-  Object.keys(SUPPORT).forEach(function(k){body+=recruitRow(k,100);});
-  openSheet('🍺 酒館','選職業 → 建頭像 → 加入小隊',body);
-  q('[data-rec]',function(el){startRecruit(el.dataset.rec,+el.dataset.cost);});
+  openSheet('🍺 酒館','今日應徵的傭兵（稀有度隨機）','<div class="note">召集應徵者…</div>');
+  flushSave().then(function(){return srv('tavern',{nick:P.nick,op:'list'});}).then(function(r){P=r.player;refreshTopbar();renderTavern();}).catch(function(e){toast(e.message);});
 }
-function recruitRow(job,cost){var c=cinfo(job);var desc=isSup(job)?SUPPORT[job].desc:(COMBAT[job].blurb+'・招牌技「'+COMBAT[job].skill+'」');
-  return '<div class="u"><div class="av">'+c.ico+'</div><div class="info"><b>'+c.nm+'</b><small>'+desc+'</small></div>'+
-    '<button class="btn ok sm" data-rec="'+job+'" data-cost="'+cost+'"'+(P.gold<cost||P.roster.length>=ROSTER_MAX?' disabled':'')+'>招募 '+cost+'🪙</button></div>';}
-var recruitJob=null, recruitCost=0, recruitRace='human', recruitPortrait='', recruitSeed=0;
-function startRecruit(job,cost){
+function renderTavern(){
+  var body='<div class="note" style="text-align:left">小隊 '+P.roster.length+'/'+ROSTER_MAX+' 人。應徵者資質已隨機抽定，雇走就沒了；雇用後可自訂名字與立繪。</div>';
+  (P.tavern||[]).forEach(function(cand){
+    var ci=cinfo(cand.job),rc=rarC(cand.rarity),r=RACES[cand.race],pc=candStats(cand);
+    var top=AB.slice().sort(function(a,b){return cand.base[b]-cand.base[a];}).slice(0,2).map(function(a){return ABI[a]+cand.base[a];}).join(' ');
+    var afford=P.gold>=cand.cost&&P.roster.length<ROSTER_MAX;
+    body+='<div class="u" style="border-color:'+rc.color+'"><div class="av">'+ci.ico+'</div><div class="info">'+
+      '<b style="color:'+rc.color+'">'+rc.star+' '+rc.nm+'</b> <span class="tag">'+r.ico+r.nm+'・'+ci.nm+'</span>'+
+      '<small>'+top+' ・ HP '+cMaxHp(pc)+(isSup(cand.job)?'':' ・ AC '+cStats(pc).ac)+'</small>'+
+      '<small>'+(isSup(cand.job)?SUPPORT[cand.job].desc:('技「'+COMBAT[cand.job].skill+'」'))+'</small></div>'+
+      '<button class="btn ok sm" data-cand="'+cand.cid+'"'+(afford?'':' disabled')+'>雇 '+cand.cost+'🪙</button></div>';
+  });
+  if(!(P.tavern||[]).length)body+='<div class="note">應徵者都被雇走了，換一批看看？</div>';
+  body+='<button class="btn dim sm" id="tref" style="margin-top:6px"'+(P.gold<30?' disabled':'')+'>🔄 換一批應徵者（30🪙）</button>';
+  sheet.innerHTML='<button class="close" onclick="closeSheet()">✕</button><h2>🍺 酒館</h2><p class="sub">今日應徵的傭兵（稀有度隨機・雇走就沒了）</p>'+body;
+  q('[data-cand]',function(el){var cand=(P.tavern||[]).filter(function(c){return c.cid===el.dataset.cand;})[0];if(cand)startRecruit(cand);});
+  var rf=document.getElementById('tref');if(rf)rf.onclick=function(){rf.disabled=true;flushSave().then(function(){return srv('tavern',{nick:P.nick,op:'refresh'});}).then(function(r){P=r.player;refreshTopbar();renderTavern();}).catch(function(e){rf.disabled=false;toast(e.message);});};
+}
+var recruitCand=null, recruitPortrait='', recruitSeed=0;
+function startRecruit(cand){
   if(P.roster.length>=ROSTER_MAX){toast('倉庫已滿，請先遣散');return;}
-  if(P.gold<cost){toast('金幣不足');return;}
-  recruitJob=job;recruitCost=cost;recruitRace='human';recruitPortrait='';recruitSeed=0;window._rname='';
+  if(P.gold<cand.cost){toast('金幣不足');return;}
+  recruitCand=cand;recruitPortrait='';recruitSeed=0;window._rname='';
   renderRecruitForm();
 }
 function renderRecruitForm(){
-  var job=recruitJob, ci=cinfo(job);
+  var cand=recruitCand,ci=cinfo(cand.job),rc=rarC(cand.rarity),r=RACES[cand.race],pc=candStats(cand);
   var body='<div class="pbox" id="rpbox" style="width:min(46vw,170px)">'+(recruitPortrait?'<img src="'+recruitPortrait+'">':'<div class="ph">尚未建立頭像</div>')+'</div>';
   body+='<button class="btn re sm" style="width:auto;display:block;margin:10px auto 12px" id="rmkport">🎨 建立頭像</button>';
+  body+='<div class="card" style="border-color:'+rc.color+'"><b style="color:'+rc.color+'">'+rc.star+' '+rc.nm+'</b> '+r.ico+r.nm+' '+ci.ico+ci.nm+'<div class="abil" style="margin-top:8px">';
+  AB.forEach(function(a){var s=cand.base[a],m=cmod(s);body+='<div class="ab"><small>'+ABI[a]+ABN[a]+'</small><b>'+s+'</b><span class="mm">'+(m>=0?'+':'')+m+'</span></div>';});
+  body+='</div><div class="note" style="text-align:left">HP '+cMaxHp(pc)+(isSup(cand.job)?'':' ・ AC '+cStats(pc).ac)+' ・ 專長 '+skillNames(cand.job,cand.race)+'</div></div>';
   body+='<div class="glab">名字</div><input class="inp" id="rname" maxlength="16" placeholder="'+ci.nm+'" value="'+(window._rname||'')+'">';
-  body+='<div class="glab" style="margin-top:10px">種族（影響能力值）</div><div class="chips" id="rrace">';
-  RACE_KEYS.forEach(function(k){var r=RACES[k];body+='<span class="chip'+(recruitRace===k?' on':'')+'" data-rr="'+k+'">'+r.ico+' '+r.nm+'</span>';});
-  body+='</div><div class="note" style="text-align:left">'+RACES[recruitRace].ico+' '+RACES[recruitRace].perk+'　職業：'+ci.ico+' '+ci.nm+'</div>';
-  body+='<button class="btn ok" id="rhire" style="margin-top:6px">✅ 招募（'+recruitCost+'🪙）</button>';
-  openSheet(ci.ico+' 招募 '+ci.nm,'屬性由後端擲骰＋種族加值，立繪只是外觀',body);
+  body+='<button class="btn ok" id="rhire" style="margin-top:10px">✅ 雇用（'+cand.cost+'🪙）</button>';
+  openSheet(rc.star+' 雇用 '+ci.nm,'資質已定，客製名字與立繪',body);
   var rn=document.getElementById('rname');rn.addEventListener('input',function(){window._rname=rn.value;});
-  q('[data-rr]',function(el){recruitRace=el.dataset.rr;renderRecruitForm();});
-  document.getElementById('rmkport').onclick=function(){openPortrait(recruitJob,function(r){recruitPortrait=r.portrait;recruitSeed=r.seed;renderRecruitForm();},RACE_KEYS.indexOf(recruitRace));};
+  document.getElementById('rmkport').onclick=function(){openPortrait(cand.job,function(rr){recruitPortrait=rr.portrait;recruitSeed=rr.seed;renderRecruitForm();},RACE_KEYS.indexOf(cand.race));};
   document.getElementById('rhire').onclick=function(){
     if(!recruitPortrait){toast('請先建立頭像');return;}
     var name=(window._rname||'').trim().slice(0,16)||ci.nm;
-    var b=this;b.disabled=true;b.textContent='招募中…';
-    flushSave().then(function(){return srv('recruit',{nick:P.nick,name:name,job:recruitJob,race:recruitRace,portrait:recruitPortrait,seed:recruitSeed,cost:recruitCost});}).then(function(res){
-      P=res.player;toast(name+' 加入了小隊！');refreshTopbar();openTavern();
-    }).catch(function(e){b.disabled=false;b.textContent='✅ 招募（'+recruitCost+'🪙）';toast('招募失敗：'+e.message);});
+    var b=this;b.disabled=true;b.textContent='雇用中…';
+    flushSave().then(function(){return srv('recruit',{nick:P.nick,cid:cand.cid,name:name,portrait:recruitPortrait,seed:recruitSeed});}).then(function(res){
+      P=res.player;toast(name+' 加入了小隊！');refreshTopbar();renderTavern();
+    }).catch(function(e){b.disabled=false;b.textContent='✅ 雇用（'+cand.cost+'🪙）';toast('招募失敗：'+e.message);});
   };
 }
 

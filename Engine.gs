@@ -15,6 +15,35 @@ function rint(a,b){ return a + Math.floor(Math.random()*(b-a+1)); }
 function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 function uid(){ return 'c' + Date.now().toString(36) + Math.floor(Math.random()*1e4).toString(36); }
 
+// ---------- 稀有度招募 ----------
+function rollRarity(){
+  var tot=0; RARITY.forEach(function(r){ tot+=r.w; });
+  var x = Math.random()*tot;
+  for (var i=0;i<RARITY.length;i++){ x-=RARITY[i].w; if (x<0) return RARITY[i].key; }
+  return 'common';
+}
+function rollBaseByRarity(rk){
+  var r = rarityInfo(rk), base={};
+  ABILITIES.forEach(function(a){
+    var v = r.bestOf2 ? Math.max(roll4d6dropLow(), roll4d6dropLow()) : roll4d6dropLow();
+    if (r.floor) v = Math.max(r.floor, v);
+    v += (r.allBonus||0);
+    base[a] = Math.min(20, v);
+  });
+  if (r.twoBonus){ var ks=ABILITIES.slice(); for (var i=0;i<2;i++){ var k=ks.splice(Math.floor(Math.random()*ks.length),1)[0]; base[k]=Math.min(20, base[k]+1); } }
+  return base;
+}
+function genCandidate(deepest, rosterSize){
+  var support = Math.random() < 0.32;
+  var pool = support ? Object.keys(SUPPORT_CLASSES) : Object.keys(COMBAT_CLASSES);
+  var job = pool[Math.floor(Math.random()*pool.length)];
+  var race = RACE_KEYS[Math.floor(Math.random()*RACE_KEYS.length)];
+  var rk = rollRarity();
+  var base = rollBaseByRarity(rk);
+  var cost = Math.round((60 + (deepest||0)*8) * rarityInfo(rk).costMul * (1 + (rosterSize||0)*0.12));
+  return { cid:'cand'+uid(), job:job, race:race, rarity:rk, base:base, cost:cost };
+}
+
 // ---------- 建立角色 ----------
 function validBase_(base){
   if (!base) return false;

@@ -95,6 +95,18 @@ var RACE_SKILLS = {
   human:['persuasion'], elf:['perception'], darkelf:['stealth'], beast:['survival'],
   dragon:['athletics'], demon:['persuasion'], angel:['medicine'], vampire:['stealth']
 };
+// ---- 稀有度（招募資質）----
+var RACE_KEYS = ['human','elf','darkelf','beast','dragon','demon','angel','vampire'];
+var RARITY = [
+  { key:'common', nm:'常見', star:'⭐',          w:50, costMul:1.0,  allBonus:0, bestOf2:false, floor:0 },
+  { key:'fine',   nm:'精良', star:'⭐⭐',        w:27, costMul:1.8,  allBonus:0, bestOf2:false, floor:0, twoBonus:true },
+  { key:'rare',   nm:'稀有', star:'⭐⭐⭐',      w:15, costMul:3.4,  allBonus:1, bestOf2:false, floor:0 },
+  { key:'epic',   nm:'史詩', star:'⭐⭐⭐⭐',    w:7,  costMul:6.0,  allBonus:1, bestOf2:true,  floor:0 },
+  { key:'legend', nm:'傳說', star:'⭐⭐⭐⭐⭐',  w:1,  costMul:11.0, allBonus:2, bestOf2:true,  floor:12 }
+];
+var RARITY_BY = {}; RARITY.forEach(function(r){ RARITY_BY[r.key]=r; });
+function rarityInfo(k){ return RARITY_BY[k] || RARITY_BY.common; }
+
 function charSkills(c){
   var s = {}; (CLASS_SKILLS[c.job]||[]).forEach(function(k){ s[k]=1; }); (RACE_SKILLS[c.race]||[]).forEach(function(k){ s[k]=1; });
   return Object.keys(s);

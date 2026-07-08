@@ -29,6 +29,7 @@ function route_(action, p){
     case 'login':   return apiLogin_(p);
     case 'create':  return apiCreate_(p);
     case 'save':    return apiSave_(p);
+    case 'tavern':  return apiTavern_(p);
     case 'recruit': return apiRecruit_(p);
     case 'dismiss': return apiDismiss_(p);
     case 'quest':   return apiQuest_(p);
@@ -84,18 +85,42 @@ function apiSave_(p){
   return savePlayer(p.player);
 }
 
-// 招募夥伴（後端擲屬性、驗證金幣與名額）
-function apiRecruit_(p){
-  var nick = (p.nick||'').trim();
-  var player = loadPlayer(nick);
+// 酒館候選：列出／刷新（後端抽稀有度與資質）
+function apiTavern_(p){
+  var player = loadPlayer((p.nick||'').trim());
   if (!player) throw new Error('找不到存檔');
-  if (!classInfo(p.job)) throw new Error('未知職業');
+  var n = 3;
+  if (p.op === 'refresh'){
+    var fee = 30;
+    if ((player.gold||0) < fee) throw new Error('金幣不足以換一批候選（需 '+fee+'🪙）');
+    player.gold -= fee;
+    player.tavern = null;
+  }
+  if (!player.tavern || !player.tavern.length){
+    player.tavern = [];
+    for (var i=0;i<n;i++) player.tavern.push(genCandidate(player.deepest||0, (player.roster||[]).length));
+  }
+  cleanPlayer_(player);
+  savePlayer(player);
+  return { player: player };
+}
+
+// 招募：從酒館候選名單雇用某位（資質已由後端抽定，玩家只客製名字/頭像）
+function apiRecruit_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
   if ((player.roster||[]).length >= CFG.ROSTER_MAX) throw new Error('倉庫已滿（上限 '+CFG.ROSTER_MAX+' 人），請先遣散');
-  var cost = Math.max(0, p.cost|0);
-  if ((player.gold||0) < cost) throw new Error('金幣不足');
-  var c = makeChar(p.name, p.job, p.portrait, p.seed, p.base, p.race);
-  player.gold -= cost;
+  var list = player.tavern || [];
+  var idx = -1;
+  for (var i=0;i<list.length;i++){ if (list[i].cid === p.cid){ idx=i; break; } }
+  if (idx < 0) throw new Error('這位候選人已不在酒館，請刷新名單');
+  var cand = list[idx];
+  if ((player.gold||0) < cand.cost) throw new Error('金幣不足');
+  var c = makeChar(p.name, cand.job, p.portrait, p.seed, cand.base, cand.race);
+  c.rarity = cand.rarity;
+  player.gold -= cand.cost;
   player.roster.push(c);
+  player.tavern.splice(idx, 1);           // 雇走後從名單移除
   cleanPlayer_(player);
   savePlayer(player);
   return { player: player, recruited: c };
