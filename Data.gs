@@ -275,7 +275,24 @@ var SEA_UNLOCKS = {
 };
 
 // ---- 船艦 / 海戰 ----
-function startShip(){ return { name:'初心號', hullMax:60, hull:60, cannon:6, cargoBonus:0, crew:8, speed:6, tier:1 }; }
+function startShip(){ return { name:'初心號', hullMax:60, hull:60, cannon:6, cargoBonus:0, crew:8, speed:6, gunTier:1, tier:1 }; }
+// 旗艦船級（每級決定各項上限；升級到上限需「船體擴建」提升船級）
+var FLAG_TIERS = [
+  { nm:'小帆船',   ico:'⛵', maxHull:120, maxCannon:12, maxCargo:20, maxCrew:16, maxGun:2, up:0 },
+  { nm:'快帆船',   ico:'🚤', maxHull:190, maxCannon:18, maxCargo:34, maxCrew:24, maxGun:3, up:1400 },
+  { nm:'巡防艦',   ico:'⚓', maxHull:290, maxCannon:28, maxCargo:46, maxCrew:38, maxGun:4, up:3600 },
+  { nm:'主力戰艦', ico:'🚢', maxHull:430, maxCannon:42, maxCargo:66, maxCrew:54, maxGun:5, up:8500 }
+];
+function shipTierIx(s){ return Math.max(0, Math.min(FLAG_TIERS.length-1, ((s&&s.tier)||1)-1)); }
+function shipCaps(s){ return FLAG_TIERS[shipTierIx(s)]; }
+function flagGunMul(s){ return 1 + 0.15*(((s&&s.gunTier)||1)-1); }   // 砲管等級：每級 +15% 砲擊
+function classUpCost(s){ var t=(s&&s.tier)||1; return (t < FLAG_TIERS.length) ? FLAG_TIERS[t].up : 0; }
+// 砲彈類別（開戰前的戰術裝填）
+var AMMO = {
+  round: { nm:'實心彈', ico:'🔴', ds:'均衡・對船身傷害最高' },
+  chain: { nm:'鏈彈',   ico:'⛓️', ds:'打斷索具・削弱敵還擊、打帶跑必逃' },
+  grape: { nm:'霰彈',   ico:'🍇', ds:'殺傷水手・大幅提升接舷俘虜成功率' }
+};
 function effectiveCargoMax(pl){ return CARGO_MAX + ((pl.ship&&pl.ship.cargoBonus)||0) + ((pl.com&&pl.com.lv>=6)?6:0); }
 var SHIP_UP = {
   hull:   { nm:'強化船身', ico:'🛠️', stat:'hullMax',    step:30, base:120 },

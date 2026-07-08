@@ -122,6 +122,8 @@ function ensureShape_(pl){
   if (!pl.ship || typeof pl.ship !== 'object') pl.ship = startShip();
   if (typeof pl.ship.hull !== 'number') pl.ship.hull = pl.ship.hullMax || 60;
   if (typeof pl.ship.speed !== 'number') pl.ship.speed = 6;
+  if (typeof pl.ship.gunTier !== 'number') pl.ship.gunTier = 1;
+  if (typeof pl.ship.tier !== 'number') pl.ship.tier = 1;
   if (typeof pl.invest !== 'number') pl.invest = 0;
   if (!Array.isArray(pl.fleet)) pl.fleet = [];
   if (!pl.holdings || typeof pl.holdings !== 'object') pl.holdings = {};   // 領地
