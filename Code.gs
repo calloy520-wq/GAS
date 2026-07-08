@@ -36,6 +36,7 @@ function route_(action, p){
     case 'trade':   return apiTrade_(p);
     case 'voyage':  return apiVoyage_(p);
     case 'naval':   return apiNaval_(p);
+    case 'raid':    return apiRaidPlayer_(p);
     case 'ship':    return apiShip_(p);
     case 'treasure':return apiTreasure_(p);
     case 'dungeon': return apiDungeon_(p);
@@ -315,6 +316,45 @@ function apiNaval_(p){
   return { player:player, report:report };
 }
 
+// ===== PvP：掠奪其他玩家 =====
+function apiRaidPlayer_(p){
+  var me = loadPlayer((p.nick||'').trim());
+  if (!me) throw new Error('找不到存檔');
+  if (!me.ship) me.ship = startShip();
+  if (me.ship.hull <= 0) throw new Error('船身破損，請先到船塢修理');
+  var target = loadPlayer((p.target||'').trim());
+  if (!target || target.nick === me.nick) throw new Error('目標無效');
+  if ((target.deepest||0) < 3) throw new Error('對方是新手，受保護不可掠奪');
+  if (!target.ship) target.ship = startShip();
+  var byId={}; (me.roster||[]).forEach(function(c){ byId[c.id]=c; });
+  var party = (me.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
+  var tById={}; (target.roster||[]).forEach(function(c){ tById[c.id]=c; });
+  var defParty = (target.team.battle||[]).map(function(id){ return tById[id]; }).filter(Boolean);
+  var enemy = { nm:target.nick+'的商船', ico:'⛵', hull:(target.ship.hullMax||60), cannon:(target.ship.cannon||6)+Math.floor(partyPower_(defParty)/5) };
+  var r = resolveNaval_(me.ship, party, enemy);
+  me.ship.hull = r.playerHull;
+  var report = { target:target.nick, win:r.win, log:r.log, gold:0, loot:[], hull:me.ship.hull, hullMax:me.ship.hullMax };
+  if (r.win){
+    var steal = Math.min(target.gold||0, Math.floor((target.gold||0)*0.2) + rint(10,40));
+    target.gold = (target.gold||0) - steal; me.gold = (me.gold||0) + steal; report.gold = steal;
+    if (!me.cargo) me.cargo = {};
+    var tg = Object.keys(target.cargo||{});
+    for (var i=0;i<3 && tg.length; i++){
+      var g = tg[rint(0,tg.length-1)];
+      if (target.cargo[g]>0 && cargoCount_(me) < effectiveCargoMax(me)){
+        target.cargo[g]--; if (target.cargo[g]<=0){ delete target.cargo[g]; tg=Object.keys(target.cargo); }
+        me.cargo[g]=(me.cargo[g]||0)+1; report.loot.push(g);
+      }
+    }
+  } else {
+    var pen = Math.min(me.gold||0, rint(20,50)); me.gold -= pen; report.lostGold = pen;
+  }
+  me.gold=Math.max(0,me.gold); target.gold=Math.max(0,target.gold);
+  cleanPlayer_(me); cleanPlayer_(target);
+  savePlayer(target); savePlayer(me);
+  return { player:me, report:report };
+}
+
 // ===== 船塢：修理 / 升級 / 投資 =====
 function upgradeCost_(kind, tier){ var u=SHIP_UP[kind]; return Math.round(u.base * Math.pow(1.6, tier)); }
 function apiShip_(p){
@@ -429,6 +469,13 @@ function apiDungeon_(p){
   // 首次擊破頭目樓層 → 觸發劇情
   report.newBosses = [];
   [5,10,15,20,25].forEach(function(bf){ if (oldDeep < bf && (player.deepest||0) >= bf) report.newBosses.push(bf); });
+  // 首殺頭目樓層 → 獨門神器（每個只給一次）
+  if (!player.uniques) player.uniques = {};
+  report.uniqueGains = [];
+  report.newBosses.forEach(function(bf){
+    var u = UNIQUE_BY_FLOOR[bf];
+    if (u && !player.uniques[bf]){ player.uniques[bf]=true; player.bag.push(u.id); report.uniqueGains.push({ ico:u.ico, nm:u.nm }); }
+  });
   // 委託結算
   report.questDone = applyQuest_(player, report);
 

@@ -235,13 +235,14 @@ function cmod(s){return Math.floor((s-10)/2);}
 function cprof(lv){return 2+Math.floor((lv-1)/4);}
 function cinfo(job){return COMBAT[job]||SUPPORT[job]||null;}
 function isSup(job){return !!SUPPORT[job];}
-function gById(id){var all=WEAPONS.concat(ARMORS).concat(TRINKETS);for(var i=0;i<all.length;i++)if(all[i].id===id)return all[i];return null;}
+var UNIQUE_GEAR_C={u_hazhi:{id:'u_hazhi',nm:'霸主之證',ico:'💠',abs:{str:1,dex:1,con:1}},u_heart:{id:'u_heart',nm:'深海之心',ico:'🌀',abs:{int:1,wis:1,cha:1}},u_soul:{id:'u_soul',nm:'魔王殘魂',ico:'☠️',abs:{str:2,con:1}},u_legend:{id:'u_legend',nm:'傳說之證',ico:'🌟',abs:{str:1,dex:1,con:1,int:1,wis:1,cha:1}}};
+function gById(id){if(id&&UNIQUE_GEAR_C[id])return UNIQUE_GEAR_C[id];var all=WEAPONS.concat(ARMORS).concat(TRINKETS);for(var i=0;i<all.length;i++)if(all[i].id===id)return all[i];return null;}
 var TRAITS_C={slayer:{nm:'屠龍者',ico:'🐲',good:true,grow:{str:1}},unbreak:{nm:'不屈',ico:'🛡️',good:true,grow:{con:1}},sharp:{nm:'神準',ico:'🎯',good:true,grow:{dex:1}},veteran:{nm:'老兵',ico:'🎖️',good:true,grow:{str:1,con:1}},lucky:{nm:'幸運兒',ico:'🍀',good:true,grow:{cha:1}},sage:{nm:'博學',ico:'📖',good:true,grow:{int:1}},wound:{nm:'舊傷',ico:'🩹',good:false,grow:{con:-1}},fearful:{nm:'懼暗',ico:'😨',good:false,grow:{wis:-1}},shaky:{nm:'手抖',ico:'🥶',good:false,grow:{dex:-1}}};
 function traitDesc(k){var g=(TRAITS_C[k]||{}).grow||{},ps=[];for(var a in g)ps.push(ABN[a]+(g[a]>0?'+':'')+g[a]);return ps.join(' ');}
 function bondLevelC(pts){pts=pts||0;if(pts>=50)return 4;if(pts>=30)return 3;if(pts>=15)return 2;if(pts>=5)return 1;return 0;}
 var BOND_NM_C=['—','C','B','A','S'];
 function bondKeyC(a,b){return [a,b].sort().join('|');}
-function cab(c,a){var v=c.base[a]||10;var t=c.equip&&c.equip.trinket?gById(c.equip.trinket):null;if(t&&t.ab===a)v+=t.val;if(c.traits)c.traits.forEach(function(k){var tr=TRAITS_C[k];if(tr&&tr.grow&&tr.grow[a])v+=tr.grow[a];});return v;}
+function cab(c,a){var v=c.base[a]||10;var t=c.equip&&c.equip.trinket?gById(c.equip.trinket):null;if(t&&t.ab===a)v+=t.val;if(t&&t.abs&&t.abs[a])v+=t.abs[a];if(c.traits)c.traits.forEach(function(k){var tr=TRAITS_C[k];if(tr&&tr.grow&&tr.grow[a])v+=tr.grow[a];});return v;}
 function cMaxHp(c){var ci=cinfo(c.job);var hd=ci.hd||8;var cm=cmod(cab(c,'con'));var hp=hd+cm;hp+=(c.level-1)*Math.max(1,Math.floor(hd/2)+1+cm);return Math.max(1,hp);}
 function cStats(c){var ci=cinfo(c.job);var w=c.equip.weapon?gById(c.equip.weapon):null;var a=c.equip.armor?gById(c.equip.armor):null;
   var atkB=cmod(cab(c,ci.atk))+cprof(c.level)+(w?w.bonus:0);var dd=w?w.dmg:ci.dmg;var db=cmod(cab(c,ci.atk))+(w?w.bonus:0);
@@ -294,12 +295,14 @@ function mock(action,p){return new Promise(function(res,rej){
     if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,skills:(f>st?['🔍 隊長 察覺發現暗格 +'+Math.round(gg*0.3)+'🪙']:[]),loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2,lines:['R1','⚔️ 隊長 擊中 👺哥布林 −5','🩸 👺哥布林 打中 隊長 −3','R2','✦ 隊長 擊中 👺哥布林 −9（暴擊！） 💀']}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,kills:fl.length*2,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};
       if(rep.wiped){var keep=Math.floor(g*0.5);var lost=g-keep;pl.gold-=lost;rep.gold=keep;rep.rescueGoldLost=lost;var kl=rep.loot.filter(function(){return Math.random()<0.5;});rep.rescueLootLost=rep.loot.length-kl.length;rep.loot=kl;}
       var oldDeep=pl.deepest||0;var oldR=rankOf(oldDeep);if(reached>pl.deepest)pl.deepest=reached;var newR=rankOf(pl.deepest||0);if(newR>oldR){var bn=newR*100;pl.gold+=bn;rep.rankUp={to:RANKS[newR].nm,ix:newR,reward:bn};}rep.newBosses=[];[5,10,15,20,25].forEach(function(bf){if(oldDeep<bf&&(pl.deepest||0)>=bf)rep.newBosses.push(bf);});
+      if(!pl.uniques)pl.uniques={};rep.uniqueGains=[];var UBF={10:'u_hazhi',15:'u_heart',20:'u_soul',25:'u_legend'};rep.newBosses.forEach(function(bf){if(UBF[bf]&&!pl.uniques[bf]){pl.uniques[bf]=true;pl.bag.push(UBF[bf]);var u=UNIQUE_GEAR_C[UBF[bf]];rep.uniqueGains.push({ico:u.ico,nm:u.nm});}});
       if(pl.quest){var q=pl.quest;if(q.type==='kill')q.prog+=rep.kills;else if(q.type==='depth')q.prog=Math.max(q.prog,reached);else q.prog+=rep.gold;if(q.prog>=q.target){pl.gold+=q.reward;pl.questsDone=(pl.questsDone||0)+1;rep.questDone={name:q.name,reward:q.reward};pl.quest=null;}}
       rep.traitGains=[];rep.bondUps=[];if(!pl.bonds)pl.bonds={};var bt=(pl.team.battle||[]).slice();
       for(var bi=0;bi<bt.length;bi++)for(var bj=bi+1;bj<bt.length;bj++){var kk=[bt[bi],bt[bj]].sort().join('|');var bef=bondLevelC(pl.bonds[kk]);pl.bonds[kk]=Math.min(60,(pl.bonds[kk]||0)+2);var aft=bondLevelC(pl.bonds[kk]);if(aft>bef){var ca=pl.roster.filter(function(c){return c.id===bt[bi];})[0]||{},cb=pl.roster.filter(function(c){return c.id===bt[bj];})[0]||{};rep.bondUps.push({a:ca.name||'?',b:cb.name||'?',level:BOND_NM_C[aft]});}}
       if(reached>=5&&!rep.wiped&&bt.length){var hc=pl.roster.filter(function(c){return c.id===bt[0];})[0];if(hc&&Math.random()<0.7){if(!hc.traits)hc.traits=[];var pool=['slayer','sharp','veteran','lucky'],tk=pool[Math.floor(Math.random()*pool.length)];if(hc.traits.indexOf(tk)<0&&hc.traits.length<4){hc.traits.push(tk);hc.maxhp=cMaxHp(hc);rep.traitGains.push({name:hc.name,key:tk,good:true});}}}
       rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
-    if(action==='roster'){return res({players:Object.keys(DB).map(function(k){var pl=DB[k];var team=pl.team.battle.concat(pl.team.support);var by={};pl.roster.forEach(function(c){by[c.id]=c;});return{nick:k,deepest:pl.deepest,gold:pl.gold,updated:0,members:team.map(function(id){var c=by[id];return c?{name:c.name,job:c.job,ico:(cinfo(c.job)||{}).ico,level:c.level,portrait:c.portrait}:null;}).filter(Boolean)};})});}
+    if(action==='roster'){return res({players:Object.keys(DB).map(function(k){var pl=DB[k];ensureC(pl);var team=pl.team.battle.concat(pl.team.support);var by={};pl.roster.forEach(function(c){by[c.id]=c;});var mm=MARKET_BYC[pl.port||'merc']||{};return{nick:k,deepest:pl.deepest,gold:pl.gold,updated:0,port:pl.port||'merc',portNm:mm.nm||'',portIco:mm.ico||'',cannon:(pl.ship&&pl.ship.cannon)||6,hull:(pl.ship&&pl.ship.hullMax)||60,members:team.map(function(id){var c=by[id];return c?{name:c.name,job:c.job,ico:(cinfo(c.job)||{}).ico,level:c.level,portrait:c.portrait}:null;}).filter(Boolean)};})});}
+    if(action==='raid'){var me=DB[p.nick.trim()];ensureC(me);if(me.ship.hull<=0)return rej(new Error('船身破損，先修理'));var tg=DB[(p.target||'').trim()];if(!tg||tg.nick===me.nick)return rej(new Error('目標無效'));ensureC(tg);if((tg.deepest||0)<3)return rej(new Error('對方是新手，受保護'));var win=Math.random()<0.55+me.ship.cannon*0.01;var log=['⚓ 追上 '+tg.nick+' 的商船！','💥 砲擊…',win?'⚔️ 接舷成功，洗劫一空！':'🔥 對方反擊，我船受創撤退'];me.ship.hull=Math.max(0,me.ship.hull-(win?12:36));var rep={target:tg.nick,pvp:true,win:win,log:log,gold:0,loot:[],hull:me.ship.hull,hullMax:me.ship.hullMax};if(win){var steal=Math.min(tg.gold||0,Math.floor((tg.gold||0)*0.2)+20+Math.floor(Math.random()*20));tg.gold-=steal;me.gold+=steal;rep.gold=steal;var tgs=Object.keys(tg.cargo||{});for(var i=0;i<3&&tgs.length;i++){var g=tgs[Math.floor(Math.random()*tgs.length)];if(tg.cargo[g]>0&&cargoCountC(me)<effCargoC(me)){tg.cargo[g]--;if(tg.cargo[g]<=0){delete tg.cargo[g];tgs=Object.keys(tg.cargo);}me.cargo=me.cargo||{};me.cargo[g]=(me.cargo[g]||0)+1;rep.loot.push(g);}}}else{var pen=Math.min(me.gold,40);me.gold-=pen;rep.lostGold=pen;}me.gold=Math.max(0,me.gold);tg.gold=Math.max(0,tg.gold);put(tg);put(me);return res({player:me,report:rep});}
     rej(new Error('mock 未支援：'+action));
   }catch(e){rej(e);}},250);
 });}
@@ -686,8 +689,8 @@ function openEquip(){
     var i=P.bag.indexOf(gid);if(i>=0)P.bag.splice(i,1);
     c.equip[slot]=gid;c.maxhp=cMaxHp(c);if(c.hp>c.maxhp)c.hp=c.maxhp;saveP(openEquip);});
 }
-function gSlot(id){if(id.indexOf('w_')===0)return'weapon';if(id.indexOf('a_')===0)return'armor';if(id.indexOf('t_')===0)return'trinket';}
-function gearDesc(g){if(g.dmg)return '傷害 '+g.dmg[0]+'d'+g.dmg[1]+(g.bonus?' +'+g.bonus:'');if(g.ac!=null)return '護甲 AC +'+g.ac;if(g.ab)return ABN[g.ab]+' +'+g.val;return '';}
+function gSlot(id){if(id.indexOf('t_')===0||id.indexOf('u_')===0)return'trinket';if(id.indexOf('w_')===0)return'weapon';if(id.indexOf('a_')===0)return'armor';}
+function gearDesc(g){if(g.dmg)return '傷害 '+g.dmg[0]+'d'+g.dmg[1]+(g.bonus?' +'+g.bonus:'');if(g.ac!=null)return '護甲 AC +'+g.ac;if(g.abs){var ps=[];for(var a in g.abs)ps.push(ABN[a]+'+'+g.abs[a]);return '✨'+ps.join(' ');}if(g.ab)return ABN[g.ab]+' +'+g.val;return '';}
 
 // ---- 商店 ----
 var shopTab='buy';
@@ -891,7 +894,8 @@ function openMap(){
 }
 function renderNaval(r){
   var h=topbar()+'<div class="pad" style="background:radial-gradient(120% 80% at 50% -10%,#3a1c26,transparent 55%)">';
-  h+='<h1>'+(r.win?'🎉 海戰勝利！':'💥 海戰失利')+'</h1><p class="lead">迎戰 '+r.enemy.ico+r.enemy.nm+'</p>';
+  var foe=r.pvp?('🏴‍☠️ '+r.target+' 的商船'):(r.enemy.ico+r.enemy.nm);
+  h+='<h1>'+(r.win?'🎉 海戰勝利！':'💥 海戰失利')+'</h1><p class="lead">'+(r.pvp?'掠奪 ':'迎戰 ')+foe+'</p>';
   h+='<div class="card"><div class="note" style="text-align:left">🚢 船身 '+r.hull+'/'+r.hullMax+'<br>'+(r.win?('🪙 掠奪金幣 +'+r.gold+(r.loot&&r.loot.length?'　🎁 搶到 '+r.loot.length+' 箱貨':'')):('損失 '+(r.lostGold||0)+'🪙'+(r.lostCargo?' ＋ '+r.lostCargo+' 箱貨':'')))+'</div>'+(r.hull<=0?'<div class="note" style="text-align:left;color:var(--hp)">船身全損！回船塢修理才能再出海。</div>':'')+'</div>';
   h+='<details open><summary>戰鬥過程</summary><div class="card">'+(r.log||[]).map(function(l){return '<div class="note" style="text-align:left;font-size:12px;line-height:1.7">'+l+'</div>';}).join('')+'</div></details>';
   h+='<button class="btn gold" id="back" style="margin-top:10px">🏰 回到城鎮</button></div>';
@@ -953,17 +957,20 @@ function openCastle(){
 
 // ---- 冒險者名冊（觀戰）----
 function openRoster(){
-  openSheet('📜 冒險者名冊','大家的探索進度與隊伍（唯讀）','<div class="note">讀取中…</div>');
+  openSheet('📜 冒險者名冊','大家的進度・可掠奪其他船','<div class="note">讀取中…</div>');
   srv('roster',{}).then(function(r){
     var body='';
     r.players.forEach(function(pl,ix){
       var me=pl.nick===P.nick;
+      var canRaid=!me&&(pl.deepest||0)>=3;
       body+='<div class="card"'+(me?' style="border-color:var(--gold)"':'')+'><b>'+(ix+1===1?'👑 ':'')+'#'+(ix+1)+' '+pl.nick+(me?' <span class="tag">你</span>':'')+'</b>'+
-        '<div class="note" style="text-align:left;margin:4px 0 8px">⬇️ 最深第 '+pl.deepest+' 層 ・ 🪙 '+pl.gold+'</div><div class="chips">';
+        '<div class="note" style="text-align:left;margin:4px 0 6px">⬇️ 最深第 '+pl.deepest+' 層 ・ 🪙 '+pl.gold+'<br>'+(pl.portIco||'🏰')+' 停泊 '+(pl.portNm||'?')+' ・ ⛵ 火砲 '+(pl.cannon||6)+' ・ 🚢 '+(pl.hull||60)+'</div><div class="chips">';
       (pl.members||[]).forEach(function(m){body+='<span class="chip" style="cursor:default">'+(m.portrait?'🖼️':m.ico)+' '+m.name+' Lv'+m.level+'</span>';});
-      body+='</div></div>';
+      body+='</div>'+(canRaid?'<button class="btn re sm" data-raid="'+pl.nick+'" style="margin-top:8px">🏴‍☠️ 掠奪這艘船</button>':(!me&&(pl.deepest||0)<3?'<div class="note" style="text-align:left">🛡️ 新手保護中，不可掠奪</div>':''))+'</div>';
     });
-    sheet.innerHTML='<button class="close" onclick="closeSheet()">✕</button><h2>📜 冒險者名冊</h2><p class="sub">大家的探索進度與隊伍（唯讀）</p>'+(body||'<div class="note">還沒有其他冒險者</div>');
+    sheet.innerHTML='<button class="close" onclick="closeSheet()">✕</button><h2>📜 冒險者名冊</h2><p class="sub">大家的進度・可掠奪其他玩家的船</p>'+(body||'<div class="note">還沒有其他冒險者</div>');
+    q('[data-raid]',function(el){var t=el.dataset.raid;if(!confirm('派船掠奪 '+t+' 的商船？勝則搶金幣貨物，敗則損船損金。'))return;el.disabled=true;el.textContent='交戰中…';
+      flushSave().then(function(){return srv('raid',{nick:P.nick,target:t});}).then(function(res){P=res.player;modal.classList.remove('show');refreshTopbar();res.report.pvp=true;renderNaval(res.report);}).catch(function(e){el.disabled=false;el.textContent='🏴‍☠️ 掠奪這艘船';toast(e.message);});});
   }).catch(function(e){toast('讀取失敗：'+e.message);});
 }
 
@@ -999,6 +1006,7 @@ function renderReport(rep){
   if(rep.rankUp)h+='<div class="note" style="text-align:left;color:var(--gold);font-weight:800">🎖️ 晉升為「'+rep.rankUp.to+'」！ +'+rep.rankUp.reward+'🪙</div>';
   if(rep.questDone)h+='<div class="note" style="text-align:left;color:var(--good);font-weight:800">📜 委託完成【'+rep.questDone.name+'】 +'+rep.questDone.reward+'🪙</div>';
   if(rep.levelUps&&rep.levelUps.length){h+='<div class="note" style="text-align:left;color:var(--gold)">⬆️ '+rep.levelUps.map(function(u){return u.name+' → Lv'+u.level;}).join('、')+'</div>';}
+  if(rep.uniqueGains&&rep.uniqueGains.length){h+='<div class="note" style="text-align:left;color:var(--gold);font-weight:800">🌟 首殺獎勵！獲得獨門神器：'+rep.uniqueGains.map(function(u){return u.ico+u.nm;}).join('、')+'</div>';}
   if(rep.traitGains&&rep.traitGains.length){h+='<div class="note" style="text-align:left">🏅 '+rep.traitGains.map(function(t){var ti=TRAITS_C[t.key]||{};return t.name+' 獲得<span style="color:'+(t.good?'var(--gold)':'var(--hp)')+'">「'+ti.ico+ti.nm+'」</span>';}).join('、')+'</div>';}
   if(rep.bondUps&&rep.bondUps.length){h+='<div class="note" style="text-align:left;color:#ff9ec7">💞 羈絆提升：'+rep.bondUps.map(function(bd){return bd.a+' × '+bd.b+' → '+bd.level;}).join('、')+'</div>';}
   if(rep.loot&&rep.loot.length){h+='<div class="note" style="text-align:left">戰利品：'+rep.loot.map(function(id){var g=gById(id);return g?g.ico+g.nm:id;}).join('、')+'</div>';}

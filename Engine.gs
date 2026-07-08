@@ -77,6 +77,7 @@ function abilityOf(c, a){
   var v = c.base[a] || 10;
   var t = c.equip && c.equip.trinket ? gearById(c.equip.trinket) : null;
   if (t && t.ab === a) v += t.val;
+  if (t && t.abs && t.abs[a]) v += t.abs[a];
   if (c.traits) c.traits.forEach(function(k){ var tr=TRAITS[k]; if (tr && tr.grow && tr.grow[a]) v += tr.grow[a]; });
   return v;
 }
@@ -269,7 +270,7 @@ function spawnEnemies(floor, isBoss){
   return list;
 }
 function mkMonster(m, floor, boss){
-  var scale = 1 + (floor-1)*0.17;
+  var scale = 1 + (floor-1)*0.19 + Math.max(0,floor-15)*0.05;   // 深層(>15)額外變硬
   var maxhp = Math.round((m.hd*6 + m.hd) * scale);
   return { nm:m.nm, ico:m.ico, ac:m.ac + Math.floor(floor/5), maxhp:maxhp, hp:maxhp,
     atkBonus:m.atk + Math.floor(floor/3), dmg:m.dmg,

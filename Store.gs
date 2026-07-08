@@ -167,7 +167,10 @@ function buildPreview_(player){
     var ri = raceInfo(c.race) || {};
     return { name:c.name, job:c.job, ico:(classInfo(c.job)||{}).ico||'❓', race:c.race, raceIco:ri.ico||'', level:c.level||1, portrait:c.portrait||'' };
   }).filter(Boolean);
-  return { deepest:player.deepest||0, gold:player.gold||0, members:members };
+  var mk = MARKET_BY[player.port||'merc'] || {};
+  var sh = player.ship || {};
+  return { deepest:player.deepest||0, gold:player.gold||0, members:members,
+    port:player.port||'merc', portNm:mk.nm||'', portIco:mk.ico||'', cannon:sh.cannon||6, hull:sh.hullMax||60 };
 }
 
 // ---- 冒險者名冊（唯讀，短快取，只讀需要的欄）----
@@ -184,7 +187,8 @@ function listPlayers(){
   for (var i=0;i<nicks.length;i++){
     var nick = (nicks[i][0]||'').toString(); if (!nick) continue;
     var preview = safeParse_(rest[i][3]) || {};
-    out.push({ nick:nick, deepest:rest[i][0]||0, gold:rest[i][1]||0, updated:rest[i][2]||0, members:preview.members||[] });
+    out.push({ nick:nick, deepest:rest[i][0]||0, gold:rest[i][1]||0, updated:rest[i][2]||0, members:preview.members||[],
+      port:preview.port||'merc', portNm:preview.portNm||'', portIco:preview.portIco||'', cannon:preview.cannon||6, hull:preview.hull||60 });
   }
   out.sort(function(a,b){ return (b.deepest-a.deepest) || (b.gold-a.gold); });
   cache.put('list_players', JSON.stringify(out), LIST_TTL);

@@ -161,15 +161,25 @@ var TRINKETS = [
   { id:'t_int', nm:'智慧之冠', ico:'👑', ab:'int', val:2, price:120, tier:3 },
   { id:'t_luck',nm:'幸運四葉', ico:'🍀', ab:'cha', val:2, price:120, tier:3 }
 ];
+// 獨門神器（頭目樓層首殺限定，飾品欄・多屬性）
+var UNIQUE_GEAR = {
+  u_hazhi:  { id:'u_hazhi',  nm:'霸主之證', ico:'💠', abs:{str:1,dex:1,con:1},               floor:10 },
+  u_heart:  { id:'u_heart',  nm:'深海之心', ico:'🌀', abs:{int:1,wis:1,cha:1},               floor:15 },
+  u_soul:   { id:'u_soul',   nm:'魔王殘魂', ico:'☠️', abs:{str:2,con:1},                     floor:20 },
+  u_legend: { id:'u_legend', nm:'傳說之證', ico:'🌟', abs:{str:1,dex:1,con:1,int:1,wis:1,cha:1}, floor:25 }
+};
+var UNIQUE_BY_FLOOR = {}; for (var _uk in UNIQUE_GEAR){ UNIQUE_BY_FLOOR[UNIQUE_GEAR[_uk].floor] = UNIQUE_GEAR[_uk]; }
+
 function gearById(id){
+  if (id && UNIQUE_GEAR[id]) return UNIQUE_GEAR[id];
   var all = WEAPONS.concat(ARMORS).concat(TRINKETS);
   for (var i=0;i<all.length;i++) if (all[i].id===id) return all[i];
   return null;
 }
 function gearSlot(id){
+  if (id && (id.indexOf('t_')===0 || id.indexOf('u_')===0)) return 'trinket';
   if (id && id.indexOf('w_')===0) return 'weapon';
   if (id && id.indexOf('a_')===0) return 'armor';
-  if (id && id.indexOf('t_')===0) return 'trinket';
   return null;
 }
 
