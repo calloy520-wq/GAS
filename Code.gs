@@ -231,7 +231,8 @@ function mateNavalLine_(pl){ if (!mateInBattle_(pl)) return null; var m=(pl.rost
 var POSTS = { navigator:{nm:'航海長',ico:'🧭',ab:'wis',skill:'survival'}, gunner:{nm:'砲術長',ico:'💣',ab:'dex',skill:null}, quartermaster:{nm:'總管',ico:'💰',ab:'cha',skill:'persuasion'}, lookout:{nm:'瞭望手',ico:'🔭',ab:'wis',skill:'perception'} };
 function officerOf_(pl,key){ if(!pl.posts) return null; var id=pl.posts[key]; if(!id) return null; return (pl.roster||[]).filter(function(c){ return c&&c.id===id; })[0]||null; }
 function officerRank_(pl,key){ var c=officerOf_(pl,key); if(!c) return 0; var meta=POSTS[key]; var m=mod(abilityOf(c,meta.ab)); var sk=(meta.skill&&charSkills(c).indexOf(meta.skill)>=0)?1:0; return Math.max(0, Math.min(8, Math.floor((c.level||1)/4)+Math.max(0,m)+sk)); }
-function navalGun_(pl){ return navGunBonus_(pl)+mateNavalGun_(pl)+officerRank_(pl,'gunner'); }
+function mateLoyalty_(pl){ return pl.mate ? affLevel_(pl,pl.mate) : 0; }   // 副手情義（0~5）
+function navalGun_(pl){ return navGunBonus_(pl)+mateNavalGun_(pl)+officerRank_(pl,'gunner')+Math.floor(mateLoyalty_(pl)/3); }  // 情義隨行支援（永久小加成）
 function tradeHaggle_(pl){ var has=(pl.roster||[]).some(function(c){ return charSkills(c).indexOf('persuasion')>=0; }); return has?{buyMul:0.95,sellMul:1.05}:{buyMul:1,sellMul:1}; }
 function tradeView_(pl, day, disc){
   ensureSea_(pl);
