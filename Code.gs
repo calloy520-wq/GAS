@@ -500,6 +500,7 @@ function apiSea_(p){
     var byId={}; (player.roster||[]).forEach(function(c){ byId[c.id]=c; });
     var party=(player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
     var enemy={ nm:npc.nm, ico:npc.ico, hull:npc.hull, cannon:npc.cannon, speed:npc.speed, gold:npc.gold, loot:npc.loot };
+    if (worldEvent().type==='pirate') enemy.loot = (enemy.loot||0)+1;   // 海盜猖獗日：掠奪更豐
     var surp = consumeScout_(player, 'sea:'+p.id);
     var r = resolveNaval_(player.ship, party, enemy, navalGun_(player), p.stance, npc.speed, surp);
     injectMateLine_(player, r);

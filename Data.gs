@@ -332,12 +332,29 @@ function fameOf(pl){ var f=0; f+=(pl.deepest||0)*40; f+=Math.floor((pl.gold||0)/
 function peerageOf(f){ var ix=0; for(var i=0;i<PEERAGE.length;i++){ if(f>=PEERAGE[i].t) ix=i; } return ix; }
 function hashNoise(str){ var h=2166136261; for (var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return ((h>>>0)%1000)/1000; }
 function tradeDayBucket(){ return Math.floor(Date.now()/(1000*60*60*4)); }   // 每 4 小時波動一次
-// 回傳某市集某商品的市價（波動後）
+// ---- 世界隨機事件（每日一件，全世界共享・以當日 seed 決定）----
+function eventDay(){ return Math.floor(Date.now()/(1000*60*60*24)); }
+function worldEvent(){
+  var d=eventDay(), roll=hashNoise('evt'+d);
+  if (roll<0.34) return { type:'calm', ico:'☀️', t:'風平浪靜的一天，適合穩紮穩打。' };
+  if (roll<0.53){ var g=GOODS[Math.floor(hashNoise('g'+d)*GOODS.length)]; return { type:'surge', good:g.id, ico:'📈', t:g.ico+g.nm+' 搶購熱潮 —— 各地售價大漲，手上有貨快脫手！' }; }
+  if (roll<0.70){ var g2=GOODS[Math.floor(hashNoise('g2'+d)*GOODS.length)]; return { type:'crash', good:g2.id, ico:'📉', t:g2.ico+g2.nm+' 行情崩盤 —— 進貨超便宜，逢低囤貨！' }; }
+  if (roll<0.87){ var m=MARKETS[Math.floor(hashNoise('m'+d)*MARKETS.length)]; return { type:'festival', port:m.id, ico:'🎉', t:m.ico+m.nm+' 舉辦慶典 —— 當地物價高漲，運貨去賣正好！' }; }
+  var m2=MARKETS[Math.floor(hashNoise('m2'+d)*MARKETS.length)]; return { type:'pirate', port:m2.id, ico:'🏴‍☠️', t:m2.ico+m2.nm+' 外海海盜猖獗 —— 今日掠奪收穫更豐，但風高浪急！' };
+}
+function eventPriceMul(marketId, goodId){
+  var e=worldEvent();
+  if (e.type==='surge' && e.good===goodId) return 1.3;
+  if (e.type==='crash' && e.good===goodId) return 0.7;
+  if (e.type==='festival' && e.port===marketId) return 1.18;
+  return 1;
+}
+// 回傳某市集某商品的市價（波動後・含世界事件）
 function tradePrice(marketId, goodId, day){
   var good=GOOD_BY[goodId], mk=MARKET_BY[marketId]; if (!good||!mk) return 0;
   var mod = mk.cheap.indexOf(goodId)>=0 ? 0.6 : (mk.dear.indexOf(goodId)>=0 ? 1.5 : 1.0);
   var fl = 0.8 + hashNoise(marketId+'_'+goodId+'_'+day)*0.5;      // 0.8 ~ 1.3
-  return Math.max(1, Math.round(good.base*mod*fl));
+  return Math.max(1, Math.round(good.base*mod*fl*eventPriceMul(marketId,goodId)));
 }
 
 // 依樓層產出戰利品池（回傳裝備 id 或 null）
