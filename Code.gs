@@ -36,6 +36,7 @@ function route_(action, p){
     case 'trade':   return apiTrade_(p);
     case 'voyage':  return apiVoyage_(p);
     case 'naval':   return apiNaval_(p);
+    case 'prize':   return apiPrize_(p);
     case 'raid':    return apiRaidPlayer_(p);
     case 'shipbuy': return apiShipBuy_(p);
     case 'fleet':   return apiFleet_(p);
@@ -306,24 +307,72 @@ function apiVoyage_(p){
 // ===== 海戰 / 掠奪 =====
 function bestDexMod_(party){ var m=0; party.forEach(function(c){ m=Math.max(m, mod(abilityOf(c,'dex'))); }); return m; }
 function partyPower_(party){ var s=0; party.forEach(function(c){ s+=(c.level||1); }); return s; }
-function resolveNaval_(ship, party, enemy, gunBonus){
-  var log=[], ph=ship.hull, eh=enemy.hull, guard=0;
-  var gun = ship.cannon + bestDexMod_(party) + Math.floor((ship.crew||8)/4) + (gunBonus||0);
+// stance: 'sink' 砲擊擊沉（打撈半數）｜'board' 接舷俘虜（奪船・風險高）｜'kite' 打帶跑（快船邊打邊逃）
+function resolveNaval_(ship, party, enemy, gunBonus, stance, enemySpeed){
+  stance = stance||'sink';
+  var STN={sink:'🎯 砲擊擊沉',board:'⚔️ 接舷俘虜',kite:'🏴‍☠️ 打帶跑'};
+  var log=[], ph=ship.hull, eh=enemy.hull, guard=0, fled=false, capture=false;
+  var gunBase = ship.cannon + bestDexMod_(party) + Math.floor((ship.crew||8)/4) + (gunBonus||0);
   var board = partyPower_(party);
-  log.push('⚓ 兩船進入砲擊距離！我船 '+ph+' vs '+enemy.ico+enemy.nm+' '+eh);
+  var spd = (ship.speed||6), espd = (enemySpeed||6);
+  log.push('⚓ 交戰！我船 '+ph+' vs '+enemy.ico+enemy.nm+' '+eh+'（'+(STN[stance]||'')+'）');
   while (ph>0 && eh>0 && guard<30){
     guard++;
-    var pd = rint(Math.floor(gun*0.7), gun+2);
-    var boarded = (eh < enemy.hull*0.35);
-    if (boarded){ pd += Math.floor(board/2); }
+    var gun = gunBase * (stance==='sink'?1.15 : stance==='board'?0.85 : 0.8);
+    var pd = rint(Math.floor(gun*0.7), Math.floor(gun)+2);
+    var boarding = (stance==='board' && eh < enemy.hull*0.6);
+    if (boarding){ pd += Math.floor(board*0.8); }
     eh = Math.max(0, eh-pd);
-    log.push((boarded?'⚔️ 接舷肉搏！':'💥 我方齊射 ')+'造成 '+pd+' 傷（敵船 '+eh+'）');
-    if (eh<=0) break;
-    var ed = rint(Math.floor(enemy.cannon*0.6), enemy.cannon+2);
+    log.push((boarding?'⚔️ 接舷肉搏！':'💥 齊射 ')+'造成 '+pd+' 傷（敵 '+eh+'）');
+    if (eh<=0){ capture = (stance==='board'); break; }
+    if (stance==='kite'){   // 開砲後嘗試脫離，速度差越大越好逃
+      var esc = Math.max(0.05, Math.min(0.95, 0.32 + (spd-espd)*0.07));
+      if (Math.random() < esc){ fled=true; log.push('🌬️ 搶佔上風，成功脫離戰鬥！'); break; }
+    }
+    var efire = enemy.cannon * (stance==='kite'?0.5 : stance==='board'?1.2 : 1.0);
+    var ed = rint(Math.floor(efire*0.6), Math.floor(efire)+2);
     ph = Math.max(0, ph-ed);
     log.push('🔥 '+enemy.ico+enemy.nm+' 還擊 '+ed+' 傷（我船 '+ph+'）');
   }
-  return { win: eh<=0, playerHull: ph, log:log };
+  return { win: eh<=0, playerHull: ph, log:log, fled:fled, capture:capture, mode:stance };
+}
+// 依結果發戰利品：逃跑=無・擊沉=打撈半數・俘虜=全額＋奪船（待玩家決定編入/拆解）
+function applyNavalReward_(player, enemy, r, report){
+  if (!player.cargo) player.cargo = {};
+  if (r.fled){ report.fled = true; report.note = '成功脫離，全身而退（未取得戰利品）。'; return; }
+  if (r.win){
+    var g = rint(enemy.gold[0], enemy.gold[1]); player.gold += g; report.gold = g;
+    if (r.capture){   // 接舷俘虜：全額貨物 + 奪下敵船
+      for (var i=0;i<enemy.loot;i++){ if (cargoCount_(player) >= effectiveCargoMax(player)) break; var gd=GOODS[rint(0,GOODS.length-1)]; player.cargo[gd.id]=(player.cargo[gd.id]||0)+1; report.loot.push(gd.id); }
+      player.pendingPrize = makePrize_(enemy);
+      var pz = player.pendingPrize;
+      report.prize = { nm:pz.nm, ico:pz.ico, hullMax:pz.hullMax, cannon:pz.cannon, cargoBonus:pz.cargoBonus, speed:pz.speed, scrapGold:pz.scrapGold, full:(player.fleet||[]).length>=FLEET_MAX };
+    } else {          // 砲擊擊沉：只能打撈半數
+      var half = Math.max(1, Math.ceil(enemy.loot/2));
+      for (var j=0;j<half;j++){ if (cargoCount_(player) >= effectiveCargoMax(player)) break; var g2=GOODS[rint(0,GOODS.length-1)]; player.cargo[g2.id]=(player.cargo[g2.id]||0)+1; report.loot.push(g2.id); }
+      report.sunk = true;
+    }
+  } else {
+    var gs=Object.keys(player.cargo||{});
+    if (gs.length){ var lg=gs[rint(0,gs.length-1)]; var ll=Math.min(player.cargo[lg], 1+rint(0,2)); player.cargo[lg]-=ll; if(player.cargo[lg]<=0)delete player.cargo[lg]; report.lostCargo=ll; }
+    var pen=Math.min(player.gold||0, rint(20,60)); player.gold-=pen; report.lostGold=pen;
+  }
+}
+// 決定戰利品船：編入艦隊 or 拆解換金
+function apiPrize_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (!player.pendingPrize) throw new Error('沒有待處置的戰利品船');
+  if (!player.fleet) player.fleet = [];
+  var pz = player.pendingPrize, kept;
+  if (p.decision === 'fleet' && player.fleet.length < FLEET_MAX){
+    delete pz.scrapGold; player.fleet.push(pz); kept = { mode:'fleet', nm:pz.nm };
+  } else {
+    var g = pz.scrapGold || Math.round((pz.hullMax + pz.cannon*8)/2); player.gold += g; kept = { mode:'scrap', gold:g };
+  }
+  delete player.pendingPrize;
+  cleanPlayer_(player); savePlayer(player);
+  return { player:player, kept:kept };
 }
 function apiNaval_(p){
   var player = loadPlayer((p.nick||'').trim());
@@ -336,21 +385,12 @@ function apiNaval_(p){
   var prog = Math.min(3, Math.floor((player.deepest||0)/8));
   var ti = Math.max(0, Math.min(3, prog - 1 + rint(0,2)));
   var base = ENEMY_SHIPS[ti];
-  var enemy = { nm:base.nm, ico:base.ico, hull:base.hull, cannon:base.cannon, gold:base.gold, loot:base.loot };
-  var r = resolveNaval_(player.ship, party, enemy, navGunBonus_(player));
+  var enemy = { nm:base.nm, ico:base.ico, hull:base.hull, cannon:base.cannon, speed:base.speed, gold:base.gold, loot:base.loot };
+  var r = resolveNaval_(player.ship, party, enemy, navGunBonus_(player), p.stance, base.speed);
   player.ship.hull = r.playerHull;
-  var report = { enemy:{nm:enemy.nm, ico:enemy.ico}, win:r.win, log:r.log, gold:0, loot:[], hull:player.ship.hull, hullMax:player.ship.hullMax };
-  report.sea = grantSea_(player, 'nav', r.win ? (8 + Math.floor(enemy.hull/6)) : 3);   // 海戰練「航海術」
-  if (r.win){
-    var g = rint(base.gold[0], base.gold[1]); player.gold += g; report.gold = g;
-    if (!player.cargo) player.cargo = {};
-    for (var i=0;i<base.loot;i++){ if (cargoCount_(player) >= effectiveCargoMax(player)) break; var gd=GOODS[rint(0,GOODS.length-1)]; player.cargo[gd.id]=(player.cargo[gd.id]||0)+1; report.loot.push(gd.id); }
-  } else {
-    // 敗：貨艙損失一部分
-    var gs=Object.keys(player.cargo||{});
-    if (gs.length){ var lg=gs[rint(0,gs.length-1)]; var ll=Math.min(player.cargo[lg], 1+rint(0,2)); player.cargo[lg]-=ll; if(player.cargo[lg]<=0)delete player.cargo[lg]; report.lostCargo=ll; }
-    var pen=Math.min(player.gold||0, rint(20,60)); player.gold-=pen; report.lostGold=pen;
-  }
+  var report = { enemy:{nm:enemy.nm, ico:enemy.ico}, win:r.win, mode:r.mode, fled:r.fled, log:r.log, gold:0, loot:[], hull:player.ship.hull, hullMax:player.ship.hullMax };
+  report.sea = grantSea_(player, 'nav', r.fled?4:(r.win ? (8 + Math.floor(enemy.hull/6)) : 3));   // 海戰練「航海術」
+  applyNavalReward_(player, enemy, r, report);
   player.gold = Math.max(0, player.gold);
   cleanPlayer_(player); savePlayer(player);
   return { player:player, report:report };
@@ -366,7 +406,7 @@ function apiShipBuy_(p){
   if ((player.gold||0) < sc.price) throw new Error('金幣不足（需 '+sc.price+'🪙）');
   player.gold -= sc.price;
   player.fleet.push({ id:'f'+uid(), cls:sc.cls, nm:sc.nm, ico:sc.ico, hullMax:sc.hullMax, hull:sc.hullMax,
-    cannon:sc.cannon, cargoBonus:sc.cargoBonus, role:'idle', route:null, escort:false, lastAt:0 });
+    cannon:sc.cannon, cargoBonus:sc.cargoBonus, speed:sc.speed||6, role:'idle', route:null, escort:false, lastAt:0 });
   cleanPlayer_(player); savePlayer(player);
   return { player:player };
 }
@@ -437,17 +477,13 @@ function apiSea_(p){
     if (player.raided[rk]) throw new Error('這艘商船今天已被你打劫過了');
     var byId={}; (player.roster||[]).forEach(function(c){ byId[c.id]=c; });
     var party=(player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
-    var enemy={ nm:npc.nm, ico:npc.ico, hull:npc.hull, cannon:npc.cannon };
-    var r = resolveNaval_(player.ship, party, enemy, navGunBonus_(player));
+    var enemy={ nm:npc.nm, ico:npc.ico, hull:npc.hull, cannon:npc.cannon, speed:npc.speed, gold:npc.gold, loot:npc.loot };
+    var r = resolveNaval_(player.ship, party, enemy, navGunBonus_(player), p.stance, npc.speed);
     player.ship.hull = r.playerHull;
-    var report={ enemy:{nm:npc.nm, ico:npc.ico}, win:r.win, log:r.log, gold:0, loot:[], hull:player.ship.hull, hullMax:player.ship.hullMax };
-    report.sea = grantSea_(player, 'nav', r.win ? (8 + Math.floor(npc.hull/6)) : 3);
-    if (r.win){
-      player.raided[rk]=true;
-      var g=rint(npc.gold[0], npc.gold[1]); player.gold+=g; report.gold=g;
-      if (!player.cargo) player.cargo={};
-      for (var i=0;i<npc.loot;i++){ if (cargoCount_(player)>=effectiveCargoMax(player)) break; var gd=GOODS[rint(0,GOODS.length-1)]; player.cargo[gd.id]=(player.cargo[gd.id]||0)+1; report.loot.push(gd.id); }
-    } else { var pen=Math.min(player.gold||0, rint(20,50)); player.gold-=pen; report.lostGold=pen; }
+    var report={ enemy:{nm:npc.nm, ico:npc.ico}, win:r.win, mode:r.mode, fled:r.fled, log:r.log, gold:0, loot:[], hull:player.ship.hull, hullMax:player.ship.hullMax };
+    report.sea = grantSea_(player, 'nav', r.fled?4:(r.win ? (8 + Math.floor(npc.hull/6)) : 3));
+    if (r.win && !r.fled) player.raided[rk]=true;   // 打贏（含擊沉/俘虜）才算今日已搶；逃跑不算
+    applyNavalReward_(player, enemy, r, report);
     player.gold=Math.max(0,player.gold);
     cleanPlayer_(player); savePlayer(player);
     return { player:player, report:report };
@@ -469,23 +505,30 @@ function apiRaidPlayer_(p){
   var party = (me.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
   var tById={}; (target.roster||[]).forEach(function(c){ tById[c.id]=c; });
   var defParty = (target.team.battle||[]).map(function(id){ return tById[id]; }).filter(Boolean);
-  var enemy = { nm:target.nick+'的商船', ico:'⛵', hull:(target.ship.hullMax||60), cannon:(target.ship.cannon||6)+Math.floor(partyPower_(defParty)/5) };
-  var r = resolveNaval_(me.ship, party, enemy, navGunBonus_(me));
+  var espeed = (target.ship.speed||6) + Math.floor(partyPower_(defParty)/8);
+  var enemy = { nm:target.nick+'的商船', ico:'⛵', hull:(target.ship.hullMax||60), cannon:(target.ship.cannon||6)+Math.floor(partyPower_(defParty)/5), speed:espeed };
+  var r = resolveNaval_(me.ship, party, enemy, navGunBonus_(me), p.stance, espeed);
   me.ship.hull = r.playerHull;
-  var report = { target:target.nick, win:r.win, log:r.log, gold:0, loot:[], hull:me.ship.hull, hullMax:me.ship.hullMax };
-  report.sea = grantSea_(me, 'nav', r.win ? (8 + Math.floor(enemy.hull/6)) : 3);
-  if (r.win){
-    var steal = Math.min(target.gold||0, Math.floor((target.gold||0)*0.2) + rint(10,40));
+  var report = { target:target.nick, win:r.win, mode:r.mode, fled:r.fled, log:r.log, gold:0, loot:[], hull:me.ship.hull, hullMax:me.ship.hullMax };
+  report.sea = grantSea_(me, 'nav', r.fled?4:(r.win ? (8 + Math.floor(enemy.hull/6)) : 3));
+  if (r.fled){
+    report.fled = true; report.note = '成功脫離，全身而退。';
+  } else if (r.win){
+    // 接舷俘虜對玩家＝多搶一成（奪船贖金系統另做，這裡不奪船避免對方無船可航）
+    var mul = r.capture ? 0.30 : 0.20;   // 擊沉搶兩成、接舷搶三成
+    var steal = Math.min(target.gold||0, Math.floor((target.gold||0)*mul) + rint(10,40));
     target.gold = (target.gold||0) - steal; me.gold = (me.gold||0) + steal; report.gold = steal;
     if (!me.cargo) me.cargo = {};
+    var maxTake = r.capture ? 5 : 3;
     var tg = Object.keys(target.cargo||{});
-    for (var i=0;i<3 && tg.length; i++){
+    for (var i=0;i<maxTake && tg.length; i++){
       var g = tg[rint(0,tg.length-1)];
       if (target.cargo[g]>0 && cargoCount_(me) < effectiveCargoMax(me)){
         target.cargo[g]--; if (target.cargo[g]<=0){ delete target.cargo[g]; tg=Object.keys(target.cargo); }
         me.cargo[g]=(me.cargo[g]||0)+1; report.loot.push(g);
       }
     }
+    report.boarded = r.capture;
   } else {
     var pen = Math.min(me.gold||0, rint(20,50)); me.gold -= pen; report.lostGold = pen;
   }

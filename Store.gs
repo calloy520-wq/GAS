@@ -121,6 +121,7 @@ function ensureShape_(pl){
   if (typeof pl.clues !== 'number') pl.clues = 0;
   if (!pl.ship || typeof pl.ship !== 'object') pl.ship = startShip();
   if (typeof pl.ship.hull !== 'number') pl.ship.hull = pl.ship.hullMax || 60;
+  if (typeof pl.ship.speed !== 'number') pl.ship.speed = 6;
   if (typeof pl.invest !== 'number') pl.invest = 0;
   if (!Array.isArray(pl.fleet)) pl.fleet = [];
   ensureSea_(pl);   // 航海術 / 商業 等級

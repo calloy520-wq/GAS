@@ -245,27 +245,36 @@ var MARKET_BY = {}; MARKETS.forEach(function(m){ MARKET_BY[m.id]=m; });
 var CARGO_MAX = 20;
 
 // ---- 船艦 / 海戰 ----
-function startShip(){ return { name:'初心號', hullMax:60, hull:60, cannon:6, cargoBonus:0, crew:8, tier:1 }; }
+function startShip(){ return { name:'初心號', hullMax:60, hull:60, cannon:6, cargoBonus:0, crew:8, speed:6, tier:1 }; }
 function effectiveCargoMax(pl){ return CARGO_MAX + ((pl.ship&&pl.ship.cargoBonus)||0); }
 var SHIP_UP = {
   hull:   { nm:'強化船身', ico:'🛠️', stat:'hullMax',    step:30, base:120 },
   cannon: { nm:'加裝火砲', ico:'💣', stat:'cannon',     step:3,  base:150 },
   cargo:  { nm:'擴充貨艙', ico:'📦', stat:'cargoBonus', step:8,  base:130 },
-  crew:   { nm:'招募水手', ico:'⚓', stat:'crew',       step:4,  base:90  }
+  crew:   { nm:'招募水手', ico:'⚓', stat:'crew',       step:4,  base:90  },
+  speed:  { nm:'改良帆裝', ico:'💨', stat:'speed',      step:1,  base:110 }
 };
 var ENEMY_SHIPS = [
-  { nm:'小商船',   ico:'⛵',  hull:45,  cannon:4,  gold:[30,70],   loot:2 },
-  { nm:'武裝商船', ico:'🚢',  hull:80,  cannon:7,  gold:[70,150],  loot:3 },
-  { nm:'海盜船',   ico:'🏴‍☠️', hull:120, cannon:11, gold:[120,240], loot:4 },
-  { nm:'私掠艦',   ico:'⚓',  hull:185, cannon:16, gold:[220,420], loot:6 }
+  { nm:'小商船',   ico:'⛵',  hull:45,  cannon:4,  speed:8, gold:[30,70],   loot:2 },
+  { nm:'武裝商船', ico:'🚢',  hull:80,  cannon:7,  speed:6, gold:[70,150],  loot:3 },
+  { nm:'海盜船',   ico:'🏴‍☠️', hull:120, cannon:11, speed:7, gold:[120,240], loot:4 },
+  { nm:'私掠艦',   ico:'⚓',  hull:185, cannon:16, speed:5, gold:[220,420], loot:6 }
 ];
+// 鹵獲敵船→可編入艦隊的戰利品船（或拆解換金）
+function makePrize_(enemy){
+  var hull = enemy.hull, cannon = enemy.cannon;
+  return { id:'f'+uid(), cls:'prize', nm:'鹵獲・'+enemy.nm, ico:enemy.ico,
+    hullMax:hull, hull:hull, cannon:cannon, cargoBonus:Math.max(4,Math.round(hull/12)),
+    speed:(enemy.speed||6), role:'idle', route:null, escort:false, lastAt:0,
+    scrapGold:Math.round((hull + cannon*8)/2) };
+}
 
 // ---- 船商：可購買的船種（組艦隊用）----
 var SHIP_CLASSES = [
-  { cls:'trader',  nm:'商船',   ico:'⛵', hullMax:70,  cannon:5,  cargoBonus:14, price:600  },
-  { cls:'clipper', nm:'快船',   ico:'🚤', hullMax:65,  cannon:7,  cargoBonus:10, price:900  },
-  { cls:'frigate', nm:'戰艦',   ico:'⚔️', hullMax:130, cannon:15, cargoBonus:6,  price:1500 },
-  { cls:'galleon', nm:'大帆船', ico:'🚢', hullMax:160, cannon:12, cargoBonus:26, price:2400 }
+  { cls:'trader',  nm:'商船',   ico:'⛵', hullMax:70,  cannon:5,  cargoBonus:14, speed:5,  price:600  },
+  { cls:'clipper', nm:'快船',   ico:'🚤', hullMax:65,  cannon:7,  cargoBonus:10, speed:10, price:900  },
+  { cls:'frigate', nm:'戰艦',   ico:'⚔️', hullMax:130, cannon:15, cargoBonus:6,  speed:6,  price:1500 },
+  { cls:'galleon', nm:'大帆船', ico:'🚢', hullMax:160, cannon:12, cargoBonus:26, speed:4,  price:2400 }
 ];
 var SHIP_CLASS_BY = {}; SHIP_CLASSES.forEach(function(s){ SHIP_CLASS_BY[s.cls]=s; });
 var FLEET_MAX = 5;
@@ -282,7 +291,7 @@ function npcTradersForDay(day){
     var ti = seed % ENEMY_SHIPS.length;
     var es = ENEMY_SHIPS[ti];
     list.push({ id:'npc'+i, nm:nm, ico:es.ico, portNm:port.nm, portIco:port.ico,
-      hull:es.hull, cannon:es.cannon, gold:es.gold, loot:es.loot });
+      hull:es.hull, cannon:es.cannon, speed:es.speed||6, gold:es.gold, loot:es.loot });
   }
   return list;
 }
