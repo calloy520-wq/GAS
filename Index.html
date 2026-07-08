@@ -834,9 +834,29 @@ function renderReport(rep){
     h+='</div>';
   });
   h+='</div></details>';
+  h+='<div class="card" style="margin-top:10px"><button class="btn re sm" id="aitale" style="width:auto">📜 生成 AI 戰記（免費）</button>'+
+    '<div class="note" id="aitalebox" style="display:none;text-align:left;margin-top:8px;line-height:1.85;color:#f0d6ad;white-space:pre-line"></div></div>';
   h+='<button class="btn gold" id="back" style="margin-top:12px">🏰 回到城鎮</button></div>';
   app.innerHTML=h;
   document.getElementById('back').onclick=renderTown;
+  var at=document.getElementById('aitale');
+  if(at)at.onclick=function(){at.disabled=true;at.textContent='✍️ 執筆中…';var box=document.getElementById('aitalebox');box.style.display='block';box.textContent='✨ 吟遊詩人正在編寫戰記…';
+    genBattleTale(rep,function(t){box.textContent=t;if(at)at.remove();});};
+}
+// 免費 AI 戰記（Pollinations 文字，按需生成、超時用模板保底）
+function genBattleTale(rep,cb){
+  var names=(P.team.battle||[]).map(function(id){var c=byId(id);return c?c.name:null;}).filter(Boolean).join('、')||'一支傭兵小隊';
+  var bosses=(rep.newBosses||[]).length?('，並擊破第 '+(rep.newBosses||[]).join('、')+' 層的頭目'):'';
+  var ending=rep.wiped?'最後力竭全滅、被抬回城裡':(rep.cleared?'最終凱旋歸來':'見好就收、安全撤退');
+  var prompt='用繁體中文寫一段 60~100 字、生動有畫面感的奇幻戰記，描述傭兵小隊這趟地下城的經歷。隊員：'+names+'。他們從第 '+(rep.start||1)+' 層打到第 '+rep.reached+' 層，擊敗約 '+(rep.kills||0)+' 隻魔物'+bosses+'，'+ending+'。只回傳戰記本文，不要標題、不要引號、不要多餘說明。';
+  var done=false,timer=setTimeout(function(){if(!done){done=true;cb(taleTemplate(rep,names,ending));}},12000);
+  fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){
+    if(done)return;done=true;clearTimeout(timer);t=(t||'').trim().replace(/^["「『]+|["」』]+$/g,'').slice(0,320);
+    cb(t&&!/error|unable|sorry/i.test(t)?t:taleTemplate(rep,names,ending));
+  }).catch(function(){if(done)return;done=true;clearTimeout(timer);cb(taleTemplate(rep,names,ending));});
+}
+function taleTemplate(rep,names,ending){
+  return names+' 深入幽暗的地下城，一路殺至第 '+rep.reached+' 層，'+(rep.kills||0)+' 隻魔物倒在他們腳下。'+((rep.newBosses||[]).length?'連盤踞的頭目也難逃一劫。':'')+ending+'。';
 }
 
 // ============ 啟動 ============
