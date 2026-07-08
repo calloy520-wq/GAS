@@ -334,8 +334,10 @@ function resolveNaval_(ship, party, enemy, gunBonus, stance, enemySpeed, surpris
   var gunBase = ship.cannon + bestDexMod_(party) + Math.floor((ship.crew||8)/4) + (gunBonus||0);
   var board = partyPower_(party);
   var spd = (ship.speed||6), espd = (enemySpeed||6);
+  var meMax = ship.hullMax || ship.hull, foeMax = enemy.hull;   // 給戰鬥畫面用
+  var nev = [{ t:'start', mode:stance }];
   log.push('⚓ 交戰！我船 '+ph+' vs '+enemy.ico+enemy.nm+' '+eh+'（'+(STN[stance]||'')+'）');
-  if (surprise){ var s0 = rint(Math.floor((gunBase+surprise)*0.9), gunBase+surprise+4); eh = Math.max(0, eh-s0); log.push('🎯 偵查奇襲！趁其不備先手齊射，造成 '+s0+' 傷（敵 '+eh+'）'); }
+  if (surprise){ var s0 = rint(Math.floor((gunBase+surprise)*0.9), gunBase+surprise+4); eh = Math.max(0, eh-s0); log.push('🎯 偵查奇襲！趁其不備先手齊射，造成 '+s0+' 傷（敵 '+eh+'）'); nev.push({ t:'surprise', dmg:s0, foeHull:eh }); }
   while (ph>0 && eh>0 && guard<30){
     guard++;
     var gun = gunBase * (stance==='sink'?1.15 : stance==='board'?0.85 : 0.8);
@@ -344,17 +346,21 @@ function resolveNaval_(ship, party, enemy, gunBonus, stance, enemySpeed, surpris
     if (boarding){ pd += Math.floor(board*0.8); }
     eh = Math.max(0, eh-pd);
     log.push((boarding?'⚔️ 接舷肉搏！':'💥 齊射 ')+'造成 '+pd+' 傷（敵 '+eh+'）');
-    if (eh<=0){ capture = (stance==='board'); break; }
+    nev.push({ t:'volley', by:'me', dmg:pd, boarding:boarding, foeHull:eh });
+    if (eh<=0){ capture = (stance==='board'); nev.push({ t:'sink', who:'foe', capture:capture }); break; }
     if (stance==='kite'){   // 開砲後嘗試脫離，速度差越大越好逃
       var esc = Math.max(0.05, Math.min(0.95, 0.32 + (spd-espd)*0.07));
-      if (Math.random() < esc){ fled=true; log.push('🌬️ 搶佔上風，成功脫離戰鬥！'); break; }
+      if (Math.random() < esc){ fled=true; log.push('🌬️ 搶佔上風，成功脫離戰鬥！'); nev.push({ t:'flee' }); break; }
     }
     var efire = enemy.cannon * (stance==='kite'?0.5 : stance==='board'?1.2 : 1.0);
     var ed = rint(Math.floor(efire*0.6), Math.floor(efire)+2);
     ph = Math.max(0, ph-ed);
     log.push('🔥 '+enemy.ico+enemy.nm+' 還擊 '+ed+' 傷（我船 '+ph+'）');
+    nev.push({ t:'volley', by:'foe', dmg:ed, meHull:ph });
+    if (ph<=0){ nev.push({ t:'sink', who:'me' }); break; }
   }
-  return { win: eh<=0, playerHull: ph, log:log, fled:fled, capture:capture, mode:stance };
+  return { win: eh<=0, playerHull: ph, log:log, fled:fled, capture:capture, mode:stance,
+    nev:nev, snap:{ me:{ ico:(ship.ico||'⛵'), hullMax:meMax }, foe:{ ico:enemy.ico, nm:enemy.nm, hullMax:foeMax } } };
 }
 function injectMateLine_(pl, r){ var ln=mateNavalLine_(pl); if (ln && r.log) r.log.splice(1,0,ln); }
 // 依結果發戰利品：逃跑=無・擊沉=打撈半數・俘虜=全額＋奪船（待玩家決定編入/拆解）
@@ -412,6 +418,7 @@ function apiNaval_(p){
   player.ship.hull = r.playerHull;
   var report = { enemy:{nm:enemy.nm, ico:enemy.ico}, win:r.win, mode:r.mode, fled:r.fled, log:r.log, gold:0, loot:[], hull:player.ship.hull, hullMax:player.ship.hullMax };
   report.sea = grantSea_(player, 'nav', r.fled?4:(r.win ? (8 + Math.floor(enemy.hull/6)) : 3));   // 海戰練「航海術」
+  report.nev = r.nev; report.snap = r.snap;
   applyNavalReward_(player, enemy, r, report);
   player.gold = Math.max(0, player.gold);
   cleanPlayer_(player); savePlayer(player);
@@ -507,6 +514,7 @@ function apiSea_(p){
     player.ship.hull = r.playerHull;
     var report={ enemy:{nm:npc.nm, ico:npc.ico}, win:r.win, mode:r.mode, fled:r.fled, log:r.log, gold:0, loot:[], hull:player.ship.hull, hullMax:player.ship.hullMax };
     report.sea = grantSea_(player, 'nav', r.fled?4:(r.win ? (8 + Math.floor(npc.hull/6)) : 3));
+    report.nev = r.nev; report.snap = r.snap;
     if (r.win && !r.fled) player.raided[rk]=true;   // 打贏（含擊沉/俘虜）才算今日已搶；逃跑不算
     applyNavalReward_(player, enemy, r, report);
     player.gold=Math.max(0,player.gold);
@@ -538,6 +546,7 @@ function apiRaidPlayer_(p){
   me.ship.hull = r.playerHull;
   var report = { target:target.nick, win:r.win, mode:r.mode, fled:r.fled, log:r.log, gold:0, loot:[], hull:me.ship.hull, hullMax:me.ship.hullMax };
   report.sea = grantSea_(me, 'nav', r.fled?4:(r.win ? (8 + Math.floor(enemy.hull/6)) : 3));
+  report.nev = r.nev; report.snap = r.snap;
   if (r.fled){
     report.fled = true; report.note = '成功脫離，全身而退。';
   } else if (r.win){
@@ -586,6 +595,7 @@ function apiConquer_(p){
   player.ship.hull = r.playerHull;
   var report = { port:pid, portNm:mk.nm, portIco:mk.ico, garrison:gar.nm, win:r.win, log:r.log, hull:player.ship.hull, hullMax:player.ship.hullMax, gold:0, fleetGun:fleetGun };
   report.sea = grantSea_(player, 'nav', r.win ? (12 + Math.floor(gar.hull/6)) : 4);
+  report.nev = r.nev; report.snap = r.snap;
   if (r.win){
     var g = rint(gar.gold[0], gar.gold[1]); player.gold += g; report.gold = g;
     player.holdings[pid] = { lv:1, since: Date.now(), lastAt: Date.now() };
