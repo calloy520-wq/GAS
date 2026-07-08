@@ -391,7 +391,9 @@ function closeSheet(){modal.classList.remove('show');renderTown();}
 function heroOf(){return (P.roster||[]).filter(function(c){return c.id===P.heroId;})[0];}
 function byId(id){return (P.roster||[]).filter(function(c){return c.id===id;})[0];}
 
-function avatarHTML(c){return c&&c.portrait?'<img src="'+c.portrait+'">':((cinfo(c.job)||{}).ico||'❓');}
+// 縮圖：把存下來的 512 立繪網址改成小尺寸請求（頭像只需小圖 → 流量大幅降低）
+function pthumb(url,size){if(!url||url.indexOf('pollinations.ai')<0)return url;return url.replace(/width=\d+/,'width='+size).replace(/height=\d+/,'height='+size);}
+function avatarHTML(c){return c&&c.portrait?'<img loading="lazy" src="'+pthumb(c.portrait,160)+'">':((cinfo(c.job)||{}).ico||'❓');}
 
 // ============ 登入 ============
 function renderLogin(){
@@ -516,7 +518,7 @@ function openPortrait(job,cb,raceIdx,rarity){
   pRefresh();pmodal.classList.add('show');
 }
 function closePortrait(){pmodal.classList.remove('show');}
-function pUrl(){return "https://image.pollinations.ai/prompt/"+encodeURIComponent(buildPPrompt(pJob,pSel))+"?width=512&height=512&nologo=true&model=flux&seed="+pSeed;}
+function pUrl(){return "https://image.pollinations.ai/prompt/"+encodeURIComponent(buildPPrompt(pJob,pSel))+"?width=384&height=384&nologo=true&model=flux&seed="+pSeed;}
 function pRefresh(){var el=document.getElementById('pprompt');if(el)el.textContent=buildPPrompt(pJob,pSel)+"\n(seed:"+pSeed+")";}
 function pDoGen(){
   if(pCooling)return;pSeed=Math.floor(Math.random()*1e6);pRefresh();
@@ -712,7 +714,7 @@ function addAff(id,amt){if(!P.affinity)P.affinity={};var bef=affLevel(id);P.affi
 function openMate(){
   var m=byId(P.mate);if(!m)return;
   var ci=cinfo(m.job),ri=RACES[m.race];
-  var body='<div class="pbox" id="csp" style="width:min(40vw,140px)">'+(m.portrait?'<img src="'+m.portrait+'">':'<div class="ph" style="font-size:36px">'+ci.ico+'</div>')+'</div>';
+  var body='<div class="pbox" id="csp" style="width:min(40vw,140px)">'+(m.portrait?'<img loading="lazy" src="'+pthumb(m.portrait,320)+'">':'<div class="ph" style="font-size:36px">'+ci.ico+'</div>')+'</div>';
   body+='<div class="note" style="text-align:center;margin:6px 0 2px">'+(ri?ri.ico+ri.nm+' ':'')+ci.ico+ci.nm+' ・ Lv'+m.level+'</div>';
   body+='<div class="note" style="text-align:center;font-size:15px">'+affHearts(m.id)+'<br><small style="color:var(--gold)">'+AFF_NM[affLevel(m.id)]+'</small></div>';
   body+='<div class="card" style="border-color:#8a6fd0;margin-top:8px"><b>👩‍✈️ '+m.name+'</b><div class="note" id="matesay" style="text-align:left;margin-top:6px;line-height:1.75;color:#f0d6ad;min-height:44px">「'+(m.bio||'…（想聽聽她的想法嗎？）')+'」</div></div>';
@@ -1012,7 +1014,7 @@ function uRow(c,btn){var st=isSup(c.job)?null:cStats(c);var ci=cinfo(c.job);
 function cXpNext(level){return level*100+(level-1)*(level-1)*20;}
 function charSheet(id){
   var c=byId(id);if(!c)return;var ci=cinfo(c.job);var ri=RACES[c.race];
-  var body='<div class="pbox" id="csp" style="width:min(46vw,160px)">'+(c.portrait?'<img src="'+c.portrait+'">':'<div class="ph" style="font-size:40px">'+ci.ico+'</div>')+'</div>';
+  var body='<div class="pbox" id="csp" style="width:min(46vw,160px)">'+(c.portrait?'<img loading="lazy" src="'+pthumb(c.portrait,320)+'">':'<div class="ph" style="font-size:40px">'+ci.ico+'</div>')+'</div>';
   body+='<div class="note" style="text-align:center;margin:8px 0 4px;font-size:13px">'+(c.rarity&&RARITY_C[c.rarity]?'<span style="color:'+rarC(c.rarity).color+'">'+rarC(c.rarity).star+'</span> ':'')+(ri?ri.ico+ri.nm+' ':'')+ci.ico+ci.nm+' ・ Lv'+c.level+'</div>';
   body+='<div class="abil">';
   AB.forEach(function(a){var s=cab(c,a);var m=cmod(s);body+='<div class="ab"><small>'+ABI[a]+' '+ABN[a]+'</small><b>'+s+'</b><span class="mm">'+(m>=0?'+':'')+m+'</span></div>';});
@@ -1666,7 +1668,7 @@ function renderBattle(enc, backFn){
   var party=(enc.party||[]).map(function(p){return {id:p.id,name:p.name,ico:p.ico,portrait:p.portrait,maxhp:p.maxhp,cur:p.hp};});
   var foes=(enc.foes||[]).map(function(e){return {nm:e.nm,ico:e.ico,maxhp:e.maxhp,cur:e.hp};});
   var ev=(enc.ev||[]).slice(), pById={}; party.forEach(function(p,i){pById[p.id]=i;});
-  function bcard(o,side,i){var av=(side==='pty'&&o.portrait)?'<img src="'+o.portrait+'">':o.ico;
+  function bcard(o,side,i){var av=(side==='pty'&&o.portrait)?'<img loading="lazy" src="'+pthumb(o.portrait,128)+'">':o.ico;
     return '<div class="bc '+side+'" id="'+side+i+'"><div class="bpop" id="'+side+'pop'+i+'"></div><div class="bico">'+av+'</div><div class="bnm">'+(o.name||o.nm)+'</div><div class="bhp"><i id="'+side+'hp'+i+'" style="width:'+Math.round(o.cur/o.maxhp*100)+'%"></i></div></div>';}
   var h=topbar()+'<div class="pad btlscene" style="background:radial-gradient(120% 80% at 50% -10%,#3a1c26,transparent 55%)">';
   h+='<h1 style="font-size:20px">⚔️ 戰鬥</h1>';
