@@ -281,15 +281,20 @@ function mkMonster(m, floor, boss){
 function resolveCombat(heroes, enemies, buff, floor, surprise){
   var log = { enemies: enemies.map(function(e){return {nm:e.nm,ico:e.ico};}),
     rounds:0, gold:0, xp:0, killed:0, lines:[] };
+  // 結構化戰鬥事件（給前端播放戰鬥畫面用）
+  enemies.forEach(function(e,i){ e._i = i; });
+  log.party = heroes.map(function(h){ var ci=COMBAT_CLASSES[h.job]||SUPPORT_CLASSES[h.job]||{}; return { id:h.id, name:h.name, portrait:h.portrait||'', ico:ci.ico||'❓', hp:h.hp, maxhp:h.maxhp }; });
+  log.foes = enemies.map(function(e){ return { nm:e.nm, ico:e.ico, hp:e.hp, maxhp:e.hp }; });
+  log.ev = [];
   // 偷襲先手：我方先免費行動一輪
   if (surprise){
-    log.lines.push('🥷 偷襲先手');
+    log.lines.push('🥷 偷襲先手'); log.ev.push({ a:'surprise' });
     aliveList(heroes).forEach(function(h){ if (aliveList(enemies).length===0) return; heroAttack(h, enemies, buff, log); });
   }
   var guard = 0;
   while (aliveList(heroes).length>0 && aliveList(enemies).length>0 && guard<40){
     guard++; log.rounds++;
-    log.lines.push('R'+log.rounds);                          // 回合分隔（前端轉「第 N 回合」）
+    log.lines.push('R'+log.rounds); log.ev.push({ r:log.rounds });   // 回合分隔（前端轉「第 N 回合」）
     // 我方行動
     aliveList(heroes).forEach(function(h){
       if (aliveList(enemies).length===0) return;
@@ -309,8 +314,10 @@ function resolveCombat(heroes, enemies, buff, floor, surprise){
         t.hp = Math.max(0, t.hp - dmg);
         if (t.hp<=0) t._downed = true;
         log.lines.push('🩸 '+e.ico+e.nm+' 打中 '+t.name+' −'+dmg+(t.hp<=0?' 💀 倒下':''));
+        log.ev.push({ a:'foe', by:e._i, tgt:t.id, dmg:dmg, kill:t.hp<=0 });
       } else {
         log.lines.push('💨 '+e.ico+e.nm+' 撲空');
+        log.ev.push({ a:'foe', by:e._i, tgt:t.id, miss:true });
       }
     });
   }
@@ -330,29 +337,33 @@ function heroAttack(h, enemies, buff, log){
     if (crit) dmg += rollDice(cs.dmgDice[0], cs.dmgDice[1]);
     t.hp = Math.max(0, t.hp - dmg);
     log.lines.push((crit?'✦ ':'⚔️ ')+h.name+' 擊中 '+t.ico+t.nm+' −'+dmg+(crit?'（暴擊！）':'')+(t.hp<=0?' 💀':''));
+    if (log.ev) log.ev.push({ a:'hero', by:h.id, tgt:t._i, dmg:dmg, crit:crit, kill:t.hp<=0 });
   } else {
     log.lines.push('💨 '+h.name+' 攻擊 '+t.ico+t.nm+' 落空');
+    if (log.ev) log.ev.push({ a:'hero', by:h.id, tgt:t._i, miss:true });
   }
 }
 function heroSkill(h, enemies, buff, log){
   var ci = COMBAT_CLASSES[h.job]; var cs = h._cs || (h._cs = combatStats(h));
   var k = ci.skill.kind;
   if (k === 'aoe'){
-    var tot=0; aliveList(enemies).forEach(function(e){ var dmg=rollDice(cs.dmgDice[0],cs.dmgDice[1])+cs.dmgBonus; e.hp=Math.max(0,e.hp-dmg); tot+=dmg; });
+    var tot=0, hits=[]; aliveList(enemies).forEach(function(e){ var dmg=rollDice(cs.dmgDice[0],cs.dmgDice[1])+cs.dmgBonus; e.hp=Math.max(0,e.hp-dmg); tot+=dmg; hits.push({tgt:e._i,dmg:dmg,kill:e.hp<=0}); });
     log.lines.push('🔥 '+h.name+' 施放「'+ci.skill.nm+'」橫掃全體 −'+tot);
+    if (log.ev) log.ev.push({ a:'skill', by:h.id, nm:ci.skill.nm, ico:'🔥', hits:hits });
   } else if (k === 'heal'){
     var team = h._team || [];
     // 治療全隊 + 復活一名（team 由 runDungeon 綁定）
     (h._allies||[]).forEach(function(a){ if(a.hp>0){ a.hp=Math.min(a.maxhp, a.hp+rollDice(2,8)+mod(abilityOf(h,'wis'))); } });
     var dead=(h._allies||[]).filter(function(a){return a.hp<=0;})[0];
-    if (dead){ dead.hp=Math.round(dead.maxhp*0.4); log.lines.push('✨ '+h.name+'「聖光」復活了 '+dead.name); }
-    else log.lines.push('✨ '+h.name+'施放「聖光」治療全隊');
+    if (dead){ dead.hp=Math.round(dead.maxhp*0.4); log.lines.push('✨ '+h.name+'「聖光」復活了 '+dead.name); if(log.ev)log.ev.push({a:'skill',by:h.id,nm:'聖光',ico:'✨',heal:true,revive:dead.id,allies:(h._allies||[]).map(function(a){return{id:a.id,hp:a.hp};})}); }
+    else { log.lines.push('✨ '+h.name+'施放「聖光」治療全隊'); if(log.ev)log.ev.push({a:'skill',by:h.id,nm:'聖光',ico:'✨',heal:true,allies:(h._allies||[]).map(function(a){return{id:a.id,hp:a.hp};})}); }
   } else if (k === 'multi'){
-    var t=frontAlive(enemies); if(t){ var tot2=0; for(var i=0;i<3;i++){ if(t.hp<=0)t=frontAlive(enemies); if(!t)break; var dmg=rollDice(cs.dmgDice[0],cs.dmgDice[1])+cs.dmgBonus; t.hp=Math.max(0,t.hp-dmg); tot2+=dmg;} log.lines.push('🏹 '+h.name+'「瞄準連射」−'+tot2); }
+    var t=frontAlive(enemies); if(t){ var tot2=0, mh=[]; for(var i=0;i<3;i++){ if(t.hp<=0)t=frontAlive(enemies); if(!t)break; var dmg=rollDice(cs.dmgDice[0],cs.dmgDice[1])+cs.dmgBonus; t.hp=Math.max(0,t.hp-dmg); tot2+=dmg; mh.push({tgt:t._i,dmg:dmg,kill:t.hp<=0});} log.lines.push('🏹 '+h.name+'「瞄準連射」−'+tot2); if(log.ev)log.ev.push({a:'skill',by:h.id,nm:'瞄準連射',ico:'🏹',hits:mh}); }
   } else if (k === 'double' || k==='smite' || k==='sneak'){
     var tt=frontAlive(enemies); if(tt){ var mult=(k==='sneak'?3:2); var dmg=0; for(var j=0;j<mult;j++) dmg+=rollDice(cs.dmgDice[0],cs.dmgDice[1]); dmg+=cs.dmgBonus; tt.hp=Math.max(0,tt.hp-dmg);
       if(k==='smite') h.hp=Math.min(h.maxhp,h.hp+rollDice(1,6));
-      log.lines.push(ci.ico+' '+h.name+'「'+ci.skill.nm+'」重擊 '+tt.ico+tt.nm+' −'+dmg+(tt.hp<=0?' 💀':'')); }
+      log.lines.push(ci.ico+' '+h.name+'「'+ci.skill.nm+'」重擊 '+tt.ico+tt.nm+' −'+dmg+(tt.hp<=0?' 💀':''));
+      if (log.ev) log.ev.push({ a:'skill', by:h.id, nm:ci.skill.nm, ico:ci.ico, hits:[{tgt:tt._i,dmg:dmg,kill:tt.hp<=0}] }); }
   } else { heroAttack(h, enemies, buff, log); }
 }
 

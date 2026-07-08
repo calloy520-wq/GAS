@@ -160,6 +160,26 @@
   .rep-floor{background:var(--d-panel);border:1px solid var(--d-line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
   .rep-floor .fh{font-weight:800;font-size:14px;margin-bottom:3px}
   .rep-floor .fl{color:#c9bfe0;font-size:12px;line-height:1.6}
+  .btl-round{text-align:center;font-weight:800;color:#f4c34e;min-height:24px;margin:8px 0;font-size:16px;text-shadow:0 1px 5px #000}
+  .btl-foes,.btl-party{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:6px 0}
+  .btl-vs{text-align:center;font-size:22px;margin:6px 0;opacity:.55}
+  .bc{position:relative;width:74px;text-align:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px 4px;transition:transform .12s,opacity .3s,filter .3s}
+  .bc .bico{font-size:30px;height:38px;line-height:38px}
+  .bc .bico img{width:38px;height:38px;border-radius:9px;object-fit:cover;vertical-align:middle}
+  .bc .bnm{font-size:10px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .bc .bhp{height:6px;background:#2a1e1e;border-radius:4px;margin-top:4px;overflow:hidden}
+  .bc .bhp i{display:block;height:100%;background:linear-gradient(90deg,#e0483a,#ff8a5c);width:100%;transition:width .3s}
+  .bc.pty .bhp i{background:linear-gradient(90deg,#3aa0b8,#7fe0ef)}
+  .bc .bpop{position:absolute;top:0;left:50%;transform:translateX(-50%);font-weight:900;font-size:15px;color:#ff6b6b;text-shadow:0 1px 3px #000;opacity:0;pointer-events:none}
+  .bc .bpop.crit{color:#ffd54a;font-size:18px}
+  .bc .bpop.heal{color:#7fe0a0}
+  .bc .bpop.show{animation:btlpop .7s ease-out}
+  @keyframes btlpop{0%{opacity:1;transform:translate(-50%,4px)}100%{opacity:0;transform:translate(-50%,-26px)}}
+  .bc.hit{animation:btlflash .3s}
+  @keyframes btlflash{0%,100%{background:var(--panel2)}45%{background:#8a2a2a;transform:translateX(-3px)}55%{transform:translateX(3px)}}
+  .bc.healed{animation:btlheal .45s}
+  @keyframes btlheal{0%,100%{background:var(--panel2)}50%{background:#256a48}}
+  .bc.dead{opacity:.28;filter:grayscale(1)}
   .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#241c14;border:1px solid var(--gold-d);
     color:var(--ink);padding:10px 16px;border-radius:12px;font-weight:700;font-size:13px;z-index:80;opacity:0;transition:opacity .25s;pointer-events:none}
   .toast.show{opacity:1}
@@ -271,7 +291,7 @@ function srv(action,payload){
 function mock(action,p){return new Promise(function(res,rej){
   var DB=JSON.parse(localStorage.getItem('merc_db')||'{}');
   function put(pl){DB[pl.nick]=pl;localStorage.setItem('merc_db',JSON.stringify(DB));}
-  function ensureC(pl){if(!pl.port)pl.port='merc';if(!pl.cargo)pl.cargo={};if(typeof pl.clues!=='number')pl.clues=0;if(!pl.ship)pl.ship=startShipC();if(typeof pl.ship.hull!=='number')pl.ship.hull=pl.ship.hullMax;if(typeof pl.ship.speed!=='number')pl.ship.speed=6;if(typeof pl.invest!=='number')pl.invest=0;if(!pl.holdings)pl.holdings={};if(!pl.posts)pl.posts={};ensureSeaC(pl);}
+  function ensureC(pl){if(!pl.port)pl.port='merc';if(!pl.cargo)pl.cargo={};if(typeof pl.clues!=='number')pl.clues=0;if(!pl.ship)pl.ship=startShipC();if(typeof pl.ship.hull!=='number')pl.ship.hull=pl.ship.hullMax;if(typeof pl.ship.speed!=='number')pl.ship.speed=6;if(typeof pl.invest!=='number')pl.invest=0;if(!pl.holdings)pl.holdings={};if(!pl.posts)pl.posts={};if(!pl.bag)pl.bag=[];if(!pl.roster)pl.roster=[];if(!pl.team)pl.team={battle:[],support:[]};ensureSeaC(pl);}
   function roll(){var a=[d6(),d6(),d6(),d6()].sort(function(x,y){return x-y;});return a[1]+a[2]+a[3];}
   function d6(){return 1+Math.floor(Math.random()*6);}
   function mk(name,job,portrait,seed,pbase,race){var base={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){base[a]=Math.min(20,((pbase&&pbase[a])||roll())+(g[a]||0));});var c={id:'c'+Math.random().toString(36).slice(2,9),name:name,job:job,race:race||'human',support:isSup(job),portrait:portrait||'',seed:seed||0,level:1,xp:0,base:base,equip:{weapon:null,armor:null,trinket:null},hp:0,maxhp:0};c.maxhp=cMaxHp(c);c.hp=c.maxhp;return c;}
@@ -339,7 +359,7 @@ function mock(action,p){return new Promise(function(res,rej){
       if(p.op==='raid'){if(pl.ship.hull<=0)return rej(new Error('船身破損，先修理'));var n=npcs().filter(function(x){return x.id===p.id;})[0];if(!n)return rej(new Error('已離開海域'));if(!pl.raided)pl.raided={};var rk=day+'_'+p.id;if(pl.raided[rk])return rej(new Error('今天已搶過這艘商船'));var by={};pl.roster.forEach(function(c){by[c.id]=c;});var party=(pl.team.battle||[]).map(function(id){return by[id];}).filter(Boolean);var enemy={nm:n.nm,ico:n.ico,hull:n.hull,cannon:n.cannon,speed:n.speed,gold:n.gold,loot:(worldEventC().type==='pirate'?n.loot+1:n.loot)};var surp=consumeScoutC(pl,'sea:'+p.id);var r=resolveNavalC(pl.ship,party,enemy,navalGunC(pl),p.stance,n.speed,surp);injectMateLineC(pl,r);pl.ship.hull=r.playerHull;var rep={enemy:{nm:n.nm,ico:n.ico},win:r.win,mode:r.mode,fled:r.fled,log:r.log,gold:0,loot:[],hull:pl.ship.hull,hullMax:pl.ship.hullMax};rep.sea=grantSeaC(pl,'nav',r.fled?4:(r.win?(8+Math.floor(n.hull/6)):3));if(r.win&&!r.fled)pl.raided[rk]=true;applyNavalRewardC(pl,enemy,r,rep);pl.gold=Math.max(0,pl.gold);put(pl);return res({player:pl,report:rep});}
       return res({player:pl,npcs:npcs()});}
     if(action==='treasure'){var pl=DB[p.nick.trim()];ensureC(pl);if((pl.clues||0)<5)return rej(new Error('海圖殘片不足（需 5 片）'));pl.clues-=5;var g=300+Math.floor(Math.random()*300);pl.gold+=g;var rep={gold:g,gear:null,goods:[]};if(Math.random()<0.6){rep.gear={ico:'🔥',nm:'烈焰之刃'};pl.bag.push('w_flame');}for(var i=0;i<3;i++){if(cargoCountC(pl)>=effCargoC(pl))break;var gd=GOODS_C[4+Math.floor(Math.random()*4)];pl.cargo[gd.id]=(pl.cargo[gd.id]||0)+1;rep.goods.push(gd.id);}put(pl);return res({player:pl,report:rep});}
-    if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,skills:(f>st?['🔍 隊長 察覺發現暗格 +'+Math.round(gg*0.3)+'🪙']:[]),loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2,lines:['R1','⚔️ 隊長 擊中 👺哥布林 −5','🩸 👺哥布林 打中 隊長 −3','R2','✦ 隊長 擊中 👺哥布林 −9（暴擊！） 💀']}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,kills:fl.length*2,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};
+    if(action==='dungeon'){var pl=DB[p.nick.trim()];ensureC(pl);var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,skills:(f>st?['🔍 隊長 察覺發現暗格 +'+Math.round(gg*0.3)+'🪙']:[]),loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[mockBattle(pl,f,f%5===0)]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,kills:fl.length*2,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};
       if(rep.wiped){var keep=Math.floor(g*0.5);var lost=g-keep;pl.gold-=lost;rep.gold=keep;rep.rescueGoldLost=lost;var kl=rep.loot.filter(function(){return Math.random()<0.5;});rep.rescueLootLost=rep.loot.length-kl.length;rep.loot=kl;}
       var oldDeep=pl.deepest||0;var oldR=rankOf(oldDeep);if(reached>pl.deepest)pl.deepest=reached;var newR=rankOf(pl.deepest||0);if(newR>oldR){var bn=newR*100;pl.gold+=bn;rep.rankUp={to:RANKS[newR].nm,ix:newR,reward:bn};}rep.newBosses=[];[5,10,15,20,25].forEach(function(bf){if(oldDeep<bf&&(pl.deepest||0)>=bf)rep.newBosses.push(bf);});
       if(!pl.uniques)pl.uniques={};rep.uniqueGains=[];var UBF={10:'u_hazhi',15:'u_heart',20:'u_soul',25:'u_legend'};rep.newBosses.forEach(function(bf){if(UBF[bf]&&!pl.uniques[bf]){pl.uniques[bf]=true;pl.bag.push(UBF[bf]);var u=UNIQUE_GEAR_C[UBF[bf]];rep.uniqueGains.push({ico:u.ico,nm:u.nm});}});
@@ -1595,6 +1615,61 @@ function openDungeon(){
   };
 }
 function fmtLog(lines){return lines.map(function(l){var m=/^R(\d+)$/.exec(l);return m?'<div style="color:var(--soft);font-size:11px;margin-top:6px;font-weight:700;border-top:1px dashed var(--d-line);padding-top:4px">— 第 '+m[1]+' 回合 —</div>':'<div style="font-size:12px;line-height:1.6">'+l+'</div>';}).join('');}
+// 離線 mock 用：產生一場有結構事件的簡化戰鬥（真實 GAS 用伺服器 resolveCombat）
+function mockBattle(pl,floor,boss){
+  var by={};pl.roster.forEach(function(c){by[c.id]=c;});
+  var party=(pl.team.battle||[]).map(function(id){return by[id];}).filter(Boolean).map(function(c){return {id:c.id,name:c.name,ico:(cinfo(c.job)||{}).ico||'⚔️',portrait:c.portrait||'',maxhp:c.maxhp||30,_atk:7+Math.floor((c.level||1)*1.4)};});
+  if(!party.length)party=[{id:'x',name:'隊長',ico:'⚔️',portrait:'',maxhp:30,_atk:10}];
+  var bossNm=['哥布林王','巨魔領主','骨龍','巫妖','深淵魔神'][Math.min(4,Math.max(0,Math.floor(floor/5)-1))];
+  var foes=boss?[{nm:bossNm,ico:'👹',maxhp:44+floor*8}]:[{nm:'哥布林',ico:'👺',maxhp:14+floor*3},{nm:'座狼',ico:'🐺',maxhp:11+floor*2}];
+  var ph=party.map(function(p){return p.maxhp;}),fh=foes.map(function(f){return f.maxhp;});
+  var ev=[],lines=[],round=0,guard=0;
+  function any(a){return a.some(function(x){return x>0;});}
+  function firstAlive(a){for(var i=0;i<a.length;i++)if(a[i]>0)return i;return -1;}
+  while(any(fh)&&any(ph)&&guard<14){guard++;round++;ev.push({r:round});lines.push('R'+round);
+    party.forEach(function(p,pi){if(ph[pi]<=0)return;var ti=firstAlive(fh);if(ti<0)return;var crit=Math.random()<0.15,dmg=p._atk+Math.floor(Math.random()*6)+(crit?6:0);fh[ti]=Math.max(0,fh[ti]-dmg);ev.push({a:'hero',by:p.id,tgt:ti,dmg:dmg,crit:crit,kill:fh[ti]<=0});lines.push((crit?'✦ ':'⚔️ ')+p.name+' 擊中 '+foes[ti].ico+foes[ti].nm+' −'+dmg+(fh[ti]<=0?' 💀':''));});
+    foes.forEach(function(f,fi){if(fh[fi]<=0)return;var ti=firstAlive(ph);if(ti<0)return;if(Math.random()<0.25){ev.push({a:'foe',by:fi,tgt:party[ti].id,miss:true});lines.push('💨 '+f.ico+f.nm+' 撲空');return;}var dmg=4+floor+Math.floor(Math.random()*5);ph[ti]=Math.max(0,ph[ti]-dmg);ev.push({a:'foe',by:fi,tgt:party[ti].id,dmg:dmg,kill:ph[ti]<=0});lines.push('🩸 '+f.ico+f.nm+' 打中 '+party[ti].name+' −'+dmg+(ph[ti]<=0?' 💀 倒下':''));});
+  }
+  return {enemies:foes.map(function(f){return {nm:f.nm,ico:f.ico};}),killed:fh.filter(function(x){return x<=0;}).length,lines:lines,
+    party:party.map(function(p){return {id:p.id,name:p.name,ico:p.ico,portrait:p.portrait,hp:p.maxhp,maxhp:p.maxhp};}),
+    foes:foes.map(function(f){return {nm:f.nm,ico:f.ico,hp:f.maxhp,maxhp:f.maxhp};}),ev:ev};
+}
+// ⚔️ 戰鬥畫面：把伺服器算好的戰鬥事件動畫播放出來
+function renderBattle(enc, backFn){
+  var party=(enc.party||[]).map(function(p){return {id:p.id,name:p.name,ico:p.ico,portrait:p.portrait,maxhp:p.maxhp,cur:p.hp};});
+  var foes=(enc.foes||[]).map(function(e){return {nm:e.nm,ico:e.ico,maxhp:e.maxhp,cur:e.hp};});
+  var ev=(enc.ev||[]).slice(), pById={}; party.forEach(function(p,i){pById[p.id]=i;});
+  function bcard(o,side,i){var av=(side==='pty'&&o.portrait)?'<img src="'+o.portrait+'">':o.ico;
+    return '<div class="bc '+side+'" id="'+side+i+'"><div class="bpop" id="'+side+'pop'+i+'"></div><div class="bico">'+av+'</div><div class="bnm">'+(o.name||o.nm)+'</div><div class="bhp"><i id="'+side+'hp'+i+'" style="width:'+Math.round(o.cur/o.maxhp*100)+'%"></i></div></div>';}
+  var h=topbar()+'<div class="pad btlscene" style="background:radial-gradient(120% 80% at 50% -10%,#3a1c26,transparent 55%)">';
+  h+='<h1 style="font-size:20px">⚔️ 戰鬥</h1>';
+  h+='<div class="btl-foes" id="btlfoes">'+foes.map(function(e,i){return bcard(e,'foe',i);}).join('')+'</div>';
+  h+='<div class="btl-round" id="btlround">準備接戰…</div>';
+  h+='<div class="btl-party" id="btlparty">'+party.map(function(p,i){return bcard(p,'pty',i);}).join('')+'</div>';
+  h+='<div class="rowbtns" style="margin-top:14px"><button class="btn dim" id="btlskip">⏭️ 跳過</button><button class="btn gold" id="btldone" style="display:none">✅ 看結算</button></div>';
+  h+='</div>';
+  app.innerHTML=h;
+  function sethp(side,i,o){var el=document.getElementById(side+'hp'+i);if(el)el.style.width=Math.max(0,Math.round(o.cur/o.maxhp*100))+'%';}
+  function flash(side,i,cls){var c=document.getElementById(side+i);if(c){c.classList.add(cls);setTimeout(function(){c.classList.remove(cls);},400);}}
+  function pop(side,i,txt,kind){var el=document.getElementById(side+'pop'+i);if(!el)return;el.textContent=txt;el.className='bpop '+(kind||'')+' show';setTimeout(function(){el.className='bpop '+(kind||'');},700);}
+  function dead(side,i){var c=document.getElementById(side+i);if(c)c.classList.add('dead');}
+  function banner(t){var el=document.getElementById('btlround');if(el)el.textContent=t;}
+  function hitFoe(i,dmg,crit,kill){if(dmg==null){pop('foe',i,'MISS','');return;}foes[i].cur=Math.max(0,foes[i].cur-dmg);sethp('foe',i,foes[i]);flash('foe',i,'hit');pop('foe',i,'−'+dmg,crit?'crit':'');if(kill)setTimeout(function(){dead('foe',i);},250);}
+  function hitPty(id,dmg,kill){var i=pById[id];if(i==null)return;if(dmg==null){pop('pty',i,'MISS','');return;}party[i].cur=Math.max(0,party[i].cur-dmg);sethp('pty',i,party[i]);flash('pty',i,'hit');pop('pty',i,'−'+dmg,'');if(kill)setTimeout(function(){dead('pty',i);},250);}
+  var fast=false;
+  function apply(e){
+    if(e.r!=null)banner('— 第 '+e.r+' 回合 —');
+    else if(e.a==='surprise')banner('🥷 偷襲先手！');
+    else if(e.a==='hero')hitFoe(e.tgt,e.miss?null:e.dmg,e.crit,e.kill);
+    else if(e.a==='foe')hitPty(e.tgt,e.miss?null:e.dmg,e.kill);
+    else if(e.a==='skill'){banner((e.ico||'✨')+' '+e.nm+'！');if(e.hits)e.hits.forEach(function(hh){hitFoe(hh.tgt,hh.dmg,false,hh.kill);});if(e.heal&&e.allies)e.allies.forEach(function(al){var i=pById[al.id];if(i!=null){party[i].cur=al.hp;sethp('pty',i,party[i]);flash('pty',i,'healed');pop('pty',i,'♥','heal');var c=document.getElementById('pty'+i);if(c&&al.hp>0)c.classList.remove('dead');}});}
+  }
+  function finish(){var sk=document.getElementById('btlskip');if(sk)sk.style.display='none';var dn=document.getElementById('btldone');if(dn){dn.style.display='';dn.onclick=backFn;}banner('⚔️ 戰鬥結束');}
+  var k=0;
+  function step(){if(k>=ev.length)return finish();var e=ev[k++];apply(e);var d=fast?0:(e.a==='skill'?680:(e.r!=null?520:400));setTimeout(step,d);}
+  document.getElementById('btlskip').onclick=function(){fast=true;this.style.display='none';};
+  if(!ev.length){banner('（這場沒有詳細戰鬥紀錄）');finish();}else setTimeout(step,500);
+}
 function renderReport(rep){
   var head=rep.wiped?'💀 小隊全滅撤退':(rep.cleared?'🎉 探索成功！':'🏳️ 探索結束');
   var h=topbar()+'<div class="pad" style="background:radial-gradient(120% 80% at 50% -10%,#2a2140,transparent 55%)">';
@@ -1610,12 +1685,15 @@ function renderReport(rep){
   if(rep.bondUps&&rep.bondUps.length){h+='<div class="note" style="text-align:left;color:#ff9ec7">💞 羈絆提升：'+rep.bondUps.map(function(bd){return bd.a+' × '+bd.b+' → '+bd.level;}).join('、')+'</div>';}
   if(rep.loot&&rep.loot.length){h+='<div class="note" style="text-align:left">戰利品：'+rep.loot.map(function(id){var g=gById(id);return g?g.ico+g.nm:id;}).join('、')+'</div>';}
   h+='</div>';
+  var battleFloors=(rep.floors||[]).filter(function(f){return f.encounters&&f.encounters[0]&&f.encounters[0].ev&&f.encounters[0].ev.length;});
+  var featured=battleFloors.filter(function(f){return f.boss;}).pop()||battleFloors[battleFloors.length-1];
+  if(featured)h+='<button class="btn re" id="watchbtl" style="margin-top:10px">⚔️ 觀看戰鬥動畫'+(featured.boss?'（👑 第 '+featured.floor+' 層頭目）':'（第 '+featured.floor+' 層）')+'</button>';
   var story=[];
   if(rep.rankUp&&STORY.rank[rep.rankUp.ix])story.push(STORY.rank[rep.rankUp.ix]);
   (rep.newBosses||[]).forEach(function(bf){if(STORY.boss[bf])story.push(STORY.boss[bf]);});
   if(story.length)h+='<div class="card" style="border-color:var(--gold-d)"><b>📖 劇情</b>'+story.map(function(s){return '<div class="note" style="text-align:left;margin-top:6px;line-height:1.75;color:#f0d6ad;white-space:pre-line">'+s+'</div>';}).join('')+'</div>';
   h+='<details><summary>📋 展開逐層戰報（'+(rep.floors?rep.floors.length:0)+' 層）</summary><div style="margin-top:8px">';
-  rep.floors.forEach(function(f){
+  rep.floors.forEach(function(f,fi){
     var enc=f.encounters&&f.encounters[0];
     var enemies=(enc&&enc.enemies||[]).map(function(e){return e.ico;}).join('');
     h+='<div class="rep-floor"><div class="fh">'+(f.boss?'👑 ':'')+'第 '+f.floor+' 層 '+enemies+'</div><div class="fl">';
@@ -1624,6 +1702,7 @@ function renderReport(rep){
     if(f.wipe)h+='<b style="color:var(--hp)">小隊在此全滅…</b>';
     else h+='擊敗 '+((enc||{}).killed||0)+' 隻 ・ +'+f.gold+'🪙 ・ +'+f.xp+'⭐'+((f.loot&&f.loot.length)?' ・ 掉落 '+f.loot.map(function(g){return g.ico+g.nm;}).join(''):'');
     h+='</div>';
+    if(enc&&enc.ev&&enc.ev.length)h+='<button class="btn dim sm" data-wbtl="'+fi+'" style="margin-top:4px">▶️ 觀看此層戰鬥</button>';
     if(enc&&enc.lines&&enc.lines.length){h+='<details style="margin-top:4px"><summary>📜 詳細戰記</summary><div class="fl" style="margin-top:4px">'+fmtLog(enc.lines)+'</div></details>';}
     h+='</div>';
   });
@@ -1633,6 +1712,8 @@ function renderReport(rep){
   h+='<button class="btn gold" id="back" style="margin-top:12px">🏰 回到城鎮</button></div>';
   app.innerHTML=h;
   document.getElementById('back').onclick=renderTown;
+  var wb=document.getElementById('watchbtl');if(wb&&featured)wb.onclick=function(){renderBattle(featured.encounters[0],function(){renderReport(rep);});};
+  Array.prototype.forEach.call(document.querySelectorAll('[data-wbtl]'),function(el){el.onclick=function(){var f=rep.floors[+el.dataset.wbtl];if(f&&f.encounters&&f.encounters[0])renderBattle(f.encounters[0],function(){renderReport(rep);});};});
   var at=document.getElementById('aitale');
   if(at)at.onclick=function(){at.disabled=true;at.textContent='✍️ 執筆中…';var box=document.getElementById('aitalebox');box.style.display='block';box.textContent='✨ 吟遊詩人正在編寫戰記…';
     genBattleTale(rep,function(t){box.textContent=t;if(at)at.remove();});};
