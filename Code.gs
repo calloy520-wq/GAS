@@ -35,6 +35,9 @@ function route_(action, p){
     case 'quest':   return apiQuest_(p);
     case 'trade':   return apiTrade_(p);
     case 'voyage':  return apiVoyage_(p);
+    case 'naval':   return apiNaval_(p);
+    case 'ship':    return apiShip_(p);
+    case 'treasure':return apiTreasure_(p);
     case 'dungeon': return apiDungeon_(p);
     case 'roster':  return { players: listPlayers() };
     case 'meta':    return apiMeta_();
@@ -179,7 +182,7 @@ function applyQuest_(player, report){
 function cargoCount_(pl){ var n=0, c=pl.cargo||{}; for (var k in c) n+=c[k]; return n; }
 function tradeHaggle_(pl){ var has=(pl.roster||[]).some(function(c){ return charSkills(c).indexOf('persuasion')>=0; }); return has?{buyMul:0.95,sellMul:1.05}:{buyMul:1,sellMul:1}; }
 function tradeView_(pl, day, disc){
-  return { port:pl.port, cargo:pl.cargo||{}, cargoCount:cargoCount_(pl), cargoMax:CARGO_MAX, haggle:(disc.buyMul<1),
+  return { port:pl.port, cargo:pl.cargo||{}, cargoCount:cargoCount_(pl), cargoMax:effectiveCargoMax(pl), haggle:(disc.buyMul<1),
     markets: MARKETS.map(function(m){ return { id:m.id, nm:m.nm, ico:m.ico,
       goods: GOODS.map(function(g){ var base=tradePrice(m.id,g.id,day);
         return { id:g.id, nm:g.nm, ico:g.ico, buy:Math.round(base*disc.buyMul), sell:Math.round(base*0.92*disc.sellMul),
@@ -199,7 +202,7 @@ function apiTrade_(p){
     if (!GOOD_BY[p.good]) throw new Error('未知商品');
     var qty = Math.max(1, p.qty|0);
     var price = Math.round(tradePrice(player.port, p.good, day) * disc.buyMul);
-    if (cargoCount_(player) + qty > CARGO_MAX) throw new Error('貨艙不足（上限 '+CARGO_MAX+'）');
+    if (cargoCount_(player) + qty > effectiveCargoMax(player)) throw new Error('貨艙不足（上限 '+effectiveCargoMax(player)+'）');
     var cost = price * qty;
     if ((player.gold||0) < cost) throw new Error('金幣不足');
     player.gold -= cost; player.cargo[p.good] = (player.cargo[p.good]||0) + qty;
@@ -228,7 +231,7 @@ function rollSeaEvent_(pl, haggle){
   }
   if (r < 0.64){ // 漂流物
     var g2=GOODS[Math.floor(Math.random()*GOODS.length)]; var q=1+Math.floor(Math.random()*2);
-    if (cargoCount_(pl)+q <= CARGO_MAX){ pl.cargo[g2.id]=(pl.cargo[g2.id]||0)+q; return {ico:'📦', t:'撈起漂流貨物，獲得 '+q+' 箱'+g2.nm+'！'}; }
+    if (cargoCount_(pl)+q <= effectiveCargoMax(pl)){ pl.cargo[g2.id]=(pl.cargo[g2.id]||0)+q; return {ico:'📦', t:'撈起漂流貨物，獲得 '+q+' 箱'+g2.nm+'！'}; }
     return {ico:'🌊', t:'看到漂流物，但貨艙已滿只能作罷。'};
   }
   if (r < 0.76){ var gg=15+Math.floor(Math.random()*40); pl.gold=(pl.gold||0)+gg; return {ico:'💰', t:'遇到友善商船交易，小賺 '+gg+'🪙。'}; }
@@ -252,10 +255,115 @@ function apiVoyage_(p){
   var voyage = { from:from, to:to, days:days, events:[] };
   var n = 1 + Math.floor(Math.random()*Math.min(3, days));
   for (var i=0;i<n;i++){ voyage.events.push(rollSeaEvent_(player, haggle)); }
+  // 商會分紅（有投資的話，每趟航程領一次）
+  if ((player.invest||0) > 0){ var div = Math.max(1, Math.round(player.invest * 0.05)); player.gold += div; voyage.events.push({ ico:'🏦', t:'商會分紅入帳 +'+div+'🪙（投資 '+player.invest+'）' }); }
   player.port = to;
   player.gold = Math.max(0, player.gold||0);
   cleanPlayer_(player); savePlayer(player);
   return { player: player, voyage: voyage };
+}
+
+// ===== 海戰 / 掠奪 =====
+function bestDexMod_(party){ var m=0; party.forEach(function(c){ m=Math.max(m, mod(abilityOf(c,'dex'))); }); return m; }
+function partyPower_(party){ var s=0; party.forEach(function(c){ s+=(c.level||1); }); return s; }
+function resolveNaval_(ship, party, enemy){
+  var log=[], ph=ship.hull, eh=enemy.hull, guard=0;
+  var gun = ship.cannon + bestDexMod_(party) + Math.floor((ship.crew||8)/4);
+  var board = partyPower_(party);
+  log.push('⚓ 兩船進入砲擊距離！我船 '+ph+' vs '+enemy.ico+enemy.nm+' '+eh);
+  while (ph>0 && eh>0 && guard<30){
+    guard++;
+    var pd = rint(Math.floor(gun*0.7), gun+2);
+    var boarded = (eh < enemy.hull*0.35);
+    if (boarded){ pd += Math.floor(board/2); }
+    eh = Math.max(0, eh-pd);
+    log.push((boarded?'⚔️ 接舷肉搏！':'💥 我方齊射 ')+'造成 '+pd+' 傷（敵船 '+eh+'）');
+    if (eh<=0) break;
+    var ed = rint(Math.floor(enemy.cannon*0.6), enemy.cannon+2);
+    ph = Math.max(0, ph-ed);
+    log.push('🔥 '+enemy.ico+enemy.nm+' 還擊 '+ed+' 傷（我船 '+ph+'）');
+  }
+  return { win: eh<=0, playerHull: ph, log:log };
+}
+function apiNaval_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (!player.ship) player.ship = startShip();
+  if (player.ship.hull <= 0) throw new Error('船身破損，請先到船塢修理');
+  var byId={}; (player.roster||[]).forEach(function(c){ byId[c.id]=c; });
+  var party = (player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
+  // 敵船等級：依最深層與擲骰加權
+  var prog = Math.min(3, Math.floor((player.deepest||0)/8));
+  var ti = Math.max(0, Math.min(3, prog - 1 + rint(0,2)));
+  var base = ENEMY_SHIPS[ti];
+  var enemy = { nm:base.nm, ico:base.ico, hull:base.hull, cannon:base.cannon, gold:base.gold, loot:base.loot };
+  var r = resolveNaval_(player.ship, party, enemy);
+  player.ship.hull = r.playerHull;
+  var report = { enemy:{nm:enemy.nm, ico:enemy.ico}, win:r.win, log:r.log, gold:0, loot:[], hull:player.ship.hull, hullMax:player.ship.hullMax };
+  if (r.win){
+    var g = rint(base.gold[0], base.gold[1]); player.gold += g; report.gold = g;
+    if (!player.cargo) player.cargo = {};
+    for (var i=0;i<base.loot;i++){ if (cargoCount_(player) >= effectiveCargoMax(player)) break; var gd=GOODS[rint(0,GOODS.length-1)]; player.cargo[gd.id]=(player.cargo[gd.id]||0)+1; report.loot.push(gd.id); }
+  } else {
+    // 敗：貨艙損失一部分
+    var gs=Object.keys(player.cargo||{});
+    if (gs.length){ var lg=gs[rint(0,gs.length-1)]; var ll=Math.min(player.cargo[lg], 1+rint(0,2)); player.cargo[lg]-=ll; if(player.cargo[lg]<=0)delete player.cargo[lg]; report.lostCargo=ll; }
+    var pen=Math.min(player.gold||0, rint(20,60)); player.gold-=pen; report.lostGold=pen;
+  }
+  player.gold = Math.max(0, player.gold);
+  cleanPlayer_(player); savePlayer(player);
+  return { player:player, report:report };
+}
+
+// ===== 船塢：修理 / 升級 / 投資 =====
+function upgradeCost_(kind, tier){ var u=SHIP_UP[kind]; return Math.round(u.base * Math.pow(1.6, tier)); }
+function apiShip_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (!player.ship) player.ship = startShip();
+  var s = player.ship;
+  if (p.op === 'repair'){
+    var missing = (s.hullMax||60) - (s.hull||0);
+    if (missing <= 0) throw new Error('船身完好，無需修理');
+    var cost = Math.ceil(missing * 2);
+    if ((player.gold||0) < cost) throw new Error('金幣不足（修理需 '+cost+'🪙）');
+    player.gold -= cost; s.hull = s.hullMax;
+  } else if (p.op === 'upgrade'){
+    var u = SHIP_UP[p.kind]; if (!u) throw new Error('未知升級');
+    s._t = s._t || {}; var tier = s._t[p.kind]||0;
+    var c2 = upgradeCost_(p.kind, tier);
+    if ((player.gold||0) < c2) throw new Error('金幣不足（需 '+c2+'🪙）');
+    player.gold -= c2; s[u.stat] = (s[u.stat]||0) + u.step; s._t[p.kind] = tier+1;
+    if (p.kind==='hull') s.hull = s.hullMax;   // 強化船身順便補滿
+  } else if (p.op === 'invest'){
+    var amt = Math.max(0, p.amount|0);
+    if ((player.gold||0) < amt) throw new Error('金幣不足');
+    player.gold -= amt; player.invest = (player.invest||0) + amt;
+  } else if (p.op === 'withdraw'){
+    var w = Math.min(player.invest||0, Math.max(0, p.amount|0));
+    player.invest -= w; player.gold += w;
+  }
+  cleanPlayer_(player); savePlayer(player);
+  return { player:player };
+}
+
+// ===== 秘寶：線索集滿 → 挖寶 =====
+function apiTreasure_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if ((player.clues||0) < 5) throw new Error('海圖殘片不足（需 5 片，目前 '+(player.clues||0)+'）');
+  player.clues -= 5;
+  var gold = rint(200, 600) + (player.deepest||0)*20;
+  player.gold += gold;
+  var report = { gold:gold, gear:null, goods:[] };
+  // 有機率挖到稀有裝備
+  if (Math.random() < 0.6){ var g = rollLoot(Math.max(6,(player.deepest||0)+4), true); if (g){ player.bag.push(g.id); report.gear = { ico:g.ico, nm:g.nm }; } }
+  // 一些珍稀貨物
+  if (!player.cargo) player.cargo = {};
+  var n = rint(2,4);
+  for (var i=0;i<n;i++){ if (cargoCount_(player) >= effectiveCargoMax(player)) break; var gd=GOODS[rint(4,GOODS.length-1)]; player.cargo[gd.id]=(player.cargo[gd.id]||0)+1; report.goods.push(gd.id); }
+  cleanPlayer_(player); savePlayer(player);
+  return { player:player, report:report };
 }
 
 // 地下城：後端跑完整探索，套用結果後存檔

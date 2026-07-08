@@ -116,6 +116,12 @@ function ensureShape_(pl){
   if (!Array.isArray(pl.team.support)) pl.team.support = [];
   if (typeof pl.gold !== 'number' || isNaN(pl.gold)) pl.gold = 0;
   if (typeof pl.deepest !== 'number' || isNaN(pl.deepest)) pl.deepest = 0;
+  if (!pl.port) pl.port = 'merc';
+  if (!pl.cargo || typeof pl.cargo !== 'object') pl.cargo = {};
+  if (typeof pl.clues !== 'number') pl.clues = 0;
+  if (!pl.ship || typeof pl.ship !== 'object') pl.ship = startShip();
+  if (typeof pl.ship.hull !== 'number') pl.ship.hull = pl.ship.hullMax || 60;
+  if (typeof pl.invest !== 'number') pl.invest = 0;
   pl.roster.forEach(function(c){
     if (!c) return;
     if (!c.race) c.race = 'human';

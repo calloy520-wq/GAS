@@ -234,6 +234,22 @@ var MARKETS = [
 var MARKET_BY = {}; MARKETS.forEach(function(m){ MARKET_BY[m.id]=m; });
 var CARGO_MAX = 20;
 
+// ---- 船艦 / 海戰 ----
+function startShip(){ return { name:'初心號', hullMax:60, hull:60, cannon:6, cargoBonus:0, crew:8, tier:1 }; }
+function effectiveCargoMax(pl){ return CARGO_MAX + ((pl.ship&&pl.ship.cargoBonus)||0); }
+var SHIP_UP = {
+  hull:   { nm:'強化船身', ico:'🛠️', stat:'hullMax',    step:30, base:120 },
+  cannon: { nm:'加裝火砲', ico:'💣', stat:'cannon',     step:3,  base:150 },
+  cargo:  { nm:'擴充貨艙', ico:'📦', stat:'cargoBonus', step:8,  base:130 },
+  crew:   { nm:'招募水手', ico:'⚓', stat:'crew',       step:4,  base:90  }
+};
+var ENEMY_SHIPS = [
+  { nm:'小商船',   ico:'⛵',  hull:45,  cannon:4,  gold:[30,70],   loot:2 },
+  { nm:'武裝商船', ico:'🚢',  hull:80,  cannon:7,  gold:[70,150],  loot:3 },
+  { nm:'海盜船',   ico:'🏴‍☠️', hull:120, cannon:11, gold:[120,240], loot:4 },
+  { nm:'私掠艦',   ico:'⚓',  hull:185, cannon:16, gold:[220,420], loot:6 }
+];
+
 function hashNoise(str){ var h=2166136261; for (var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return ((h>>>0)%1000)/1000; }
 function tradeDayBucket(){ return Math.floor(Date.now()/(1000*60*60*4)); }   // 每 4 小時波動一次
 // 回傳某市集某商品的市價（波動後）
