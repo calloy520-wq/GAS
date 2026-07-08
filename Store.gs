@@ -123,6 +123,7 @@ function ensureShape_(pl){
   if (typeof pl.ship.hull !== 'number') pl.ship.hull = pl.ship.hullMax || 60;
   if (typeof pl.invest !== 'number') pl.invest = 0;
   if (!Array.isArray(pl.fleet)) pl.fleet = [];
+  ensureSea_(pl);   // 航海術 / 商業 等級
   pl.roster.forEach(function(c){
     if (!c) return;
     if (!c.race) c.race = 'human';

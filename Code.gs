@@ -184,9 +184,40 @@ function applyQuest_(player, report){
 
 // 大航海式貿易：看盤／買／賣／前往其他市集
 function cargoCount_(pl){ var n=0, c=pl.cargo||{}; for (var k in c) n+=c[k]; return n; }
+// ===== 海事等級：航海術 / 商業（帳號級・像騎砍的團長個人技能，隨活動成長）=====
+var SEA_LV_MAX = 20;
+function seaXpNext_(lv){ return 40 + lv*lv*28; }   // Lv1→68, Lv5→740, Lv10→2840
+function ensureSea_(pl){
+  if (!pl.nav || typeof pl.nav!=='object') pl.nav={lv:1,xp:0};
+  if (!pl.com || typeof pl.com!=='object') pl.com={lv:1,xp:0};
+  if (typeof pl.nav.lv!=='number') pl.nav.lv=1; if (typeof pl.nav.xp!=='number') pl.nav.xp=0;
+  if (typeof pl.com.lv!=='number') pl.com.lv=1; if (typeof pl.com.xp!=='number') pl.com.xp=0;
+}
+function teamHasSkill_(pl, sk){ return (pl.roster||[]).some(function(c){ return charSkills(c).indexOf(sk)>=0; }); }
+// 天賦：隊伍技能決定哪條海事技能練得快（不必改職業，選角仍影響海上）
+function seaAffinity_(pl, track){
+  if (track==='nav') return (teamHasSkill_(pl,'survival')||teamHasSkill_(pl,'perception'))?1.5:1;
+  return teamHasSkill_(pl,'persuasion')?1.5:1;
+}
+function grantSea_(pl, track, xp){
+  ensureSea_(pl);
+  var gain = Math.max(0, Math.round((xp||0)*seaAffinity_(pl,track)));
+  var t = pl[track], ups=0;
+  if (gain>0){ t.xp += gain; while (t.lv<SEA_LV_MAX && t.xp>=seaXpNext_(t.lv)){ t.xp-=seaXpNext_(t.lv); t.lv++; ups++; } if (t.lv>=SEA_LV_MAX) t.xp=0; }
+  return { track:track, gain:gain, ups:ups, lv:t.lv, nm:(track==='nav'?'航海術':'商業') };
+}
+// 效果
+function navDaysMul_(pl){ ensureSea_(pl); return Math.max(0.55, 1 - 0.024*(pl.nav.lv-1)); }  // Lv20 約 -46% 航程
+function navGunBonus_(pl){ ensureSea_(pl); return Math.floor((pl.nav.lv-1)/3); }             // 每 3 級 +1 砲擊
+function navLuck_(pl){ ensureSea_(pl); return Math.min(0.14, 0.011*(pl.nav.lv-1)); }         // 海上事件偏向好運
+function comBuyMul_(pl){ ensureSea_(pl); return Math.max(0.72, 1 - 0.0075*(pl.com.lv-1)); }  // 進貨更便宜
+function comSellMul_(pl){ ensureSea_(pl); return Math.min(1.30, 1 + 0.011*(pl.com.lv-1)); }  // 賣貨更高價
+function tradeDisc_(pl){ ensureSea_(pl); var has=teamHasSkill_(pl,'persuasion'); return { buyMul:comBuyMul_(pl)*(has?0.97:1), sellMul:comSellMul_(pl)*(has?1.03:1), haggle:has }; }
 function tradeHaggle_(pl){ var has=(pl.roster||[]).some(function(c){ return charSkills(c).indexOf('persuasion')>=0; }); return has?{buyMul:0.95,sellMul:1.05}:{buyMul:1,sellMul:1}; }
 function tradeView_(pl, day, disc){
-  return { port:pl.port, cargo:pl.cargo||{}, cargoCount:cargoCount_(pl), cargoMax:effectiveCargoMax(pl), haggle:(disc.buyMul<1),
+  ensureSea_(pl);
+  return { port:pl.port, cargo:pl.cargo||{}, cargoCount:cargoCount_(pl), cargoMax:effectiveCargoMax(pl), haggle:!!disc.haggle,
+    nav:pl.nav, com:pl.com, comBuy:disc.buyMul, comSell:disc.sellMul,
     markets: MARKETS.map(function(m){ return { id:m.id, nm:m.nm, ico:m.ico,
       goods: GOODS.map(function(g){ var base=tradePrice(m.id,g.id,day);
         return { id:g.id, nm:g.nm, ico:g.ico, buy:Math.round(base*disc.buyMul), sell:Math.round(base*0.92*disc.sellMul),
@@ -198,7 +229,8 @@ function apiTrade_(p){
   if (!player.port || !MARKET_BY[player.port]) player.port = 'merc';
   if (!player.cargo) player.cargo = {};
   var day = tradeDayBucket();
-  var disc = tradeHaggle_(player);
+  var disc = tradeDisc_(player);
+  var sea = null;
   if (p.op === 'travel'){
     if (!MARKET_BY[p.to]) throw new Error('未知市集');
     player.port = p.to;
@@ -214,18 +246,20 @@ function apiTrade_(p){
     var q2 = Math.max(1, p.qty|0);
     if (!player.cargo[p.good] || player.cargo[p.good] < q2) throw new Error('貨艙沒有這麼多');
     var sp = Math.round(tradePrice(player.port, p.good, day) * 0.92 * disc.sellMul);
-    player.gold += sp * q2; player.cargo[p.good] -= q2;
+    var rev = sp * q2;
+    player.gold += rev; player.cargo[p.good] -= q2;
     if (player.cargo[p.good] <= 0) delete player.cargo[p.good];
+    sea = grantSea_(player, 'com', Math.max(1, Math.round(rev/22)));   // 賣貨練「商業」
   }
   if (p.op){ cleanPlayer_(player); savePlayer(player); }   // 只有實際買/賣/移動才寫檔
-  return { player: player, view: tradeView_(player, day, disc) };
+  return { player: player, view: tradeView_(player, day, disc), sea: sea };
 }
 
 // 航海：從目前港口航向另一港，途中觸發海上事件
 function portDist_(a,b){ var A=MARKET_BY[a],B=MARKET_BY[b]; var dx=A.x-B.x, dy=A.y-B.y; return Math.sqrt(dx*dx+dy*dy); }
 function voyageDays_(a,b){ return Math.max(1, Math.round(portDist_(a,b)/24)); }
 function rollSeaEvent_(pl, haggle){
-  var r = Math.random();
+  var r = Math.min(0.999, Math.random() + navLuck_(pl));   // 航海術越高，越常遇好事、越少遇災劫
   if (r < 0.20) return { ico:'🌊', t:'風平浪靜，航行順利。' };
   if (r < 0.34) return { ico:'💨', t:'順風相助，船行如飛。' };
   if (r < 0.50){ // 暴風雨
@@ -254,15 +288,17 @@ function apiVoyage_(p){
   if (!player.cargo) player.cargo={};
   var to = p.to; if (!MARKET_BY[to]) throw new Error('未知港口');
   if (to === player.port) throw new Error('你已經在這個港口了');
-  var from = player.port, days = voyageDays_(from, to);
+  var from = player.port, baseDays = voyageDays_(from, to);
+  var days = Math.max(1, Math.round(baseDays * navDaysMul_(player)));   // 航海術縮短航程
   var haggle = (player.roster||[]).some(function(c){ return charSkills(c).indexOf('persuasion')>=0; });
-  var voyage = { from:from, to:to, days:days, events:[] };
+  var voyage = { from:from, to:to, days:days, baseDays:baseDays, events:[] };
   var n = 1 + Math.floor(Math.random()*Math.min(3, days));
   for (var i=0;i<n;i++){ voyage.events.push(rollSeaEvent_(player, haggle)); }
   // 商會分紅（有投資的話，每趟航程領一次）
   if ((player.invest||0) > 0){ var div = Math.max(1, Math.round(player.invest * 0.05)); player.gold += div; voyage.events.push({ ico:'🏦', t:'商會分紅入帳 +'+div+'🪙（投資 '+player.invest+'）' }); }
   player.port = to;
   player.gold = Math.max(0, player.gold||0);
+  voyage.sea = grantSea_(player, 'nav', 8 + baseDays*3);   // 出航練「航海術」
   cleanPlayer_(player); savePlayer(player);
   return { player: player, voyage: voyage };
 }
@@ -270,9 +306,9 @@ function apiVoyage_(p){
 // ===== 海戰 / 掠奪 =====
 function bestDexMod_(party){ var m=0; party.forEach(function(c){ m=Math.max(m, mod(abilityOf(c,'dex'))); }); return m; }
 function partyPower_(party){ var s=0; party.forEach(function(c){ s+=(c.level||1); }); return s; }
-function resolveNaval_(ship, party, enemy){
+function resolveNaval_(ship, party, enemy, gunBonus){
   var log=[], ph=ship.hull, eh=enemy.hull, guard=0;
-  var gun = ship.cannon + bestDexMod_(party) + Math.floor((ship.crew||8)/4);
+  var gun = ship.cannon + bestDexMod_(party) + Math.floor((ship.crew||8)/4) + (gunBonus||0);
   var board = partyPower_(party);
   log.push('⚓ 兩船進入砲擊距離！我船 '+ph+' vs '+enemy.ico+enemy.nm+' '+eh);
   while (ph>0 && eh>0 && guard<30){
@@ -301,9 +337,10 @@ function apiNaval_(p){
   var ti = Math.max(0, Math.min(3, prog - 1 + rint(0,2)));
   var base = ENEMY_SHIPS[ti];
   var enemy = { nm:base.nm, ico:base.ico, hull:base.hull, cannon:base.cannon, gold:base.gold, loot:base.loot };
-  var r = resolveNaval_(player.ship, party, enemy);
+  var r = resolveNaval_(player.ship, party, enemy, navGunBonus_(player));
   player.ship.hull = r.playerHull;
   var report = { enemy:{nm:enemy.nm, ico:enemy.ico}, win:r.win, log:r.log, gold:0, loot:[], hull:player.ship.hull, hullMax:player.ship.hullMax };
+  report.sea = grantSea_(player, 'nav', r.win ? (8 + Math.floor(enemy.hull/6)) : 3);   // 海戰練「航海術」
   if (r.win){
     var g = rint(base.gold[0], base.gold[1]); player.gold += g; report.gold = g;
     if (!player.cargo) player.cargo = {};
@@ -376,6 +413,7 @@ function apiFleet_(p){
       player.gold += got; report.earned += got;
       report.lines.push(s.ico+s.nm+'（'+MARKET_BY[s.route.from].nm+'→'+MARKET_BY[s.route.to].nm+'）跑 '+cycles+' 趟'+(lost?('，'+lost+' 趟遭劫'):'')+' → +'+got+'🪙');
     });
+    if (report.earned>0) report.sea = grantSea_(player, 'com', Math.floor(report.earned/45));   // 商隊收益練「商業」
     cleanPlayer_(player); savePlayer(player);
     return { player:player, report:report };
   }
@@ -400,9 +438,10 @@ function apiSea_(p){
     var byId={}; (player.roster||[]).forEach(function(c){ byId[c.id]=c; });
     var party=(player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
     var enemy={ nm:npc.nm, ico:npc.ico, hull:npc.hull, cannon:npc.cannon };
-    var r = resolveNaval_(player.ship, party, enemy);
+    var r = resolveNaval_(player.ship, party, enemy, navGunBonus_(player));
     player.ship.hull = r.playerHull;
     var report={ enemy:{nm:npc.nm, ico:npc.ico}, win:r.win, log:r.log, gold:0, loot:[], hull:player.ship.hull, hullMax:player.ship.hullMax };
+    report.sea = grantSea_(player, 'nav', r.win ? (8 + Math.floor(npc.hull/6)) : 3);
     if (r.win){
       player.raided[rk]=true;
       var g=rint(npc.gold[0], npc.gold[1]); player.gold+=g; report.gold=g;
@@ -431,9 +470,10 @@ function apiRaidPlayer_(p){
   var tById={}; (target.roster||[]).forEach(function(c){ tById[c.id]=c; });
   var defParty = (target.team.battle||[]).map(function(id){ return tById[id]; }).filter(Boolean);
   var enemy = { nm:target.nick+'的商船', ico:'⛵', hull:(target.ship.hullMax||60), cannon:(target.ship.cannon||6)+Math.floor(partyPower_(defParty)/5) };
-  var r = resolveNaval_(me.ship, party, enemy);
+  var r = resolveNaval_(me.ship, party, enemy, navGunBonus_(me));
   me.ship.hull = r.playerHull;
   var report = { target:target.nick, win:r.win, log:r.log, gold:0, loot:[], hull:me.ship.hull, hullMax:me.ship.hullMax };
+  report.sea = grantSea_(me, 'nav', r.win ? (8 + Math.floor(enemy.hull/6)) : 3);
   if (r.win){
     var steal = Math.min(target.gold||0, Math.floor((target.gold||0)*0.2) + rint(10,40));
     target.gold = (target.gold||0) - steal; me.gold = (me.gold||0) + steal; report.gold = steal;
