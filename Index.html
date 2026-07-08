@@ -153,6 +153,11 @@ var RACES={
   vampire:{nm:'吸血鬼',ico:'🧛',grow:{cha:2,dex:1},perk:'魅力+2 敏捷+1'}
 };
 var RACE_KEYS=['human','elf','darkelf','beast','dragon','demon','angel','vampire']; // 與立繪種族選項同序
+var SKILLS={perception:{nm:'察覺',ab:'wis'},stealth:{nm:'隱匿',ab:'dex'},athletics:{nm:'運動',ab:'str'},medicine:{nm:'醫療',ab:'int'},survival:{nm:'求生',ab:'wis'},sleight:{nm:'巧手',ab:'dex'},persuasion:{nm:'交涉',ab:'cha'}};
+var CLASS_SKILLS={fighter:['athletics','survival'],paladin:['athletics','persuasion'],rogue:['stealth','sleight'],ranger:['survival','perception'],wizard:['perception','medicine'],cleric:['medicine','persuasion'],bard:['persuasion','sleight'],merchant:['persuasion','sleight'],scholar:['perception','medicine'],medic:['medicine','survival'],diviner:['perception','survival']};
+var RACE_SKILLS={human:['persuasion'],elf:['perception'],darkelf:['stealth'],beast:['survival'],dragon:['athletics'],demon:['persuasion'],angel:['medicine'],vampire:['stealth']};
+function charSkills(job,race){var s={};(CLASS_SKILLS[job]||[]).forEach(function(k){s[k]=1;});(RACE_SKILLS[race]||[]).forEach(function(k){s[k]=1;});return Object.keys(s);}
+function skillNames(job,race){return charSkills(job,race).map(function(k){return SKILLS[k].nm+'('+ABN[SKILLS[k].ab]+')';}).join('、');}
 function effBase(raw,race){var o={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){o[a]=Math.min(20,(raw[a]||10)+(g[a]||0));});return o;}
 var WEAPONS=[
   {id:'w_dagger',nm:'匕首',ico:'🔪',dmg:[1,4],bonus:0,price:20,tier:1},
@@ -213,7 +218,7 @@ function mock(action,p){return new Promise(function(res,rej){
     if(action==='save'){put(p.player);return res(p.player);}
     if(action==='recruit'){var pl=DB[p.nick.trim()];if(pl.roster.length>=10)return rej(new Error('倉庫已滿'));if(pl.gold<p.cost)return rej(new Error('金幣不足'));var c=mk(p.name,p.job,p.portrait,p.seed,p.base,p.race);pl.gold-=p.cost;pl.roster.push(c);put(pl);return res({player:pl,recruited:c});}
     if(action==='dismiss'){var pl=DB[p.nick.trim()];if(p.id===pl.heroId)return rej(new Error('主角無法遣散'));var tc=pl.roster.filter(function(c){return c.id===p.id;})[0]||{level:1};var cost=20+tc.level*10;if(pl.gold<cost)return rej(new Error('遣散費不足'));pl.roster=pl.roster.filter(function(c){return c.id!==p.id;});pl.gold-=cost;pl.team.battle=pl.team.battle.filter(function(x){return x!==p.id;});pl.team.support=pl.team.support.filter(function(x){return x!==p.id;});put(pl);return res({player:pl,cost:cost});}
-    if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2,lines:['R1','⚔️ 隊長 擊中 👺哥布林 −5','🩸 👺哥布林 打中 隊長 −3','R2','✦ 隊長 擊中 👺哥布林 −9（暴擊！） 💀']}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};if(reached>pl.deepest)pl.deepest=reached;rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
+    if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,skills:(f>st?['🔍 隊長 察覺發現暗格 +'+Math.round(gg*0.3)+'🪙']:[]),loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2,lines:['R1','⚔️ 隊長 擊中 👺哥布林 −5','🩸 👺哥布林 打中 隊長 −3','R2','✦ 隊長 擊中 👺哥布林 −9（暴擊！） 💀']}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};if(reached>pl.deepest)pl.deepest=reached;rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
     if(action==='roster'){return res({players:Object.keys(DB).map(function(k){var pl=DB[k];var team=pl.team.battle.concat(pl.team.support);var by={};pl.roster.forEach(function(c){by[c.id]=c;});return{nick:k,deepest:pl.deepest,gold:pl.gold,updated:0,members:team.map(function(id){var c=by[id];return c?{name:c.name,job:c.job,ico:(cinfo(c.job)||{}).ico,level:c.level,portrait:c.portrait}:null;}).filter(Boolean)};})});}
     rej(new Error('mock 未支援：'+action));
   }catch(e){rej(e);}},250);
@@ -275,7 +280,8 @@ function renderCreate(){
   h+='<div class="card"><div class="glab">屬性（4d6 去最低＋種族）　主攻：'+ABN[COMBAT[createSel.job].atk]+'</div><div class="abil">';
   AB.forEach(function(a){var s=eff[a];var m=cmod(s);var rb=(RACES[createRace].grow[a]||0);h+='<div class="ab"><small>'+ABI[a]+' '+ABN[a]+'</small><b>'+s+(rb?' <span style="color:var(--good);font-size:11px">+'+rb+'</span>':'')+'</b><span class="mm">'+(m>=0?'+':'')+m+'</span></div>';});
   h+='</div><div class="rowbtns"><button class="btn dim sm" id="reroll" style="flex:1;width:auto">🎲 重骰全部</button></div>'+
-    '<div class="note" style="text-align:left">生命 '+cMaxHp(previewChar)+' ・ 護甲 AC '+st.ac+' ・ 攻擊 +'+st.atk+' ・ 傷害 '+st.dmg+'</div></div>';
+    '<div class="note" style="text-align:left">生命 '+cMaxHp(previewChar)+' ・ 護甲 AC '+st.ac+' ・ 攻擊 +'+st.atk+' ・ 傷害 '+st.dmg+'</div>'+
+    '<div class="note" style="text-align:left">🎯 探索專長（依職業＋種族自動）：'+skillNames(createSel.job,createRace)+'</div></div>';
   h+='<button class="btn ok" id="confirm">✅ 確認建立</button></div>';
   app.innerHTML=h;
   Array.prototype.forEach.call(document.querySelectorAll('#jobchips .chip'),function(el){el.onclick=function(){createSel.job=el.dataset.j;renderCreate();};});
@@ -465,6 +471,7 @@ function charSheet(id){
   body+='</div>';
   if(!isSup(c.job)){var st=cStats(c);body+='<div class="card" style="margin-top:10px"><div class="note" style="text-align:left">❤️ 生命 '+c.hp+'/'+c.maxhp+'　🛡️ AC '+st.ac+'　⚔️ 攻擊 +'+st.atk+'　🎯 傷害 '+st.dmg+'</div><div class="note" style="text-align:left">招牌技：'+COMBAT[c.job].skill+'</div></div>';}
   else body+='<div class="card" style="margin-top:10px"><div class="note" style="text-align:left">後勤增益：'+SUPPORT[c.job].desc+'</div></div>';
+  body+='<div class="note" style="text-align:left;margin-top:6px">🎯 探索專長：'+skillNames(c.job,c.race)+'</div>';
   body+='<div class="glab" style="margin-top:8px">裝備</div>';
   ['weapon','armor','trinket'].forEach(function(slot){var eq=c.equip[slot]?gById(c.equip[slot]):null;var lb={weapon:'🗡️武器',armor:'🛡️防具',trinket:'💍飾品'}[slot];body+='<div class="note" style="text-align:left">'+lb+'：'+(eq?eq.ico+eq.nm+'（'+gearDesc(eq)+'）':'（無）')+'</div>';});
   body+='<div class="note" style="text-align:left;margin-top:6px">經驗：'+c.xp+' / '+cXpNext(c.level)+'</div>';
@@ -620,7 +627,8 @@ function renderReport(rep){
     var enc=f.encounters&&f.encounters[0];
     var enemies=(enc&&enc.enemies||[]).map(function(e){return e.ico;}).join('');
     h+='<div class="rep-floor"><div class="fh">'+(f.boss?'👑 ':'')+'第 '+f.floor+' 層 '+enemies+'</div><div class="fl">';
-    if(f.event)h+=f.event+'<br>';
+    if(f.skills&&f.skills.length)h+=f.skills.join('<br>')+'<br>';
+    else if(f.event)h+=f.event+'<br>';
     if(f.wipe)h+='<b style="color:var(--hp)">小隊在此全滅…</b>';
     else h+='擊敗 '+((enc||{}).killed||0)+' 隻 ・ +'+f.gold+'🪙 ・ +'+f.xp+'⭐'+((f.loot&&f.loot.length)?' ・ 掉落 '+f.loot.map(function(g){return g.ico+g.nm;}).join(''):'');
     h+='</div>';

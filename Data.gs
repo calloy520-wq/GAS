@@ -74,6 +74,33 @@ var RACES = {
 };
 function raceInfo(r){ return RACES[r] || null; }
 
+// ---- 技能專長（D&D 生活/雜項技巧）：由職業＋種族自動決定，探索時做檢定 ----
+var SKILLS = {
+  perception:{ nm:'察覺', ab:'wis' },
+  stealth:   { nm:'隱匿', ab:'dex' },
+  athletics: { nm:'運動', ab:'str' },
+  medicine:  { nm:'醫療', ab:'int' },
+  survival:  { nm:'求生', ab:'wis' },
+  sleight:   { nm:'巧手', ab:'dex' },
+  persuasion:{ nm:'交涉', ab:'cha' }
+};
+var CLASS_SKILLS = {
+  fighter:['athletics','survival'], paladin:['athletics','persuasion'],
+  rogue:['stealth','sleight'],      ranger:['survival','perception'],
+  wizard:['perception','medicine'], cleric:['medicine','persuasion'],
+  bard:['persuasion','sleight'],    merchant:['persuasion','sleight'],
+  scholar:['perception','medicine'],medic:['medicine','survival'], diviner:['perception','survival']
+};
+var RACE_SKILLS = {
+  human:['persuasion'], elf:['perception'], darkelf:['stealth'], beast:['survival'],
+  dragon:['athletics'], demon:['persuasion'], angel:['medicine'], vampire:['stealth']
+};
+function charSkills(c){
+  var s = {}; (CLASS_SKILLS[c.job]||[]).forEach(function(k){ s[k]=1; }); (RACE_SKILLS[c.race]||[]).forEach(function(k){ s[k]=1; });
+  return Object.keys(s);
+}
+function hasSkill(c, skill){ return charSkills(c).indexOf(skill) >= 0; }
+
 // ---- 裝備 ----
 // 武器：dmg 傷害骰 [n,d] 即 nDd；bonus 命中/傷害加值
 var WEAPONS = [

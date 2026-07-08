@@ -90,6 +90,16 @@ function grantXp(c, amount){
   return ups;
 }
 
+// 技能檢定：全隊取「最擅長者」擲 d20＋屬性修正＋(熟練?熟練加值:0)，比 DC
+function skillCheck(party, skill, dc){
+  var ab = SKILLS[skill].ab, best=-99, by=null;
+  party.forEach(function(c){
+    var v = d(20) + mod(abilityOf(c, ab)) + (hasSkill(c, skill) ? profByLevel(c.level) : 0);
+    if (v > best){ best=v; by=c; }
+  });
+  return { pass: best >= dc, total:best, by:by || party[0], skill:skill };
+}
+
 // ============================================================
 //  地下城 DM — 一鍵自動探索到指定樓層
 //  team: { battle:[char,...], support:[char,...] }  皆為完整角色物件的複本
@@ -113,25 +123,34 @@ function runDungeon(team, startFloor, targetFloor){
 
   // 復原戰鬥狀態（_allies 供牧師群補/復活使用）
   heroes.forEach(function(h){ if (h.hp<=0) h.hp = 1; h._cs = combatStats(h); h._charge = 0; h._allies = heroes; });
+  var party = heroes.concat(supports);                       // 技能檢定用全隊（含後勤）
 
   for (var f=startFloor; f<=targetFloor; f++){
-    var floorLog = { floor:f, encounters:[], gold:0, xp:0, loot:[], boss:false, event:null };
+    var floorLog = { floor:f, encounters:[], gold:0, xp:0, loot:[], boss:false, event:null, skills:[] };
     var isBoss = (f % 5 === 0);
+    var dc = 10 + Math.floor(f*0.7);
 
-    // 事件（非起始層有機率）
-    if (!isBoss && f>startFloor){
-      var er = Math.random();
-      if (er < 0.14){ var tg = Math.round(rint(6,16) * (1+buff.gold)); report.gold+=tg; floorLog.gold+=tg; floorLog.event='💰 發現寶箱 +'+tg+'🪙'; }
-      else if (er < 0.24){ var trapDmg = rint(2, 4+f); var victim = pickAlive(heroes);
-        if (buff.crit>0 && Math.random()<0.6){ floorLog.event='🍀 占卜師預警，全隊避開了陷阱'; }
-        else if (victim){ victim.hp = Math.max(0, victim.hp-trapDmg); floorLog.event='🩸 觸發陷阱！'+victim.name+' 受到 '+trapDmg+' 傷害'; if(victim.hp<=0) floorLog.event+='（倒下）'; }
+    // 探索技能檢定（非起始層）
+    if (f>startFloor){
+      // 察覺：找隱藏財寶
+      var per = skillCheck(party, 'perception', dc);
+      if (per.pass && Math.random()<0.5){ var pg=Math.round(rint(8,18)*(1+buff.gold)); report.gold+=pg; floorLog.gold+=pg; floorLog.skills.push('🔍 '+per.by.name+' 察覺發現暗格 +'+pg+'🪙'); }
+      // 陷阱：運動/求生 檢定閃避
+      if (!isBoss && Math.random()<0.22){
+        var save = skillCheck(party,'athletics',dc); var save2 = skillCheck(party,'survival',dc);
+        if (save.pass || save2.pass || (buff.crit>0 && Math.random()<0.6)){ floorLog.skills.push('🤸 '+((save.pass?save.by:save2.pass?save2.by:party[0]).name)+' 憑身手避開了陷阱'); }
+        else { var trapDmg=rint(2,4+f); var victim=pickAlive(heroes); if(victim){ victim.hp=Math.max(0,victim.hp-trapDmg); floorLog.skills.push('🩸 觸發陷阱！'+victim.name+' −'+trapDmg+(victim.hp<=0?'（倒下）':'')); } }
       }
     }
+
+    // 隱匿：潛行偷襲 → 先手一輪
+    var surprise = false;
+    if (!isBoss){ var st = skillCheck(party,'stealth',dc); if (st.pass && Math.random()<0.5){ surprise=true; floorLog.skills.push('🥷 '+st.by.name+' 帶隊潛行，取得偷襲先手'); } }
 
     // 遭遇戰
     var enemies = spawnEnemies(f, isBoss);
     floorLog.boss = isBoss;
-    var enc = resolveCombat(heroes, enemies, buff, f);
+    var enc = resolveCombat(heroes, enemies, buff, f, surprise);
     floorLog.encounters.push(enc);
 
     // 全滅判定
@@ -147,17 +166,20 @@ function runDungeon(team, startFloor, targetFloor){
     report.gold += gGold; report.xp += gXp;
     floorLog.gold += gGold; floorLog.xp += gXp;
 
-    // 掉落（boss 必掉，普通有機率；商人加成）
-    var dropChance = (isBoss ? 1 : 0.28 + buff.gold*0.2);
+    // 掉落（boss 必掉，普通有機率；商人加成＋巧手開鎖）
+    var deft = skillCheck(party,'sleight',dc);
+    var dropChance = (isBoss ? 1 : 0.28 + buff.gold*0.2 + (deft.pass?0.25:0));
     if (Math.random() < dropChance){
       var g = rollLoot(f, isBoss);
-      if (g){ report.loot.push(g.id); floorLog.loot.push(g); }
+      if (g){ report.loot.push(g.id); floorLog.loot.push(g); if(deft.pass && Math.random()<0.4) floorLog.skills.push('🔓 '+deft.by.name+' 巧手開鎖，多拿了戰利品'); }
     }
 
-    // 醫者：每層自動治療
+    // 醫者增益 ＋ 醫療技能：每層自動治療
     if (buff.heal > 0){
       heroes.forEach(function(h){ if (h.hp>0){ var heal=Math.round(h.maxhp*buff.heal); h.hp=Math.min(h.maxhp,h.hp+heal); } });
     }
+    var med = skillCheck(party,'medicine',dc);
+    if (med.pass){ heroes.forEach(function(h){ if (h.hp>0){ h.hp=Math.min(h.maxhp, h.hp+Math.round(h.maxhp*0.12)); } }); floorLog.skills.push('⛑️ '+med.by.name+' 施以急救，全隊小幅回復'); }
 
     report.reached = f;
     report.floors.push(floorLog);
@@ -196,9 +218,14 @@ function mkMonster(m, floor, boss){
 }
 
 // ---------- 一場遭遇戰（回合制、GAS 擲骰）----------
-function resolveCombat(heroes, enemies, buff, floor){
+function resolveCombat(heroes, enemies, buff, floor, surprise){
   var log = { enemies: enemies.map(function(e){return {nm:e.nm,ico:e.ico};}),
     rounds:0, gold:0, xp:0, killed:0, lines:[] };
+  // 偷襲先手：我方先免費行動一輪
+  if (surprise){
+    log.lines.push('🥷 偷襲先手');
+    aliveList(heroes).forEach(function(h){ if (aliveList(enemies).length===0) return; heroAttack(h, enemies, buff, log); });
+  }
   var guard = 0;
   while (aliveList(heroes).length>0 && aliveList(enemies).length>0 && guard<40){
     guard++; log.rounds++;
