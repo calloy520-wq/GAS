@@ -37,6 +37,9 @@ function route_(action, p){
     case 'voyage':  return apiVoyage_(p);
     case 'naval':   return apiNaval_(p);
     case 'raid':    return apiRaidPlayer_(p);
+    case 'shipbuy': return apiShipBuy_(p);
+    case 'fleet':   return apiFleet_(p);
+    case 'sea':     return apiSea_(p);
     case 'ship':    return apiShip_(p);
     case 'treasure':return apiTreasure_(p);
     case 'dungeon': return apiDungeon_(p);
@@ -314,6 +317,103 @@ function apiNaval_(p){
   player.gold = Math.max(0, player.gold);
   cleanPlayer_(player); savePlayer(player);
   return { player:player, report:report };
+}
+
+// ===== 船商：購買艦隊船 =====
+function apiShipBuy_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (!player.fleet) player.fleet = [];
+  var sc = SHIP_CLASS_BY[p.cls]; if (!sc) throw new Error('未知船種');
+  if (player.fleet.length >= FLEET_MAX) throw new Error('艦隊已滿（上限 '+FLEET_MAX+' 艘）');
+  if ((player.gold||0) < sc.price) throw new Error('金幣不足（需 '+sc.price+'🪙）');
+  player.gold -= sc.price;
+  player.fleet.push({ id:'f'+uid(), cls:sc.cls, nm:sc.nm, ico:sc.ico, hullMax:sc.hullMax, hull:sc.hullMax,
+    cannon:sc.cannon, cargoBonus:sc.cargoBonus, role:'idle', route:null, escort:false, lastAt:0 });
+  cleanPlayer_(player); savePlayer(player);
+  return { player:player };
+}
+
+// ===== 艦隊：派自動商隊 / 護衛 / 收益 =====
+function routeSpread_(from, to, day){
+  var best=0, bg=null;
+  GOODS.forEach(function(g){ var buy=tradePrice(from,g.id,day), sell=Math.round(tradePrice(to,g.id,day)*0.92); var sp=sell-buy; if (sp>best){ best=sp; bg=g; } });
+  return { spread:best, good:bg };
+}
+function apiFleet_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (!player.fleet) player.fleet = [];
+  var day = tradeDayBucket(), now = Date.now();
+  var byId={}; player.fleet.forEach(function(s){ byId[s.id]=s; });
+  if (p.op === 'assign'){
+    var s = byId[p.id]; if (!s) throw new Error('找不到船');
+    if (!MARKET_BY[p.from] || !MARKET_BY[p.to] || p.from===p.to) throw new Error('航線無效');
+    s.role='trade'; s.route={ from:p.from, to:p.to }; s.lastAt = now;
+  } else if (p.op === 'idle'){
+    var s2 = byId[p.id]; if (!s2) throw new Error('找不到船'); s2.role='idle'; s2.route=null; s2.escort=false;
+  } else if (p.op === 'escort'){
+    var s3 = byId[p.id]; if (!s3) throw new Error('找不到船');
+    // 需要艦隊裡有一艘閒置且火砲≥12 的船當護衛
+    var guard = player.fleet.some(function(x){ return x.id!==s3.id && x.role==='idle' && x.cannon>=12; });
+    if (!s3.escort && !guard) throw new Error('需要一艘閒置的戰艦（火砲≥12）當護衛');
+    s3.escort = !s3.escort;
+  } else if (p.op === 'collect'){
+    var report = { earned:0, lines:[] };
+    var haggle = (player.roster||[]).some(function(c){ return charSkills(c).indexOf('persuasion')>=0; });
+    player.fleet.forEach(function(s){
+      if (s.role!=='trade' || !s.route) return;
+      var cycles = Math.min(8, Math.floor((now - (s.lastAt||now))/TRADE_CYCLE_MS));
+      if (cycles<=0) return;
+      var sp = routeSpread_(s.route.from, s.route.to, day);
+      var perCycle = Math.max(0, Math.round(sp.spread * s.cargoBonus * 0.7 * (haggle?1.1:1)));
+      var got=0, lost=0;
+      for (var i=0;i<cycles;i++){
+        var lossChance = s.escort?0.08:0.25;
+        if (Math.random() < lossChance){ lost++; } else { got += perCycle; }
+      }
+      s.lastAt = (s.lastAt||now) + cycles*TRADE_CYCLE_MS;
+      player.gold += got; report.earned += got;
+      report.lines.push(s.ico+s.nm+'（'+MARKET_BY[s.route.from].nm+'→'+MARKET_BY[s.route.to].nm+'）跑 '+cycles+' 趟'+(lost?('，'+lost+' 趟遭劫'):'')+' → +'+got+'🪙');
+    });
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player, report:report };
+  }
+  cleanPlayer_(player); savePlayer(player);
+  return { player:player };
+}
+
+// ===== 海域：NPC 商船清單 / 掠奪（PvE）=====
+function apiSea_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (!player.ship) player.ship = startShip();
+  var day = tradeDayBucket();
+  if (p.op === 'raid'){
+    if (player.ship.hull <= 0) throw new Error('船身破損，請先到船塢修理');
+    var list = npcTradersForDay(day);
+    var npc = list.filter(function(n){ return n.id===p.id; })[0];
+    if (!npc) throw new Error('該商船已離開海域');
+    if (!player.raided) player.raided = {};
+    var rk = day+'_'+p.id;
+    if (player.raided[rk]) throw new Error('這艘商船今天已被你打劫過了');
+    var byId={}; (player.roster||[]).forEach(function(c){ byId[c.id]=c; });
+    var party=(player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
+    var enemy={ nm:npc.nm, ico:npc.ico, hull:npc.hull, cannon:npc.cannon };
+    var r = resolveNaval_(player.ship, party, enemy);
+    player.ship.hull = r.playerHull;
+    var report={ enemy:{nm:npc.nm, ico:npc.ico}, win:r.win, log:r.log, gold:0, loot:[], hull:player.ship.hull, hullMax:player.ship.hullMax };
+    if (r.win){
+      player.raided[rk]=true;
+      var g=rint(npc.gold[0], npc.gold[1]); player.gold+=g; report.gold=g;
+      if (!player.cargo) player.cargo={};
+      for (var i=0;i<npc.loot;i++){ if (cargoCount_(player)>=effectiveCargoMax(player)) break; var gd=GOODS[rint(0,GOODS.length-1)]; player.cargo[gd.id]=(player.cargo[gd.id]||0)+1; report.loot.push(gd.id); }
+    } else { var pen=Math.min(player.gold||0, rint(20,50)); player.gold-=pen; report.lostGold=pen; }
+    player.gold=Math.max(0,player.gold);
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player, report:report };
+  }
+  return { player:player, npcs: npcTradersForDay(day) };
 }
 
 // ===== PvP：掠奪其他玩家 =====

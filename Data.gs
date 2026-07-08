@@ -260,6 +260,33 @@ var ENEMY_SHIPS = [
   { nm:'私掠艦',   ico:'⚓',  hull:185, cannon:16, gold:[220,420], loot:6 }
 ];
 
+// ---- 船商：可購買的船種（組艦隊用）----
+var SHIP_CLASSES = [
+  { cls:'trader',  nm:'商船',   ico:'⛵', hullMax:70,  cannon:5,  cargoBonus:14, price:600  },
+  { cls:'clipper', nm:'快船',   ico:'🚤', hullMax:65,  cannon:7,  cargoBonus:10, price:900  },
+  { cls:'frigate', nm:'戰艦',   ico:'⚔️', hullMax:130, cannon:15, cargoBonus:6,  price:1500 },
+  { cls:'galleon', nm:'大帆船', ico:'🚢', hullMax:160, cannon:12, cargoBonus:26, price:2400 }
+];
+var SHIP_CLASS_BY = {}; SHIP_CLASSES.forEach(function(s){ SHIP_CLASS_BY[s.cls]=s; });
+var FLEET_MAX = 5;
+var TRADE_CYCLE_MS = 5*60*1000;   // 每「航海日」約 5 分鐘一趟
+
+// NPC 海上商船名號（海域巡弋用）
+var NPC_NAMES = ['信天翁號','黑珍珠號','晨曦號','海燕號','金鹿號','南風號','翡翠號','浪花號','北極星號','女王復仇號'];
+function npcTradersForDay(day){
+  var list=[];
+  for (var i=0;i<5;i++){
+    var seed = day*97 + i*31;
+    var nm = NPC_NAMES[seed % NPC_NAMES.length];
+    var port = MARKETS[seed % MARKETS.length];
+    var ti = seed % ENEMY_SHIPS.length;
+    var es = ENEMY_SHIPS[ti];
+    list.push({ id:'npc'+i, nm:nm, ico:es.ico, portNm:port.nm, portIco:port.ico,
+      hull:es.hull, cannon:es.cannon, gold:es.gold, loot:es.loot });
+  }
+  return list;
+}
+
 function hashNoise(str){ var h=2166136261; for (var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return ((h>>>0)%1000)/1000; }
 function tradeDayBucket(){ return Math.floor(Date.now()/(1000*60*60*4)); }   // 每 4 小時波動一次
 // 回傳某市集某商品的市價（波動後）
