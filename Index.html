@@ -368,13 +368,14 @@ function buildPPrompt(job,sel){
   var outfit=jobOutfit(job,male);
   return base+part('race')+", "+g('hair')+", "+g('style')+", "+g('eyes')+part('age')+part('figure')+", wearing "+outfit+part('expose')+part('aura')+", "+g('face')+rarityFlair(pRarity)+floor;
 }
-var portraitCb=null, pSel={}, pSeed=0, pJob='fighter', pRarity='', pCooling=false, pHasImg=false;
+var portraitCb=null, pSel={}, pSeed=0, pJob='fighter', pRarity='', pModel='flux', pCooling=false, pHasImg=false;
 function openPortrait(job,cb,raceIdx,rarity){
   portraitCb=cb;pJob=job;pRarity=rarity||'';POPTS.forEach(function(g){pSel[g[0]]=0;});
   if(raceIdx>0)pSel.race=raceIdx;                 // 立繪外觀預設跟著機制種族（仍可改）
   pSeed=Math.floor(Math.random()*1e6);pHasImg=false;pCooling=false;
   var h='<button class="close" onclick="closePortrait()">✕</button><h2>🎨 建立頭像</h2><p class="sub">選外型 → 生成 → 不喜歡就重生 → 用這張。立繪只是外觀，不影響能力。</p>';
   h+='<div class="pbox" id="ppic"><div class="ph">👇 選好後點<br>「生成立繪」</div></div>';
+  h+='<div class="chips" id="pmodel" style="justify-content:center;margin-top:10px"><span class="chip'+(pModel==='flux'?' on':'')+'" data-m="flux">🎨 精緻(flux)</span><span class="chip'+(pModel==='turbo'?' on':'')+'" data-m="turbo">⚡ 快速(turbo)</span></div>';
   h+='<div id="popts" style="margin-top:12px"></div>';
   h+='<details><summary>看目前的生圖提示詞</summary><pre id="pprompt"></pre></details>';
   h+='<div class="rowbtns" style="margin-top:12px"><button class="btn re" id="pgen">🖌️ 生成立繪</button><button class="btn ok" id="puse">✅ 用這張</button></div>';
@@ -385,18 +386,20 @@ function openPortrait(job,cb,raceIdx,rarity){
   Array.prototype.forEach.call(oe.querySelectorAll('.chips'),function(row){var k=row.dataset.k;
     Array.prototype.forEach.call(row.children,function(chip){chip.onclick=function(){pSel[k]=+chip.dataset.i;
       Array.prototype.forEach.call(row.children,function(c){c.classList.remove('on');});chip.classList.add('on');pRefresh();};});});
+  Array.prototype.forEach.call(document.querySelectorAll('#pmodel .chip'),function(chip){chip.onclick=function(){pModel=chip.dataset.m;Array.prototype.forEach.call(document.querySelectorAll('#pmodel .chip'),function(c){c.classList.remove('on');});chip.classList.add('on');};});
   document.getElementById('pgen').onclick=pDoGen;
   document.getElementById('puse').onclick=function(){if(!pHasImg){toast('請先生成一張頭像');return;}var img=document.getElementById('ppic').querySelector('img');closePortrait();if(portraitCb)portraitCb({portrait:img.src,seed:pSeed});};
   pRefresh();pmodal.classList.add('show');
 }
 function closePortrait(){pmodal.classList.remove('show');}
-function pUrl(){return "https://image.pollinations.ai/prompt/"+encodeURIComponent(buildPPrompt(pJob,pSel))+"?width=512&height=512&nologo=true&model=flux&seed="+pSeed;}
-function pRefresh(){var el=document.getElementById('pprompt');if(el)el.textContent=buildPPrompt(pJob,pSel)+"\n(seed:"+pSeed+")";}
+function pUrl(){return "https://image.pollinations.ai/prompt/"+encodeURIComponent(buildPPrompt(pJob,pSel))+"?width=512&height=512&nologo=true&model="+pModel+"&seed="+pSeed;}
+function pRefresh(){var el=document.getElementById('pprompt');if(el)el.textContent=buildPPrompt(pJob,pSel)+"\n(seed:"+pSeed+" · "+pModel+")";}
 function pDoGen(){
   if(pCooling)return;pSeed=Math.floor(Math.random()*1e6);pRefresh();
-  var box=document.getElementById('ppic');box.innerHTML='<div class="ph"><div class="ring"></div>生成中…（約 3~8 秒）</div>';
-  var img=new Image();img.onload=function(){box.innerHTML='';box.appendChild(img);pHasImg=true;};
-  img.onerror=function(){box.innerHTML='<div class="ph">😵 生成失敗<br>5 秒後可再試</div>';};
+  var box=document.getElementById('ppic');box.innerHTML='<div class="ph"><div class="ring"></div>生成中…（'+(pModel==='turbo'?'快速約 1~3 秒':'精緻約 3~10 秒')+'）</div>';
+  var slow=setTimeout(function(){if(!pHasImg){var tip=box.querySelector('.ph');if(tip)tip.innerHTML='<div class="ring"></div>還在畫…尖峰較慢<br><span style="font-size:11px">可切「⚡ 快速」再重生</span>';}},9000);
+  var img=new Image();img.onload=function(){clearTimeout(slow);box.innerHTML='';box.appendChild(img);pHasImg=true;};
+  img.onerror=function(){clearTimeout(slow);box.innerHTML='<div class="ph">😵 生成失敗<br>5 秒後可再試（或換模型）</div>';};
   img.src=pUrl();
   pCooling=true;var b=document.getElementById('pgen');b.disabled=true;var n=5;b.textContent='⏳ '+n+' 秒';
   var t=setInterval(function(){n--;if(n<=0){clearInterval(t);pCooling=false;b.disabled=false;b.textContent='🎲 重新生成';}else b.textContent='⏳ '+n+' 秒';},1000);
