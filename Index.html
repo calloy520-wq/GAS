@@ -21,6 +21,17 @@
     #app{box-shadow:0 0 0 1px var(--line),0 18px 60px rgba(0,0,0,.55);border-radius:16px;
       margin:16px auto;min-height:calc(100dvh - 32px);overflow:hidden;position:relative;z-index:1}
     .bar{border-radius:16px 16px 0 0}
+    /* 桌機把彈窗改成置中卡片，不再貼底 */
+    .modal{align-items:center}
+    .sheet{max-width:600px;border-radius:20px;max-height:88dvh}
+  }
+  /* 更大螢幕：整個機台放大、設施多欄（用 #app 提高優先序，壓過後面的基礎規則）*/
+  @media(min-width:1000px){
+    #app{max-width:920px}
+    #app .pad{padding:18px 20px 90px}
+    #app .signs{grid-template-columns:repeat(4,1fr)}
+    #app .scene{height:240px}
+    #app h1{font-size:26px}
   }
   h1{font-size:22px;text-align:center;margin:6px 0 2px}
   .lead{text-align:center;color:#f0d6ad;font-size:12.5px;margin:0 0 12px;opacity:.9}
@@ -98,10 +109,17 @@
   .sign .nm{font-weight:800;font-size:15px;margin-top:3px;color:#ffe9c9}
   .sign .ds{color:#e7c6a0;font-size:10.5px;margin-top:1px}
   .sign .badge{background:var(--hp)}
-  .sign.gate{grid-column:1/3;background:linear-gradient(180deg,#5a2f3f,#361c26);border-color:#7a3c52;box-shadow:0 5px 0 #2a1620}
+  .sign.gate{grid-column:1/-1;background:linear-gradient(180deg,#5a2f3f,#361c26);border-color:#7a3c52;box-shadow:0 5px 0 #2a1620}
   .sign.gate .nm{color:#ffd0dd}
-  .sign.sea{grid-column:1/3;background:linear-gradient(180deg,#1f5478,#123249);border-color:#2e6a94}
+  .sign.sea{grid-column:1/-1;background:linear-gradient(180deg,#1f5478,#123249);border-color:#2e6a94}
   .sign.sea .nm{color:#bfe4ff}
+  /* 底部分頁快捷列 */
+  .tabbar{position:sticky;bottom:0;z-index:15;display:flex;gap:2px;padding:6px 6px calc(6px + env(safe-area-inset-bottom));
+    background:rgba(20,16,12,.82);backdrop-filter:blur(6px);border-top:1px solid var(--line);margin:0 -12px -30px}
+  .tabbar .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 2px;border-radius:10px;cursor:pointer;color:var(--soft);font-size:10px;font-weight:700}
+  .tabbar .tab .ti{font-size:20px}
+  .tabbar .tab:active{transform:scale(.94)}
+  @media(min-width:1000px){.tabbar{margin:0 -20px -90px;padding:9px 12px}.tabbar .tab{font-size:12px}.tabbar .tab .ti{font-size:24px}}
   .omap{position:relative;width:100%;aspect-ratio:1/1.02;border-radius:16px;overflow:hidden;border:2px solid #2a4a6a;
     background:radial-gradient(120% 90% at 28% 18%,#356690,#173753 58%,#0e2438);box-shadow:inset 0 0 46px rgba(0,0,0,.55)}
   .omap .wv{position:absolute;inset:0;opacity:.10;background-image:repeating-linear-gradient(30deg,#fff 0 1px,transparent 1px 22px)}
@@ -498,11 +516,31 @@ function renderTown(){
   BLDG.forEach(function(b){var badge=(b[0]==='inn'&&P.roster.some(function(c){return c.hp<c.maxhp;}))?'<span class="badge">傷</span>':((b[0]==='guild'&&P.quest&&P.quest.prog>=P.quest.target)?'<span class="badge">領獎</span>':(b[0]==='guild'&&!P.quest?'<span class="badge">!</span>':''));h+='<div class="sign" data-b="'+b[0]+'">'+badge+'<div class="ico">'+b[1]+'</div><div class="nm">'+b[2]+'</div><div class="ds">'+b[3]+'</div></div>';});
   h+='</div>';
   h+='<div class="signs" style="margin-top:10px"><div class="sign gate" data-b="dungeon"><div class="ico">⬇️🏚️</div><div class="nm">進入地下城</div><div class="ds">自動探索・可達第 '+(P.deepest||0)+' 層，挑戰更深</div></div></div>';
+  h+=tabsHTML();
   h+='</div>';
   app.innerHTML=h;
   var bg=document.getElementById('townbg');if(bg){bg.onload=function(){bg.classList.add('on');};bg.src=TOWN_BG_URL;}
   Array.prototype.forEach.call(document.querySelectorAll('.sign'),function(el){el.onclick=function(){openBldg(el.dataset.b);};});
   Array.prototype.forEach.call(document.querySelectorAll('[data-detail]'),function(el){el.onclick=function(){charSheet(el.dataset.detail);};});
+  bindTabs();
+  if(!P.tutSeen){ P.tutSeen=true; saveP(); setTimeout(showTutorial,400); }
+}
+var TABS=[['town','🏰','城鎮'],['map','🗺️','出航'],['trade','🏪','貿易'],['dungeon','⚔️','地城'],['team','🧭','隊伍'],['help','❓','教學']];
+function tabsHTML(){return '<div class="tabbar" id="tabbar">'+TABS.map(function(t){return '<div class="tab" data-tab="'+t[0]+'"><div class="ti">'+t[1]+'</div>'+t[2]+'</div>';}).join('')+'</div>';}
+function bindTabs(){Array.prototype.forEach.call(document.querySelectorAll('#tabbar .tab'),function(el){el.onclick=function(){var t=el.dataset.tab;
+  if(t==='town')renderTown();else if(t==='help')showTutorial();else if(t==='dungeon')openDungeon();else openBldg(t);};});}
+function showTutorial(){
+  var body='<div class="note" style="text-align:left;line-height:1.9">歡迎來到傭兵之城！你是一名傭兵兼冒險商人，這裡能打、能商、能航海。跟著做一遍就上手：'+
+    '<br><br>1️⃣ <b>🍺 酒館</b> 招募夥伴（有稀有度，抽到強的很賺）'+
+    '<br>2️⃣ <b>🛡️ 商店</b> 買裝備，<b>🎒 裝備</b> 穿上'+
+    '<br>3️⃣ <b>🧭 隊伍編成</b> 把戰鬥位排好（出戰 4＋後勤 2）'+
+    '<br>4️⃣ <b>🗡️ 公會</b> 接委託 → <b>⚔️ 地下城</b> 自動探索（設起始/目標層）'+
+    '<br>5️⃣ <b>🏪 貿易所</b> 產地買 → <b>🗺️ 出航</b> 到需求地賣，賺價差'+
+    '<br>6️⃣ 航海會遇到<b>海盜/暴風/秘寶線索</b>；<b>🏴‍☠️ 巡弋掠奪</b> 主動打船搶貨'+
+    '<br>7️⃣ <b>⚓ 船塢</b> 修船、升級、投資商會領分紅'+
+    '<br>8️⃣ <b>🏰 領主城堡</b> 看主線 —— 目標：討伐地下城第 20 層魔王'+
+    '<br><br>💡 死亡/海戰失利會有損失，量力而為、穩紮穩打！</div>';
+  openSheet('❓ 新手教學','大航海傭兵的第一天',body);
 }
 function openSheet(title,sub,body){sheet.innerHTML='<button class="close" onclick="closeSheet()">✕</button><h2>'+title+'</h2>'+(sub?'<p class="sub">'+sub+'</p>':'')+body;modal.classList.add('show');}
 // 樂觀更新：先畫面立即反應（cb），存檔在背景去抖動寫入，不卡手
