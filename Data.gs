@@ -243,10 +243,40 @@ var MARKETS = [
 ];
 var MARKET_BY = {}; MARKETS.forEach(function(m){ MARKET_BY[m.id]=m; });
 var CARGO_MAX = 20;
+// ---- 城市攻佔：各港駐軍（越遠越強）＋領地稅收 ----
+var GARRISONS = {
+  merc:  { nm:'傭兵城衛隊', hull:90,  cannon:9,  gold:[80,160]  },
+  port:  { nm:'港都巡防隊', hull:130, cannon:12, gold:[140,260] },
+  gold:  { nm:'黃金港衛兵', hull:200, cannon:18, gold:[260,480] },
+  oasis: { nm:'綠洲傭騎團', hull:160, cannon:15, gold:[200,360] },
+  coral: { nm:'礁島海防軍', hull:180, cannon:16, gold:[230,420] },
+  snow:  { nm:'雪山邊防軍', hull:150, cannon:14, gold:[180,340] }
+};
+var HOLD_TAX_BASE = 26;             // 每領地每「稅收週期」基礎稅金（×等級）
+var HOLD_CYCLE_MS = 5*60*1000;      // 稅收約 5 分鐘累積一次
+var HOLD_LV_MAX = 5;                // 領地治理等級上限
+function holdUpgradeCost_(lv){ return Math.round(300 * Math.pow(1.7, lv-1)); }
+// ---- 海事里程碑（航海術 / 商業 等級解鎖）----
+var SEA_UNLOCKS = {
+  nav: [
+    { lv:2,  t:'夜航術：出航更安全、常撈到好東西' },
+    { lv:4,  t:'艦隊擴編 +1（可多養一艘船）' },
+    { lv:6,  t:'接舷好手：接舷俘虜更容易成功' },
+    { lv:8,  t:'艦隊擴編 +1（艦隊上限 7 艘）' },
+    { lv:10, t:'遠洋霸權：航程再大幅縮短、砲擊更準' }
+  ],
+  com: [
+    { lv:2,  t:'議價高手：進出貨更好價' },
+    { lv:4,  t:'商會人脈：投資分紅提高' },
+    { lv:6,  t:'囤貨倉庫：貨艙上限 +6' },
+    { lv:8,  t:'商隊網絡：自動商隊效率提升' },
+    { lv:10, t:'商業帝國：領地稅收與分紅大幅提升' }
+  ]
+};
 
 // ---- 船艦 / 海戰 ----
 function startShip(){ return { name:'初心號', hullMax:60, hull:60, cannon:6, cargoBonus:0, crew:8, speed:6, tier:1 }; }
-function effectiveCargoMax(pl){ return CARGO_MAX + ((pl.ship&&pl.ship.cargoBonus)||0); }
+function effectiveCargoMax(pl){ return CARGO_MAX + ((pl.ship&&pl.ship.cargoBonus)||0) + ((pl.com&&pl.com.lv>=6)?6:0); }
 var SHIP_UP = {
   hull:   { nm:'強化船身', ico:'🛠️', stat:'hullMax',    step:30, base:120 },
   cannon: { nm:'加裝火砲', ico:'💣', stat:'cannon',     step:3,  base:150 },
