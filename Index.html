@@ -207,7 +207,12 @@ function cprof(lv){return 2+Math.floor((lv-1)/4);}
 function cinfo(job){return COMBAT[job]||SUPPORT[job]||null;}
 function isSup(job){return !!SUPPORT[job];}
 function gById(id){var all=WEAPONS.concat(ARMORS).concat(TRINKETS);for(var i=0;i<all.length;i++)if(all[i].id===id)return all[i];return null;}
-function cab(c,a){var v=c.base[a]||10;var t=c.equip&&c.equip.trinket?gById(c.equip.trinket):null;if(t&&t.ab===a)v+=t.val;return v;}
+var TRAITS_C={slayer:{nm:'屠龍者',ico:'🐲',good:true,grow:{str:1}},unbreak:{nm:'不屈',ico:'🛡️',good:true,grow:{con:1}},sharp:{nm:'神準',ico:'🎯',good:true,grow:{dex:1}},veteran:{nm:'老兵',ico:'🎖️',good:true,grow:{str:1,con:1}},lucky:{nm:'幸運兒',ico:'🍀',good:true,grow:{cha:1}},sage:{nm:'博學',ico:'📖',good:true,grow:{int:1}},wound:{nm:'舊傷',ico:'🩹',good:false,grow:{con:-1}},fearful:{nm:'懼暗',ico:'😨',good:false,grow:{wis:-1}},shaky:{nm:'手抖',ico:'🥶',good:false,grow:{dex:-1}}};
+function traitDesc(k){var g=(TRAITS_C[k]||{}).grow||{},ps=[];for(var a in g)ps.push(ABN[a]+(g[a]>0?'+':'')+g[a]);return ps.join(' ');}
+function bondLevelC(pts){pts=pts||0;if(pts>=50)return 4;if(pts>=30)return 3;if(pts>=15)return 2;if(pts>=5)return 1;return 0;}
+var BOND_NM_C=['—','C','B','A','S'];
+function bondKeyC(a,b){return [a,b].sort().join('|');}
+function cab(c,a){var v=c.base[a]||10;var t=c.equip&&c.equip.trinket?gById(c.equip.trinket):null;if(t&&t.ab===a)v+=t.val;if(c.traits)c.traits.forEach(function(k){var tr=TRAITS_C[k];if(tr&&tr.grow&&tr.grow[a])v+=tr.grow[a];});return v;}
 function cMaxHp(c){var ci=cinfo(c.job);var hd=ci.hd||8;var cm=cmod(cab(c,'con'));var hp=hd+cm;hp+=(c.level-1)*Math.max(1,Math.floor(hd/2)+1+cm);return Math.max(1,hp);}
 function cStats(c){var ci=cinfo(c.job);var w=c.equip.weapon?gById(c.equip.weapon):null;var a=c.equip.armor?gById(c.equip.armor):null;
   var atkB=cmod(cab(c,ci.atk))+cprof(c.level)+(w?w.bonus:0);var dd=w?w.dmg:ci.dmg;var db=cmod(cab(c,ci.atk))+(w?w.bonus:0);
@@ -242,6 +247,9 @@ function mock(action,p){return new Promise(function(res,rej){
       if(rep.wiped){var keep=Math.floor(g*0.5);var lost=g-keep;pl.gold-=lost;rep.gold=keep;rep.rescueGoldLost=lost;var kl=rep.loot.filter(function(){return Math.random()<0.5;});rep.rescueLootLost=rep.loot.length-kl.length;rep.loot=kl;}
       var oldDeep=pl.deepest||0;var oldR=rankOf(oldDeep);if(reached>pl.deepest)pl.deepest=reached;var newR=rankOf(pl.deepest||0);if(newR>oldR){var bn=newR*100;pl.gold+=bn;rep.rankUp={to:RANKS[newR].nm,ix:newR,reward:bn};}rep.newBosses=[];[5,10,15,20,25].forEach(function(bf){if(oldDeep<bf&&(pl.deepest||0)>=bf)rep.newBosses.push(bf);});
       if(pl.quest){var q=pl.quest;if(q.type==='kill')q.prog+=rep.kills;else if(q.type==='depth')q.prog=Math.max(q.prog,reached);else q.prog+=rep.gold;if(q.prog>=q.target){pl.gold+=q.reward;pl.questsDone=(pl.questsDone||0)+1;rep.questDone={name:q.name,reward:q.reward};pl.quest=null;}}
+      rep.traitGains=[];rep.bondUps=[];if(!pl.bonds)pl.bonds={};var bt=(pl.team.battle||[]).slice();
+      for(var bi=0;bi<bt.length;bi++)for(var bj=bi+1;bj<bt.length;bj++){var kk=[bt[bi],bt[bj]].sort().join('|');var bef=bondLevelC(pl.bonds[kk]);pl.bonds[kk]=Math.min(60,(pl.bonds[kk]||0)+2);var aft=bondLevelC(pl.bonds[kk]);if(aft>bef){var ca=pl.roster.filter(function(c){return c.id===bt[bi];})[0]||{},cb=pl.roster.filter(function(c){return c.id===bt[bj];})[0]||{};rep.bondUps.push({a:ca.name||'?',b:cb.name||'?',level:BOND_NM_C[aft]});}}
+      if(reached>=5&&!rep.wiped&&bt.length){var hc=pl.roster.filter(function(c){return c.id===bt[0];})[0];if(hc&&Math.random()<0.7){if(!hc.traits)hc.traits=[];var pool=['slayer','sharp','veteran','lucky'],tk=pool[Math.floor(Math.random()*pool.length)];if(hc.traits.indexOf(tk)<0&&hc.traits.length<4){hc.traits.push(tk);hc.maxhp=cMaxHp(hc);rep.traitGains.push({name:hc.name,key:tk,good:true});}}}
       rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
     if(action==='roster'){return res({players:Object.keys(DB).map(function(k){var pl=DB[k];var team=pl.team.battle.concat(pl.team.support);var by={};pl.roster.forEach(function(c){by[c.id]=c;});return{nick:k,deepest:pl.deepest,gold:pl.gold,updated:0,members:team.map(function(id){var c=by[id];return c?{name:c.name,job:c.job,ico:(cinfo(c.job)||{}).ico,level:c.level,portrait:c.portrait}:null;}).filter(Boolean)};})});}
     rej(new Error('mock 未支援：'+action));
@@ -484,6 +492,13 @@ function openTeam(){
     body+=uRow(c,(inS?'<button class="btn ok sm" data-rms="'+c.id+'">後勤中</button>':'<button class="btn dim sm" data-adds="'+c.id+'">安排</button>'));
   });
   if(!anySup)body+='<div class="note">還沒有後勤職業夥伴，去酒館招募吟遊詩人 / 商人 / 學者 / 醫者 / 占卜師。</div>';
+  // 羈絆
+  body+='<div class="glab" style="margin-top:14px">💞 羈絆（同隊出戰累積・同隊時互相加攻擊）</div>';
+  var bonds=[],rs=P.roster;
+  for(var bi=0;bi<rs.length;bi++)for(var bj=bi+1;bj<rs.length;bj++){var lv=bondLevelC((P.bonds||{})[bondKeyC(rs[bi].id,rs[bj].id)]);if(lv>0)bonds.push({a:rs[bi],b:rs[bj],lv:lv});}
+  bonds.sort(function(x,y){return y.lv-x.lv;});
+  if(!bonds.length)body+='<div class="note">還沒有羈絆。讓固定隊伍多打幾趟就會培養出來。</div>';
+  bonds.forEach(function(bd){body+='<div class="note" style="text-align:left">'+bd.a.name+' × '+bd.b.name+' ・ <b style="color:#ff9ec7">'+BOND_NM_C[bd.lv]+'</b>（同隊各 +'+bd.lv+' 攻擊）</div>';});
   // 遣散
   body+='<div class="glab" style="margin-top:14px">🚪 遣散（付遣散費送走，主角除外）</div>';
   var dis=P.roster.filter(function(c){return c.id!==P.heroId;});
@@ -511,7 +526,8 @@ function uRow(c,btn){var st=isSup(c.job)?null:cStats(c);var ci=cinfo(c.job);
   var hpbar=isSup(c.job)?'':'<div class="hpbar"><i style="width:'+Math.max(0,c.hp/c.maxhp*100)+'%"></i></div>';
   var rc=RACES[c.race]?RACES[c.race].ico+RACES[c.race].nm+' ':'';
   var rr=c.rarity&&RARITY_C[c.rarity]?'<span style="color:'+rarC(c.rarity).color+'">'+rarC(c.rarity).star+'</span> ':'';
-  return '<div class="u"><div class="av" data-detail="'+c.id+'" style="cursor:pointer">'+avatarHTML(c)+'</div><div class="info"><b>'+rr+c.name+' <span class="tag">Lv'+c.level+'</span></b><small>'+rc+ci.ico+ci.nm+' ・ '+sub+'</small>'+hpbar+'</div>'+(btn||'')+'</div>';
+  var tr=(c.traits||[]).map(function(k){return (TRAITS_C[k]||{}).ico||'';}).join('');
+  return '<div class="u"><div class="av" data-detail="'+c.id+'" style="cursor:pointer">'+avatarHTML(c)+'</div><div class="info"><b>'+rr+c.name+' '+tr+' <span class="tag">Lv'+c.level+'</span></b><small>'+rc+ci.ico+ci.nm+' ・ '+sub+'</small>'+hpbar+'</div>'+(btn||'')+'</div>';
 }
 function cXpNext(level){return level*100+(level-1)*(level-1)*20;}
 function charSheet(id){
@@ -524,6 +540,7 @@ function charSheet(id){
   if(!isSup(c.job)){var st=cStats(c);body+='<div class="card" style="margin-top:10px"><div class="note" style="text-align:left">❤️ 生命 '+c.hp+'/'+c.maxhp+'　🛡️ AC '+st.ac+'　⚔️ 攻擊 +'+st.atk+'　🎯 傷害 '+st.dmg+'</div><div class="note" style="text-align:left">招牌技：'+COMBAT[c.job].skill+'</div></div>';}
   else body+='<div class="card" style="margin-top:10px"><div class="note" style="text-align:left">後勤增益：'+SUPPORT[c.job].desc+'</div></div>';
   body+='<div class="note" style="text-align:left;margin-top:6px">🎯 探索專長：'+skillNames(c.job,c.race)+'</div>';
+  if(c.traits&&c.traits.length)body+='<div class="note" style="text-align:left;margin-top:4px">🏅 稱號：'+c.traits.map(function(k){var t=TRAITS_C[k]||{};return '<span style="color:'+(t.good?'var(--gold)':'var(--hp)')+'">'+t.ico+t.nm+'（'+traitDesc(k)+'）</span>';}).join('　')+'</div>';
   body+='<div class="glab" style="margin-top:8px">裝備</div>';
   ['weapon','armor','trinket'].forEach(function(slot){var eq=c.equip[slot]?gById(c.equip[slot]):null;var lb={weapon:'🗡️武器',armor:'🛡️防具',trinket:'💍飾品'}[slot];body+='<div class="note" style="text-align:left">'+lb+'：'+(eq?eq.ico+eq.nm+'（'+gearDesc(eq)+'）':'（無）')+'</div>';});
   body+='<div class="note" style="text-align:left;margin-top:6px">經驗：'+c.xp+' / '+cXpNext(c.level)+'</div>';
@@ -794,6 +811,8 @@ function renderReport(rep){
   if(rep.rankUp)h+='<div class="note" style="text-align:left;color:var(--gold);font-weight:800">🎖️ 晉升為「'+rep.rankUp.to+'」！ +'+rep.rankUp.reward+'🪙</div>';
   if(rep.questDone)h+='<div class="note" style="text-align:left;color:var(--good);font-weight:800">📜 委託完成【'+rep.questDone.name+'】 +'+rep.questDone.reward+'🪙</div>';
   if(rep.levelUps&&rep.levelUps.length){h+='<div class="note" style="text-align:left;color:var(--gold)">⬆️ '+rep.levelUps.map(function(u){return u.name+' → Lv'+u.level;}).join('、')+'</div>';}
+  if(rep.traitGains&&rep.traitGains.length){h+='<div class="note" style="text-align:left">🏅 '+rep.traitGains.map(function(t){var ti=TRAITS_C[t.key]||{};return t.name+' 獲得<span style="color:'+(t.good?'var(--gold)':'var(--hp)')+'">「'+ti.ico+ti.nm+'」</span>';}).join('、')+'</div>';}
+  if(rep.bondUps&&rep.bondUps.length){h+='<div class="note" style="text-align:left;color:#ff9ec7">💞 羈絆提升：'+rep.bondUps.map(function(bd){return bd.a+' × '+bd.b+' → '+bd.level;}).join('、')+'</div>';}
   if(rep.loot&&rep.loot.length){h+='<div class="note" style="text-align:left">戰利品：'+rep.loot.map(function(id){var g=gById(id);return g?g.ico+g.nm:id;}).join('、')+'</div>';}
   h+='</div>';
   var story=[];

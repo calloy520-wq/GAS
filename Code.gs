@@ -188,7 +188,25 @@ function apiDungeon_(p){
   var support = (player.team.support||[]).map(function(id){ return byId[id]; }).filter(Boolean);
   if (!battle.length) throw new Error('至少要有一名戰鬥位角色');
 
+  // 羈絆：依現有好感度算每人「同隊加攻」，戰鬥時生效
+  if (!player.bonds) player.bonds = {};
+  battle.forEach(function(h){
+    var atk = 0;
+    battle.forEach(function(o){ if (o.id !== h.id) atk += bondLevel(player.bonds[bondKey(h.id,o.id)]); });
+    h._bondAtk = atk;
+  });
+
   var report = runDungeon({ battle:battle, support:support }, start, target);
+
+  // 羈絆累積：同隊出戰的每一對 +2（上限 60），並回報升級
+  report.bondUps = [];
+  for (var i=0;i<battle.length;i++) for (var j=i+1;j<battle.length;j++){
+    var k = bondKey(battle[i].id, battle[j].id);
+    var before = bondLevel(player.bonds[k]);
+    player.bonds[k] = Math.min(60, (player.bonds[k]||0) + 2);
+    var after = bondLevel(player.bonds[k]);
+    if (after > before) report.bondUps.push({ a:battle[i].name, b:battle[j].name, level:BOND_NM[after] });
+  }
 
   // 死亡懲罰（中等）：全滅撤退時，這趟金幣與戰利品被救援費拿走一半
   if (report.wiped){

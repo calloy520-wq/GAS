@@ -77,7 +77,19 @@ function abilityOf(c, a){
   var v = c.base[a] || 10;
   var t = c.equip && c.equip.trinket ? gearById(c.equip.trinket) : null;
   if (t && t.ab === a) v += t.val;
+  if (c.traits) c.traits.forEach(function(k){ var tr=TRAITS[k]; if (tr && tr.grow && tr.grow[a]) v += tr.grow[a]; });
   return v;
+}
+// 授予特質（去重、上限 4、重算生命）
+function awardTrait(c, key){
+  if (!TRAITS[key]) return null;
+  if (!c.traits) c.traits = [];
+  if (c.traits.length >= 4 || c.traits.indexOf(key) >= 0) return null;
+  c.traits.push(key);
+  var oldMax = c.maxhp; c.maxhp = maxHpOf(c);
+  if (c.hp > 0) c.hp = Math.min(c.maxhp, c.hp + Math.max(0, c.maxhp - oldMax));
+  if (c.hp > c.maxhp) c.hp = c.maxhp;
+  return key;
 }
 function maxHpOf(c){
   var ci = classInfo(c.job); var hd = ci.hd || 8;
@@ -148,7 +160,7 @@ function runDungeon(team, startFloor, targetFloor){
   });
 
   var report = { start:startFloor, target:targetFloor, reached:startFloor-1, cleared:false, wiped:false,
-    gold:0, xp:0, kills:0, loot:[], floors:[], levelUps:[] };
+    gold:0, xp:0, kills:0, loot:[], floors:[], levelUps:[], traitGains:[] };
 
   // 復原戰鬥狀態（_allies 供牧師群補/復活使用）
   heroes.forEach(function(h){ if (h.hp<=0) h.hp = 1; h._cs = combatStats(h); h._charge = 0; h._allies = heroes; });
@@ -190,6 +202,13 @@ function runDungeon(team, startFloor, targetFloor){
       break;
     }
 
+    // 打贏頭目 → 有機率獲得正面稱號
+    if (isBoss && Math.random() < 0.6){
+      var winner = pick(aliveList(heroes));
+      if (winner){ var tk = awardTrait(winner, pick(TRAIT_GOOD));
+        if (tk){ report.traitGains.push({ name:winner.name, key:tk, good:true }); floorLog.skills.push('🏅 '+winner.name+' 因擊破頭目獲得稱號「'+TRAITS[tk].nm+'」'); } }
+    }
+
     // 每層結算：金幣 / 經驗 / 掉落
     var gGold = Math.round(enc.gold * (1 + buff.gold));
     var gXp   = Math.round(enc.xp   * (1 + buff.xp));
@@ -216,6 +235,16 @@ function runDungeon(team, startFloor, targetFloor){
   }
 
   report.cleared = (report.reached >= targetFloor && !report.wiped);
+
+  // 九死一生：曾倒下但撐過整趟的夥伴 → 留下不屈（正）或舊傷/懼暗（負）
+  if (!report.wiped){
+    heroes.forEach(function(h){
+      if (h._downed && h.hp > 0 && Math.random() < 0.5){
+        var tk = awardTrait(h, Math.random()<0.4 ? 'unbreak' : pick(TRAIT_BAD));
+        if (tk) report.traitGains.push({ name:h.name, key:tk, good:!!TRAITS[tk].good });
+      }
+    });
+  }
 
   // 經驗分配 → 升級（戰鬥位全額，後勤位半額）
   heroes.forEach(function(h){ report.levelUps = report.levelUps.concat(tagUps(h, grantXp(h, report.xp))); });
@@ -277,6 +306,7 @@ function resolveCombat(heroes, enemies, buff, floor, surprise){
       if (atk >= cs.ac || natural === 20){
         var dmg = rollDice(e.dmg[0], e.dmg[1]) + Math.floor(floor/3);
         t.hp = Math.max(0, t.hp - dmg);
+        if (t.hp<=0) t._downed = true;
         log.lines.push('🩸 '+e.ico+e.nm+' 打中 '+t.name+' −'+dmg+(t.hp<=0?' 💀 倒下':''));
       } else {
         log.lines.push('💨 '+e.ico+e.nm+' 撲空');
@@ -292,7 +322,7 @@ function heroAttack(h, enemies, buff, log){
   var cs = h._cs || (h._cs = combatStats(h));
   var t = frontAlive(enemies); if (!t) return;
   var natural = d(20);
-  var atk = natural + cs.atkBonus + (buff.atk||0);
+  var atk = natural + cs.atkBonus + (buff.atk||0) + (h._bondAtk||0);
   var crit = (natural === 20) || (Math.random() < (buff.crit||0));
   if (atk >= t.ac || natural === 20){
     var dmg = rollDice(cs.dmgDice[0], cs.dmgDice[1]) + cs.dmgBonus;

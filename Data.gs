@@ -111,6 +111,27 @@ function charSkills(c){
   var s = {}; (CLASS_SKILLS[c.job]||[]).forEach(function(k){ s[k]=1; }); (RACE_SKILLS[c.race]||[]).forEach(function(k){ s[k]=1; });
   return Object.keys(s);
 }
+
+// ---- 怪癖／稱號（探索事件留下的好/壞特質，改能力值）----
+var TRAITS = {
+  slayer:  { nm:'屠龍者', ico:'🐲', good:true,  grow:{str:1},       desc:'擊破頭目的證明・力量+1' },
+  unbreak: { nm:'不屈',   ico:'🛡️', good:true,  grow:{con:1},       desc:'九死一生更強韌・體質+1' },
+  sharp:   { nm:'神準',   ico:'🎯', good:true,  grow:{dex:1},       desc:'一擊致命的直覺・敏捷+1' },
+  veteran: { nm:'老兵',   ico:'🎖️', good:true,  grow:{str:1,con:1}, desc:'身經百戰・力量體質+1' },
+  lucky:   { nm:'幸運兒', ico:'🍀', good:true,  grow:{cha:1},       desc:'運氣站在他這邊・魅力+1' },
+  sage:    { nm:'博學',   ico:'📖', good:true,  grow:{int:1},       desc:'見多識廣・智力+1' },
+  wound:   { nm:'舊傷',   ico:'🩹', good:false, grow:{con:-1},      desc:'沒好全的傷・體質-1' },
+  fearful: { nm:'懼暗',   ico:'😨', good:false, grow:{wis:-1},      desc:'對深淵的恐懼・睿知-1' },
+  shaky:   { nm:'手抖',   ico:'🥶', good:false, grow:{dex:-1},      desc:'握不穩武器・敏捷-1' }
+};
+var TRAIT_GOOD = ['slayer','unbreak','sharp','veteran','lucky','sage'];
+var TRAIT_BAD  = ['wound','fearful','shaky'];
+function traitInfo(k){ return TRAITS[k] || null; }
+
+// ---- 羈絆好感度（火焰紋章式・同隊出戰累積）----
+function bondLevel(pts){ pts=pts||0; if (pts>=50) return 4; if (pts>=30) return 3; if (pts>=15) return 2; if (pts>=5) return 1; return 0; }
+var BOND_NM = ['—','C','B','A','S'];
+function bondKey(a, b){ return [a,b].sort().join('|'); }
 function hasSkill(c, skill){ return charSkills(c).indexOf(skill) >= 0; }
 
 // ---- 裝備 ----
