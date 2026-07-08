@@ -254,6 +254,7 @@ function renderCreate(){
 // 選項英文可為字串（男女通用）或 [女, 男] 依性別切換
 var POPTS=[
   ['gender','性別',[['女性','female'],['男性','male']]],
+  ['race','種族',[['人類',''],['精靈','elf with long pointed ears'],['黑暗精靈','dark elf with dark skin, white hair and long pointed ears'],['獸耳','beastkin with animal ears and a fluffy tail'],['龍族','dragonkin with small dragon horns and scales'],['魔族','demon-kin with horns and a pointed tail'],['天使','celestial angel with a glowing halo and feathered wings'],['吸血鬼','vampire with small fangs and pale skin']]],
   ['hair','髮色',[['黑髮','black hair'],['棕髮','brown hair'],['金髮','blonde hair'],['粉髮','pink hair'],['藍髮','blue hair'],['紫髮','purple hair'],['銀白髮','silver white hair'],['紅髮','red hair']]],
   ['style','髮型',[['短髮','short hair'],['長直髮','long straight hair'],['馬尾','ponytail'],['雙馬尾',['twintails','tied back hair']],['波浪捲','wavy hair'],['俐落削邊',['sidecut hair','undercut hairstyle']]]],
   ['eyes','瞳色',[['藍瞳','blue eyes'],['紅瞳','red eyes'],['紫瞳','purple eyes'],['綠瞳','green eyes'],['金瞳','golden eyes'],['異色瞳','heterochromia eyes']]],
@@ -274,7 +275,7 @@ function buildPPrompt(job,sel){
   function g(k){var v=PMAP[k][sel[k]][1];return Array.isArray(v)?v[male?1:0]:v;}
   function part(k){var v=g(k);return v?', '+v:'';}
   var outfit=jobOutfit(job,male);
-  return base+", "+g('hair')+", "+g('style')+", "+g('eyes')+part('age')+part('figure')+", wearing "+outfit+part('expose')+", "+g('face')+floor;
+  return base+part('race')+", "+g('hair')+", "+g('style')+", "+g('eyes')+part('age')+part('figure')+", wearing "+outfit+part('expose')+", "+g('face')+floor;
 }
 var portraitCb=null, pSel={}, pSeed=0, pJob='fighter', pCooling=false, pHasImg=false;
 function openPortrait(job,cb){
