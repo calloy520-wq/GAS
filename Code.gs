@@ -43,6 +43,8 @@ function route_(action, p){
     case 'sea':     return apiSea_(p);
     case 'conquer': return apiConquer_(p);
     case 'holdings':return apiHold_(p);
+    case 'rumor':   return apiRumor_(p);
+    case 'scout':   return apiScout_(p);
     case 'ship':    return apiShip_(p);
     case 'treasure':return apiTreasure_(p);
     case 'dungeon': return apiDungeon_(p);
@@ -319,7 +321,7 @@ function apiVoyage_(p){
 function bestDexMod_(party){ var m=0; party.forEach(function(c){ m=Math.max(m, mod(abilityOf(c,'dex'))); }); return m; }
 function partyPower_(party){ var s=0; party.forEach(function(c){ s+=(c.level||1); }); return s; }
 // stance: 'sink' 砲擊擊沉（打撈半數）｜'board' 接舷俘虜（奪船・風險高）｜'kite' 打帶跑（快船邊打邊逃）
-function resolveNaval_(ship, party, enemy, gunBonus, stance, enemySpeed){
+function resolveNaval_(ship, party, enemy, gunBonus, stance, enemySpeed, surprise){
   stance = stance||'sink';
   var STN={sink:'🎯 砲擊擊沉',board:'⚔️ 接舷俘虜',kite:'🏴‍☠️ 打帶跑'};
   var log=[], ph=ship.hull, eh=enemy.hull, guard=0, fled=false, capture=false;
@@ -327,6 +329,7 @@ function resolveNaval_(ship, party, enemy, gunBonus, stance, enemySpeed){
   var board = partyPower_(party);
   var spd = (ship.speed||6), espd = (enemySpeed||6);
   log.push('⚓ 交戰！我船 '+ph+' vs '+enemy.ico+enemy.nm+' '+eh+'（'+(STN[stance]||'')+'）');
+  if (surprise){ var s0 = rint(Math.floor((gunBase+surprise)*0.9), gunBase+surprise+4); eh = Math.max(0, eh-s0); log.push('🎯 偵查奇襲！趁其不備先手齊射，造成 '+s0+' 傷（敵 '+eh+'）'); }
   while (ph>0 && eh>0 && guard<30){
     guard++;
     var gun = gunBase * (stance==='sink'?1.15 : stance==='board'?0.85 : 0.8);
@@ -491,7 +494,8 @@ function apiSea_(p){
     var byId={}; (player.roster||[]).forEach(function(c){ byId[c.id]=c; });
     var party=(player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
     var enemy={ nm:npc.nm, ico:npc.ico, hull:npc.hull, cannon:npc.cannon, speed:npc.speed, gold:npc.gold, loot:npc.loot };
-    var r = resolveNaval_(player.ship, party, enemy, navGunBonus_(player)+mateNavalGun_(player), p.stance, npc.speed);
+    var surp = consumeScout_(player, 'sea:'+p.id);
+    var r = resolveNaval_(player.ship, party, enemy, navGunBonus_(player)+mateNavalGun_(player), p.stance, npc.speed, surp);
     injectMateLine_(player, r);
     player.ship.hull = r.playerHull;
     var report={ enemy:{nm:npc.nm, ico:npc.ico}, win:r.win, mode:r.mode, fled:r.fled, log:r.log, gold:0, loot:[], hull:player.ship.hull, hullMax:player.ship.hullMax };
@@ -521,7 +525,8 @@ function apiRaidPlayer_(p){
   var defParty = (target.team.battle||[]).map(function(id){ return tById[id]; }).filter(Boolean);
   var espeed = (target.ship.speed||6) + Math.floor(partyPower_(defParty)/8);
   var enemy = { nm:target.nick+'的商船', ico:'⛵', hull:(target.ship.hullMax||60), cannon:(target.ship.cannon||6)+Math.floor(partyPower_(defParty)/5), speed:espeed };
-  var r = resolveNaval_(me.ship, party, enemy, navGunBonus_(me)+mateNavalGun_(me), p.stance, espeed);
+  var surpP = consumeScout_(me, 'pvp:'+target.nick);
+  var r = resolveNaval_(me.ship, party, enemy, navGunBonus_(me)+mateNavalGun_(me), p.stance, espeed, surpP);
   injectMateLine_(me, r);
   me.ship.hull = r.playerHull;
   var report = { target:target.nick, win:r.win, mode:r.mode, fled:r.fled, log:r.log, gold:0, loot:[], hull:me.ship.hull, hullMax:me.ship.hullMax };
@@ -568,7 +573,8 @@ function apiConquer_(p){
   var fleetGun = (player.fleet||[]).reduce(function(a,s){ return a + Math.floor((s.cannon||0)/2); }, 0);   // 艦隊助攻火力
   var siegeShip = { hull:player.ship.hull, hullMax:player.ship.hullMax, cannon:(player.ship.cannon||6)+fleetGun, crew:player.ship.crew, speed:player.ship.speed };
   var enemy = { nm:gar.nm, ico:'🛡️', hull:gar.hull, cannon:gar.cannon, gold:gar.gold, loot:0, speed:99 };   // 駐軍不會逃
-  var r = resolveNaval_(siegeShip, party, enemy, navGunBonus_(player)+mateNavalGun_(player), 'board', 99);
+  var surpC = consumeScout_(player, 'port:'+pid);
+  var r = resolveNaval_(siegeShip, party, enemy, navGunBonus_(player)+mateNavalGun_(player), 'board', 99, surpC);
   injectMateLine_(player, r);
   player.ship.hull = r.playerHull;
   var report = { port:pid, portNm:mk.nm, portIco:mk.ico, garrison:gar.nm, win:r.win, log:r.log, hull:player.ship.hull, hullMax:player.ship.hullMax, gold:0, fleetGun:fleetGun };
@@ -616,6 +622,58 @@ function apiHold_(p){
   }
   if (p.op === 'abandon'){ delete player.holdings[p.port]; cleanPlayer_(player); savePlayer(player); return { player:player }; }
   return { player:player };
+}
+
+// ===== 打聽消息（酒館情報：貿易/獵物/危險/秘寶）=====
+function bestTradeTip_(day){
+  var best=0, tip=null;
+  MARKETS.forEach(function(a){ MARKETS.forEach(function(b){ if(a.id===b.id) return;
+    GOODS.forEach(function(g){ var buy=tradePrice(a.id,g.id,day), sell=Math.round(tradePrice(b.id,g.id,day)*0.92), sp=sell-buy;
+      if (sp>best){ best=sp; tip={ from:a.nm, fromIco:a.ico, to:b.nm, toIco:b.ico, good:g.nm, goodIco:g.ico, spread:sp }; } }); }); });
+  return tip;
+}
+function apiRumor_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  var persuade = teamHasSkill_(player,'persuasion');
+  var cost = persuade ? 8 : 15;
+  if ((player.gold||0) < cost) throw new Error('金幣不足（打聽要 '+cost+'🪙 請杯酒）');
+  player.gold -= cost;
+  var day = tradeDayBucket(), rumors = [];
+  var tt = bestTradeTip_(day);
+  if (tt) rumors.push({ ico:'💰', t:'把「'+tt.goodIco+tt.good+'」從 '+tt.fromIco+tt.from+' 運到 '+tt.toIco+tt.to+'，一箱能賺約 '+tt.spread+'🪙。' });
+  try { var list=listPlayers(); var rich=list.filter(function(x){ return x.nick!==player.nick && (x.deepest||0)>=3; }).sort(function(a,b){ return b.gold-a.gold; })[0];
+    if (rich) rumors.push({ ico:'🏴‍☠️', t:'酒客壓低聲音：'+rich.nick+' 最近賺翻了（約 '+rich.gold+'🪙），船停在 '+(rich.portNm||'某港')+'…要不要去「拜訪」一下？' }); } catch(e){}
+  var npcs = npcTradersForDay(day), strong = npcs.filter(function(n){ return n.cannon>=11; }).length;
+  rumors.push({ ico: strong>=2?'⚠️':'🌊', t: strong>=2 ? '最近私掠艦橫行，落單商船小心為上；想掠奪先偵查再動手。' : '這幾天海象平穩，正是出海跑商的好時機。' });
+  if (persuade && Math.random()<0.5){ player.clues=(player.clues||0)+1; rumors.push({ ico:'🗺️', t:'一名醉醺醺的老水手塞給你一張海圖碎片…秘寶線索 +1！' }); }
+  cleanPlayer_(player); savePlayer(player);
+  return { player:player, rumors:rumors, cost:cost, persuade:persuade };
+}
+
+// ===== 偵查（探敵情報 + 奇襲先手）=====
+function winEstimate_(myGun, myHull, enemy){ return Math.round(Math.max(0.05, Math.min(0.95, 0.5 + (myGun-enemy.cannon)*0.03 + (myHull-enemy.hull)*0.0025))*100); }
+function consumeScout_(player, key){ if (player.scout && player.scout.key===key){ var g=player.scout.gun||0; player.scout=null; return g; } return 0; }
+function apiScout_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (!player.ship) player.ship = startShip();
+  var day = tradeDayBucket();
+  var perceive = teamHasSkill_(player,'perception') || teamHasSkill_(player,'stealth');
+  var byId={}; (player.roster||[]).forEach(function(c){ byId[c.id]=c; });
+  var party=(player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
+  var myGun = (player.ship.cannon||6) + bestDexMod_(party) + navGunBonus_(player) + mateNavalGun_(player);
+  var enemy, key, extra={};
+  if (p.kind==='sea'){ var n=npcTradersForDay(day).filter(function(x){ return x.id===p.id; })[0]; if(!n) throw new Error('該商船已離開海域'); enemy={ nm:n.nm, ico:n.ico, hull:n.hull, cannon:n.cannon, speed:n.speed }; key='sea:'+p.id; extra.loot=n.loot; extra.gold=n.gold; }
+  else if (p.kind==='port'){ var gar=GARRISONS[p.port]; if(!gar) throw new Error('未知港口'); var fg=(player.fleet||[]).reduce(function(a,s){ return a+Math.floor((s.cannon||0)/2); },0); myGun+=fg; enemy={ nm:gar.nm, ico:'🛡️', hull:gar.hull, cannon:gar.cannon, speed:99 }; key='port:'+p.port; extra.fleetGun=fg; }
+  else if (p.kind==='pvp'){ var tg=loadPlayer((p.target||'').trim()); if(!tg) throw new Error('目標無效'); enemy={ nm:tg.nick+'的商船', ico:'⛵', hull:(tg.ship&&tg.ship.hullMax)||60, cannon:(tg.ship&&tg.ship.cannon)||6, speed:(tg.ship&&tg.ship.speed)||6 }; key='pvp:'+tg.nick; extra.gold=tg.gold; extra.cargo=cargoCount_(tg); }
+  else throw new Error('未知偵查目標');
+  var est = winEstimate_(myGun, player.ship.hull, enemy);
+  var rec = (player.ship.hull < enemy.hull*0.6) ? 'kite' : (myGun >= enemy.cannon+6 ? 'board' : 'sink');
+  var spotted = !perceive && Math.random()<0.3;   // 沒有察覺/隱匿專長，有機率暴露行蹤
+  player.scout = spotted ? null : { key:key, gun: perceive?4:2 };
+  cleanPlayer_(player); savePlayer(player);
+  return { player:player, intel:{ nm:enemy.nm, ico:enemy.ico, hull:enemy.hull, cannon:enemy.cannon, speed:enemy.speed, winEst:est, rec:rec, extra:extra, spotted:spotted, surprise:!spotted, perceive:perceive } };
 }
 
 // ===== 船塢：修理 / 升級 / 投資 =====
