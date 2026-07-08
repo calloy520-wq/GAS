@@ -190,6 +190,17 @@ function apiDungeon_(p){
 
   var report = runDungeon({ battle:battle, support:support }, start, target);
 
+  // 死亡懲罰（中等）：全滅撤退時，這趟金幣與戰利品被救援費拿走一半
+  if (report.wiped){
+    var keepGold = Math.floor(report.gold * 0.5);
+    report.rescueGoldLost = report.gold - keepGold;
+    report.gold = keepGold;
+    var kept = [];
+    report.loot.forEach(function(id){ if (Math.random() < 0.5) kept.push(id); });
+    report.rescueLootLost = report.loot.length - kept.length;
+    report.loot = kept;
+  }
+
   // 套用結果
   player.gold = (player.gold||0) + report.gold;
   report.loot.forEach(function(id){ player.bag.push(id); });

@@ -239,6 +239,7 @@ function mock(action,p){return new Promise(function(res,rej){
     if(action==='dismiss'){var pl=DB[p.nick.trim()];if(p.id===pl.heroId)return rej(new Error('主角無法遣散'));var tc=pl.roster.filter(function(c){return c.id===p.id;})[0]||{level:1};var cost=20+tc.level*10;if(pl.gold<cost)return rej(new Error('遣散費不足'));pl.roster=pl.roster.filter(function(c){return c.id!==p.id;});pl.gold-=cost;pl.team.battle=pl.team.battle.filter(function(x){return x!==p.id;});pl.team.support=pl.team.support.filter(function(x){return x!==p.id;});put(pl);return res({player:pl,cost:cost});}
     if(action==='quest'){var pl=DB[p.nick.trim()];if(p.op==='accept'){var dd=Math.max(1,pl.deepest||0);var n=6+dd*2;pl.quest={id:'q'+Math.random().toString(36).slice(2,7),type:'kill',target:n,prog:0,name:'清剿 '+n+' 隻魔物',desc:'累積擊敗 '+n+' 隻敵人',reward:40+n*7};}else pl.quest=null;put(pl);return res({player:pl});}
     if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,skills:(f>st?['🔍 隊長 察覺發現暗格 +'+Math.round(gg*0.3)+'🪙']:[]),loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2,lines:['R1','⚔️ 隊長 擊中 👺哥布林 −5','🩸 👺哥布林 打中 隊長 −3','R2','✦ 隊長 擊中 👺哥布林 −9（暴擊！） 💀']}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,kills:fl.length*2,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};
+      if(rep.wiped){var keep=Math.floor(g*0.5);var lost=g-keep;pl.gold-=lost;rep.gold=keep;rep.rescueGoldLost=lost;var kl=rep.loot.filter(function(){return Math.random()<0.5;});rep.rescueLootLost=rep.loot.length-kl.length;rep.loot=kl;}
       var oldDeep=pl.deepest||0;var oldR=rankOf(oldDeep);if(reached>pl.deepest)pl.deepest=reached;var newR=rankOf(pl.deepest||0);if(newR>oldR){var bn=newR*100;pl.gold+=bn;rep.rankUp={to:RANKS[newR].nm,ix:newR,reward:bn};}rep.newBosses=[];[5,10,15,20,25].forEach(function(bf){if(oldDeep<bf&&(pl.deepest||0)>=bf)rep.newBosses.push(bf);});
       if(pl.quest){var q=pl.quest;if(q.type==='kill')q.prog+=rep.kills;else if(q.type==='depth')q.prog=Math.max(q.prog,reached);else q.prog+=rep.gold;if(q.prog>=q.target){pl.gold+=q.reward;pl.questsDone=(pl.questsDone||0)+1;rep.questDone={name:q.name,reward:q.reward};pl.quest=null;}}
       rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
@@ -336,12 +337,19 @@ var POPTS=[
   ['age','年齡感（成年限定）',[['青年',['young adult woman in her twenties','young adult man in his twenties']],['童顏',['young adult woman in her twenties with a cute youthful baby face, adult body proportions','young adult man in his twenties with a youthful boyish face, adult body proportions']],['熟齡',['young married woman','mature married man']],['成熟',['mature adult woman','mature adult man']],['御姐/大叔',['elegant onee-san mature woman','handsome mature ikemen man']]]],
   ['figure','身材',[['標準','average build'],['纖細','slim slender build'],['嬌小','petite build'],['高挑','tall build'],['壯碩',['curvy voluptuous figure','muscular athletic build']]]],
   ['expose','服裝露出',[['一般',''],['端莊','modest covered outfit'],['清涼','light revealing summer outfit, bare shoulders'],['性感',['sexy alluring revealing outfit, cleavage','sexy outfit, toned bare chest']],['泳裝',['bikini swimsuit','swim shorts']]]],
-  ['face','表情',[['微笑','gentle smile'],['冷酷','cool calm expression'],['害羞','shy blushing'],['認真','serious determined'],['元氣','cheerful energetic smile'],['不羈',['smug tsundere expression','confident smirk']]]]
+  ['face','表情',[['微笑','gentle smile'],['冷酷','cool calm expression'],['害羞','shy blushing'],['認真','serious determined'],['元氣','cheerful energetic smile'],['不羈',['smug tsundere expression','confident smirk']]]],
+  ['aura','氛圍光效',[['無',''],['微光','soft glowing light rim lighting'],['聖光','holy radiant glowing aura'],['花瓣','falling flower petals background'],['星塵','sparkling stardust particles'],['暗焰','dark flame aura'],['雷電','crackling lightning aura']]]
 ];
 var PMAP={};POPTS.forEach(function(g){PMAP[g[0]]=g[2];});
 function jobOutfit(job,male){var m={fighter:'ornate knight armor',paladin:'holy paladin plate armor',rogue:'rogue leather outfit, hood',ranger:'ranger archer light leather outfit',wizard:'mage magic robe',
   cleric:male?'priest holy robe':'priestess holy robe',
   bard:'elegant bard minstrel outfit',merchant:'travelling merchant outfit',scholar:'scholar robe with glasses',medic:'field medic apron outfit',diviner:'fortune teller mystic outfit'};return m[job]||'adventurer outfit';}
+function rarityFlair(rk){
+  if(rk==='legend')return ', legendary hero, radiant divine glowing aura, extremely ornate intricate golden details, sparkling light particles, dramatic lighting, ultra detailed masterpiece';
+  if(rk==='epic')return ', epic hero, magical glowing aura, ornate intricate details, dramatic rim lighting, highly detailed';
+  if(rk==='rare')return ', fine ornate details, subtle magical glow';
+  return '';
+}
 function buildPPrompt(job,sel){
   var male=(sel.gender===1);
   var subj=male?"1boy, solo, adult man, handsome, masculine":"1girl, solo, adult woman, attractive, feminine";
@@ -350,11 +358,11 @@ function buildPPrompt(job,sel){
   function g(k){var v=PMAP[k][sel[k]][1];return Array.isArray(v)?v[male?1:0]:v;}
   function part(k){var v=g(k);return v?', '+v:'';}
   var outfit=jobOutfit(job,male);
-  return base+part('race')+", "+g('hair')+", "+g('style')+", "+g('eyes')+part('age')+part('figure')+", wearing "+outfit+part('expose')+", "+g('face')+floor;
+  return base+part('race')+", "+g('hair')+", "+g('style')+", "+g('eyes')+part('age')+part('figure')+", wearing "+outfit+part('expose')+part('aura')+", "+g('face')+rarityFlair(pRarity)+floor;
 }
-var portraitCb=null, pSel={}, pSeed=0, pJob='fighter', pCooling=false, pHasImg=false;
-function openPortrait(job,cb,raceIdx){
-  portraitCb=cb;pJob=job;POPTS.forEach(function(g){pSel[g[0]]=0;});
+var portraitCb=null, pSel={}, pSeed=0, pJob='fighter', pRarity='', pCooling=false, pHasImg=false;
+function openPortrait(job,cb,raceIdx,rarity){
+  portraitCb=cb;pJob=job;pRarity=rarity||'';POPTS.forEach(function(g){pSel[g[0]]=0;});
   if(raceIdx>0)pSel.race=raceIdx;                 // 立繪外觀預設跟著機制種族（仍可改）
   pSeed=Math.floor(Math.random()*1e6);pHasImg=false;pCooling=false;
   var h='<button class="close" onclick="closePortrait()">✕</button><h2>🎨 建立頭像</h2><p class="sub">選外型 → 生成 → 不喜歡就重生 → 用這張。立繪只是外觀，不影響能力。</p>';
@@ -519,7 +527,28 @@ function charSheet(id){
   body+='<div class="glab" style="margin-top:8px">裝備</div>';
   ['weapon','armor','trinket'].forEach(function(slot){var eq=c.equip[slot]?gById(c.equip[slot]):null;var lb={weapon:'🗡️武器',armor:'🛡️防具',trinket:'💍飾品'}[slot];body+='<div class="note" style="text-align:left">'+lb+'：'+(eq?eq.ico+eq.nm+'（'+gearDesc(eq)+'）':'（無）')+'</div>';});
   body+='<div class="note" style="text-align:left;margin-top:6px">經驗：'+c.xp+' / '+cXpNext(c.level)+'</div>';
+  body+='<div class="card" id="cbiocard" style="border-color:var(--gold-d);margin-top:10px"><b>🎭 個性</b>'+
+    '<div class="note" id="cbio" style="text-align:left;margin-top:6px;line-height:1.75;color:#f0d6ad">'+(c.bio?c.bio:'<span style="color:var(--soft)">還不太認識這位夥伴…</span>')+'</div>'+
+    (c.bio?'':'<button class="btn re sm" id="cbiogen" style="margin-top:6px">✨ 認識一下（AI 生成個性）</button>')+'</div>';
   openSheet('📋 '+c.name,'',body);
+  var bg=document.getElementById('cbiogen');
+  if(bg)bg.onclick=function(){bg.disabled=true;bg.textContent='傾聽中…';var el=document.getElementById('cbio');el.textContent='✨ 傾聽 '+c.name+' 說話…';
+    genBio(c,function(t){c.bio=t;var e2=document.getElementById('cbio');if(e2)e2.textContent=t;if(bg)bg.remove();saveP();});};
+}
+// 免費 AI 個性（Pollinations 文字，失敗用模板保底）
+function genBio(c,cb){
+  var ci=cinfo(c.job),rc=c.rarity&&RARITY_C[c.rarity]?RARITY_C[c.rarity].nm:'常見',race=RACES[c.race]?RACES[c.race].nm:'人類';
+  var prompt='用繁體中文，為一位奇幻世界的傭兵寫一句 30 字以內、生動有個性的自我介紹或口頭禪。職業：'+ci.nm+'，種族：'+race+'，資質：'+rc+'。只回傳那一句話本身，不要引號、不要任何額外說明。';
+  var done=false,timer=setTimeout(function(){if(!done){done=true;cb(bioTemplate(c));}},9000);
+  fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){
+    if(done)return;done=true;clearTimeout(timer);
+    t=(t||'').trim().replace(/^["「『]+|["」』]+$/g,'').split('\n')[0].slice(0,60);
+    cb(t&&!/error|unable|sorry/i.test(t)?t:bioTemplate(c));
+  }).catch(function(){if(done)return;done=true;clearTimeout(timer);cb(bioTemplate(c));});
+}
+function bioTemplate(c){
+  var t={fighter:'刀口舔血慣了，錢給夠，我就替你擋在最前面。',paladin:'以聖光之名，我發誓守護同伴到最後一刻。',rogue:'噓，別出聲——值錢的東西，我來拿就好。',ranger:'我的箭從不落空，除非我想讓它落空。',wizard:'凡人的常識？在我的魔法面前不適用。',cleric:'受傷就過來，別逞強，交給我。',bard:'來，聽我唱一首，順便替你們打打氣！',merchant:'一分錢一分貨，跟著我準沒錯。',scholar:'知識就是力量，這地下城的秘密我都記著。',medic:'別死在我面前，那是對我醫術的侮辱。',diviner:'命運？我早看過結局了，跟緊我。'};
+  return t[c.job]||'一位來歷成謎的傭兵。';
 }
 
 // ---- 裝備 ----
@@ -625,7 +654,7 @@ function renderRecruitForm(){
   body+='<button class="btn ok" id="rhire" style="margin-top:10px">✅ 雇用（'+cand.cost+'🪙）</button>';
   openSheet(rc.star+' 雇用 '+ci.nm,'資質已定，客製名字與立繪',body);
   var rn=document.getElementById('rname');rn.addEventListener('input',function(){window._rname=rn.value;});
-  document.getElementById('rmkport').onclick=function(){openPortrait(cand.job,function(rr){recruitPortrait=rr.portrait;recruitSeed=rr.seed;renderRecruitForm();},RACE_KEYS.indexOf(cand.race));};
+  document.getElementById('rmkport').onclick=function(){openPortrait(cand.job,function(rr){recruitPortrait=rr.portrait;recruitSeed=rr.seed;renderRecruitForm();},RACE_KEYS.indexOf(cand.race),cand.rarity);};
   document.getElementById('rhire').onclick=function(){
     if(!recruitPortrait){toast('請先建立頭像');return;}
     var name=(window._rname||'').trim().slice(0,16)||ci.nm;
@@ -761,6 +790,7 @@ function renderReport(rep){
   h+='<h1>'+head+'</h1><p class="lead">從第 '+(rep.start||1)+' 層探索 → 目標第 '+rep.target+' 層 ・ 實際抵達第 '+rep.reached+' 層</p>';
   h+='<div class="card"><b>結算</b><div class="note" style="text-align:left;margin-top:6px">'+
     '🪙 金幣 +'+rep.gold+'　⭐ 經驗 +'+rep.xp+'<br>⚔️ 擊敗 '+(rep.kills||0)+' 隻　🎁 掉落 '+(rep.loot.length||0)+' 件　🏛️ 探索 '+(rep.floors?rep.floors.length:0)+' 層</div>';
+  if(rep.wiped)h+='<div class="note" style="text-align:left;color:var(--hp)">🚑 救援費：損失 '+(rep.rescueGoldLost||0)+'🪙'+(rep.rescueLootLost?' ＋ '+rep.rescueLootLost+' 件戰利品':'')+'（倒下的夥伴回旅館付費救治）</div>';
   if(rep.rankUp)h+='<div class="note" style="text-align:left;color:var(--gold);font-weight:800">🎖️ 晉升為「'+rep.rankUp.to+'」！ +'+rep.rankUp.reward+'🪙</div>';
   if(rep.questDone)h+='<div class="note" style="text-align:left;color:var(--good);font-weight:800">📜 委託完成【'+rep.questDone.name+'】 +'+rep.questDone.reward+'🪙</div>';
   if(rep.levelUps&&rep.levelUps.length){h+='<div class="note" style="text-align:left;color:var(--gold)">⬆️ '+rep.levelUps.map(function(u){return u.name+' → Lv'+u.level;}).join('、')+'</div>';}
