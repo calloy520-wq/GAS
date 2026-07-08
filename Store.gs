@@ -16,12 +16,26 @@ var LIST_TTL   = 20;         // 名冊快取 20 秒
 
 // ---- 試算表 / 分頁 ----
 function getSS_(){
+  // 1) 優先用「綁定的試算表」（你原本給我的那張，容器綁定腳本用得到）
+  try { var act = SpreadsheetApp.getActiveSpreadsheet(); if (act) return act; } catch(e){}
+  // 2) 其次用手動設定過的試算表 ID（想指定某張表時用）
   var props = PropertiesService.getScriptProperties();
   var id = props.getProperty(PROP_SHEET_ID);
   if (id){ try { return SpreadsheetApp.openById(id); } catch(e){} }
+  // 3) 兩者都沒有才自動新建一張（獨立腳本的退路）
   var ss = SpreadsheetApp.create('傭兵之城 - 玩家存檔');
   props.setProperty(PROP_SHEET_ID, ss.getId());
   return ss;
+}
+// 想指定某張試算表當資料庫時：在編輯器手動執行一次即可
+function setDataSheet(spreadsheetId){
+  PropertiesService.getScriptProperties().setProperty(PROP_SHEET_ID, spreadsheetId);
+  return '已設定資料庫試算表：' + spreadsheetId;
+}
+// 想知道目前資料寫在哪張表：在編輯器執行後看回傳/紀錄
+function getDataSheetUrl(){
+  var ss = getSS_();
+  return ss.getUrl() + '  （id: ' + ss.getId() + '）';
 }
 function playerSheet_(){
   var ss = getSS_();
