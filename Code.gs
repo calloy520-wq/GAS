@@ -33,6 +33,7 @@ function route_(action, p){
     case 'recruit': return apiRecruit_(p);
     case 'dismiss': return apiDismiss_(p);
     case 'quest':   return apiQuest_(p);
+    case 'trade':   return apiTrade_(p);
     case 'dungeon': return apiDungeon_(p);
     case 'roster':  return { players: listPlayers() };
     case 'meta':    return apiMeta_();
@@ -171,6 +172,45 @@ function applyQuest_(player, report){
     return { name:q.name, reward:q.reward };
   }
   return null;
+}
+
+// 大航海式貿易：看盤／買／賣／前往其他市集
+function cargoCount_(pl){ var n=0, c=pl.cargo||{}; for (var k in c) n+=c[k]; return n; }
+function tradeHaggle_(pl){ var has=(pl.roster||[]).some(function(c){ return charSkills(c).indexOf('persuasion')>=0; }); return has?{buyMul:0.95,sellMul:1.05}:{buyMul:1,sellMul:1}; }
+function tradeView_(pl, day, disc){
+  return { port:pl.port, cargo:pl.cargo||{}, cargoCount:cargoCount_(pl), cargoMax:CARGO_MAX, haggle:(disc.buyMul<1),
+    markets: MARKETS.map(function(m){ return { id:m.id, nm:m.nm, ico:m.ico,
+      goods: GOODS.map(function(g){ var base=tradePrice(m.id,g.id,day);
+        return { id:g.id, nm:g.nm, ico:g.ico, buy:Math.round(base*disc.buyMul), sell:Math.round(base*0.92*disc.sellMul),
+          tag:(m.cheap.indexOf(g.id)>=0?'產地':(m.dear.indexOf(g.id)>=0?'搶手':'')) }; }) }; }) };
+}
+function apiTrade_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (!player.port || !MARKET_BY[player.port]) player.port = 'merc';
+  if (!player.cargo) player.cargo = {};
+  var day = tradeDayBucket();
+  var disc = tradeHaggle_(player);
+  if (p.op === 'travel'){
+    if (!MARKET_BY[p.to]) throw new Error('未知市集');
+    player.port = p.to;
+  } else if (p.op === 'buy'){
+    if (!GOOD_BY[p.good]) throw new Error('未知商品');
+    var qty = Math.max(1, p.qty|0);
+    var price = Math.round(tradePrice(player.port, p.good, day) * disc.buyMul);
+    if (cargoCount_(player) + qty > CARGO_MAX) throw new Error('貨艙不足（上限 '+CARGO_MAX+'）');
+    var cost = price * qty;
+    if ((player.gold||0) < cost) throw new Error('金幣不足');
+    player.gold -= cost; player.cargo[p.good] = (player.cargo[p.good]||0) + qty;
+  } else if (p.op === 'sell'){
+    var q2 = Math.max(1, p.qty|0);
+    if (!player.cargo[p.good] || player.cargo[p.good] < q2) throw new Error('貨艙沒有這麼多');
+    var sp = Math.round(tradePrice(player.port, p.good, day) * 0.92 * disc.sellMul);
+    player.gold += sp * q2; player.cargo[p.good] -= q2;
+    if (player.cargo[p.good] <= 0) delete player.cargo[p.good];
+  }
+  if (p.op){ cleanPlayer_(player); savePlayer(player); }   // 只有實際買/賣/移動才寫檔
+  return { player: player, view: tradeView_(player, day, disc) };
 }
 
 // 地下城：後端跑完整探索，套用結果後存檔

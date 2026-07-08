@@ -243,6 +243,11 @@ function mock(action,p){return new Promise(function(res,rej){
     if(action==='recruit'){var pl=DB[p.nick.trim()];if(pl.roster.length>=10)return rej(new Error('倉庫已滿'));var idx=-1;(pl.tavern||[]).forEach(function(c,i){if(c.cid===p.cid)idx=i;});if(idx<0)return rej(new Error('候選人已不在'));var cand=pl.tavern[idx];if(pl.gold<cand.cost)return rej(new Error('金幣不足'));var c=mk(p.name,cand.job,p.portrait,p.seed,cand.base,cand.race);c.rarity=cand.rarity;pl.gold-=cand.cost;pl.roster.push(c);pl.tavern.splice(idx,1);put(pl);return res({player:pl,recruited:c});}
     if(action==='dismiss'){var pl=DB[p.nick.trim()];if(p.id===pl.heroId)return rej(new Error('主角無法遣散'));var tc=pl.roster.filter(function(c){return c.id===p.id;})[0]||{level:1};var cost=20+tc.level*10;if(pl.gold<cost)return rej(new Error('遣散費不足'));pl.roster=pl.roster.filter(function(c){return c.id!==p.id;});pl.gold-=cost;pl.team.battle=pl.team.battle.filter(function(x){return x!==p.id;});pl.team.support=pl.team.support.filter(function(x){return x!==p.id;});put(pl);return res({player:pl,cost:cost});}
     if(action==='quest'){var pl=DB[p.nick.trim()];if(p.op==='accept'){var dd=Math.max(1,pl.deepest||0);var n=6+dd*2;pl.quest={id:'q'+Math.random().toString(36).slice(2,7),type:'kill',target:n,prog:0,name:'清剿 '+n+' 隻魔物',desc:'累積擊敗 '+n+' 隻敵人',reward:40+n*7};}else pl.quest=null;put(pl);return res({player:pl});}
+    if(action==='trade'){var pl=DB[p.nick.trim()];if(!pl.port||!MARKET_BYC[pl.port])pl.port='merc';if(!pl.cargo)pl.cargo={};var day=tradeDayC(),disc=tradeHaggleC(pl);
+      if(p.op==='travel'){if(!MARKET_BYC[p.to])return rej(new Error('未知市集'));pl.port=p.to;}
+      else if(p.op==='buy'){if(!GOOD_BYC[p.good])return rej(new Error('未知商品'));var qty=Math.max(1,p.qty|0);var price=Math.round(tradePriceC(pl.port,p.good,day)*disc.buyMul);if(cargoCountC(pl)+qty>CARGO_MAX_C)return rej(new Error('貨艙不足'));var cost=price*qty;if(pl.gold<cost)return rej(new Error('金幣不足'));pl.gold-=cost;pl.cargo[p.good]=(pl.cargo[p.good]||0)+qty;}
+      else if(p.op==='sell'){var q2=Math.max(1,p.qty|0);if(!pl.cargo[p.good]||pl.cargo[p.good]<q2)return rej(new Error('貨艙沒這麼多'));var sp=Math.round(tradePriceC(pl.port,p.good,day)*0.92*disc.sellMul);pl.gold+=sp*q2;pl.cargo[p.good]-=q2;if(pl.cargo[p.good]<=0)delete pl.cargo[p.good];}
+      if(p.op)put(pl);return res({player:pl,view:tradeViewC(pl,day,disc)});}
     if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,skills:(f>st?['🔍 隊長 察覺發現暗格 +'+Math.round(gg*0.3)+'🪙']:[]),loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2,lines:['R1','⚔️ 隊長 擊中 👺哥布林 −5','🩸 👺哥布林 打中 隊長 −3','R2','✦ 隊長 擊中 👺哥布林 −9（暴擊！） 💀']}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,kills:fl.length*2,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};
       if(rep.wiped){var keep=Math.floor(g*0.5);var lost=g-keep;pl.gold-=lost;rep.gold=keep;rep.rescueGoldLost=lost;var kl=rep.loot.filter(function(){return Math.random()<0.5;});rep.rescueLootLost=rep.loot.length-kl.length;rep.loot=kl;}
       var oldDeep=pl.deepest||0;var oldR=rankOf(oldDeep);if(reached>pl.deepest)pl.deepest=reached;var newR=rankOf(pl.deepest||0);if(newR>oldR){var bn=newR*100;pl.gold+=bn;rep.rankUp={to:RANKS[newR].nm,ix:newR,reward:bn};}rep.newBosses=[];[5,10,15,20,25].forEach(function(bf){if(oldDeep<bf&&(pl.deepest||0)>=bf)rep.newBosses.push(bf);});
@@ -424,9 +429,20 @@ var BLDG=[
   ['shop','🛡️','武器防具飾品店','購買裝備'],
   ['inn','🛏️','旅館','休息回血'],
   ['black','🕶️','黑市','稀有交易'],
+  ['trade','🏪','貿易所','跑商賺價差'],
   ['castle','🏰','領主城堡','主線・晉升'],
   ['roster','📜','冒險者名冊','看大家的進度']
 ];
+// 貿易（客製顯示＋離線 mock 用）
+var GOODS_C=[{id:'salt',nm:'鹽',ico:'🧂',base:20},{id:'herb',nm:'藥草',ico:'🌿',base:35},{id:'iron',nm:'鐵礦',ico:'⚙️',base:55},{id:'wine',nm:'美酒',ico:'🍷',base:70},{id:'spice',nm:'香料',ico:'🌶️',base:48},{id:'silk',nm:'絲綢',ico:'🧵',base:95},{id:'china',nm:'瓷器',ico:'🏺',base:125},{id:'gem',nm:'寶石',ico:'💎',base:210}];
+var MARKETS_C=[{id:'merc',nm:'傭兵之城',ico:'🏰',cheap:['iron','herb'],dear:['silk','gem']},{id:'port',nm:'風帆港都',ico:'⛵',cheap:['silk','china'],dear:['spice','iron']},{id:'oasis',nm:'沙漠綠洲',ico:'🏜️',cheap:['spice','salt'],dear:['wine','herb']},{id:'snow',nm:'雪山商站',ico:'🏔️',cheap:['wine','gem'],dear:['salt','china']}];
+var GOOD_BYC={};GOODS_C.forEach(function(g){GOOD_BYC[g.id]=g;});var MARKET_BYC={};MARKETS_C.forEach(function(m){MARKET_BYC[m.id]=m;});var CARGO_MAX_C=20;
+function hashNoiseC(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return ((h>>>0)%1000)/1000;}
+function tradeDayC(){return Math.floor(Date.now()/(1000*60*60*4));}
+function tradePriceC(m,g,day){var good=GOOD_BYC[g],mk=MARKET_BYC[m];if(!good||!mk)return 0;var mod=mk.cheap.indexOf(g)>=0?0.6:(mk.dear.indexOf(g)>=0?1.5:1.0);var fl=0.8+hashNoiseC(m+'_'+g+'_'+day)*0.5;return Math.max(1,Math.round(good.base*mod*fl));}
+function cargoCountC(pl){var n=0,c=pl.cargo||{};for(var k in c)n+=c[k];return n;}
+function tradeHaggleC(pl){var has=(pl.roster||[]).some(function(c){return charSkills(c.job,c.race).indexOf('persuasion')>=0;});return has?{buyMul:0.95,sellMul:1.05}:{buyMul:1,sellMul:1};}
+function tradeViewC(pl,day,disc){return {port:pl.port,cargo:pl.cargo||{},cargoCount:cargoCountC(pl),cargoMax:CARGO_MAX_C,haggle:(disc.buyMul<1),markets:MARKETS_C.map(function(m){return {id:m.id,nm:m.nm,ico:m.ico,goods:GOODS_C.map(function(g){var base=tradePriceC(m.id,g.id,day);return {id:g.id,nm:g.nm,ico:g.ico,buy:Math.round(base*disc.buyMul),sell:Math.round(base*0.92*disc.sellMul),tag:(m.cheap.indexOf(g.id)>=0?'產地':(m.dear.indexOf(g.id)>=0?'搶手':''))};})};})};}
 // 主城 AI 背景（固定 seed → 全城一致；載不出就用手繪打底）
 var TOWN_BG_URL="https://image.pollinations.ai/prompt/"+encodeURIComponent("cozy fantasy medieval town square at golden dusk, warm glowing lanterns, tavern blacksmith market stalls, castle spires in the background, anime background art, studio ghibli style scenery, no people, no text, wide establishing shot")+"?width=768&height=384&nologo=true&model=flux&seed=777";
 function starDots(){var s=[[10,20],[24,10],[40,26],[58,12],[72,22],[86,9],[33,15],[66,28],[92,20],[17,32]];return s.map(function(p){return '<div class="star" style="left:'+p[0]+'%;top:'+p[1]+'%"></div>';}).join('');}
@@ -469,6 +485,7 @@ function openBldg(b){
   if(b==='guild')return openGuild();
   if(b==='castle')return openCastle();
   if(b==='black')return openBlack();
+  if(b==='trade')return openTrade();
   if(b==='team')return openTeam();
   if(b==='equip')return openEquip();
   if(b==='tavern')return openTavern();
@@ -747,6 +764,34 @@ function chooseChar(title,cb){
   var body='';P.roster.forEach(function(c){body+='<div class="u"><div class="av">'+avatarHTML(c)+'</div><div class="info"><b>'+c.name+'</b><small>'+(RACES[c.race]?RACES[c.race].nm+' ':'')+cinfo(c.job).ico+cinfo(c.job).nm+' Lv'+c.level+'</small></div><button class="btn ok sm" data-pick="'+c.id+'">選他</button></div>';});
   openSheet(title,'要用在哪位角色？',body);
   q('[data-pick]',function(el){cb(el.dataset.pick);});
+}
+
+// ---- 貿易所（大航海式跑商）----
+function openTrade(){
+  openSheet('🏪 貿易所','大航海式跑商：產地買、需求地賣','<div class="note">看盤中…</div>');
+  srv('trade',{nick:P.nick}).then(function(r){P=r.player;refreshTopbar();renderTrade(r.view);}).catch(function(e){toast(e.message);});
+}
+function renderTrade(v){
+  var mk=v.markets.filter(function(m){return m.id===v.port;})[0]||v.markets[0];
+  var body='<div class="note" style="text-align:left">目前所在：<b>'+mk.ico+' '+mk.nm+'</b>　🪙 '+P.gold+'　📦 貨艙 '+v.cargoCount+'/'+v.cargoMax+(v.haggle?'　✨交涉優惠':'')+'</div>';
+  body+='<div class="glab" style="margin-top:8px">⛵ 前往市集（價差就是利潤）</div><div class="chips" id="tports">';
+  v.markets.forEach(function(m){body+='<span class="chip'+(m.id===v.port?' on':'')+'" data-port="'+m.id+'">'+m.ico+' '+m.nm+'</span>';});
+  body+='</div>';
+  body+='<div class="glab" style="margin-top:10px">'+mk.ico+' '+mk.nm+'　市價（買 / 賣）</div>';
+  mk.goods.forEach(function(g){var have=(v.cargo||{})[g.id]||0;var tagc=g.tag==='產地'?'var(--good)':(g.tag==='搶手'?'var(--gold)':'var(--soft)');
+    body+='<div class="u"><div class="av">'+g.ico+'</div><div class="info"><b>'+g.nm+(g.tag?' <span style="font-size:10px;color:'+tagc+'">'+g.tag+'</span>':'')+'</b><small>買 '+g.buy+'🪙 ・ 賣 '+g.sell+'🪙'+(have?'　📦'+have:'')+'</small></div>'+
+      '<div style="display:flex;gap:5px"><button class="btn gold sm" data-buy="'+g.id+'"'+((P.gold<g.buy||v.cargoCount>=v.cargoMax)?' disabled':'')+'>買</button>'+
+      '<button class="btn ok sm" data-sell="'+g.id+'"'+(have?'':' disabled')+'>賣</button></div></div>';
+  });
+  body+='<div class="note">💡 標「產地」的地方買便宜，運到標「搶手」的市集賣貴。價格每 4 小時波動、多人共享行情。</div>';
+  sheet.innerHTML='<button class="close" onclick="closeSheet()">✕</button><h2>🏪 貿易所</h2><p class="sub">大航海式跑商：產地買、需求地賣</p>'+body;
+  q('[data-port]',function(el){flushSave().then(function(){return srv('trade',{nick:P.nick,op:'travel',to:el.dataset.port});}).then(function(r){P=r.player;refreshTopbar();renderTrade(r.view);}).catch(function(e){toast(e.message);});});
+  q('[data-buy]',function(el){tradeDo('buy',el.dataset.buy);});
+  q('[data-sell]',function(el){tradeDo('sell',el.dataset.sell);});
+}
+function tradeDo(op,good){
+  var q=prompt((op==='buy'?'買入':'賣出')+' 數量：','1');if(q===null)return;q=Math.max(1,parseInt(q,10)||1);
+  flushSave().then(function(){return srv('trade',{nick:P.nick,op:op,good:good,qty:q});}).then(function(r){P=r.player;refreshTopbar();renderTrade(r.view);toast(op==='buy'?'買入 ×'+q:'賣出 ×'+q);}).catch(function(e){toast(e.message);});
 }
 
 // ---- 領主城堡（主線・階級）----

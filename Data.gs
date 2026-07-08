@@ -210,6 +210,38 @@ function genQuest(deepest){
     name:'賺取 '+gold+' 🪙', desc:'累積探索賺到 '+gold+' 金幣', reward: Math.round(gold*0.7) };
 }
 
+// ---- 大航海式貿易：商品、市集、浮動價格 ----
+var GOODS = [
+  { id:'salt',  nm:'鹽',   ico:'🧂', base:20 },
+  { id:'herb',  nm:'藥草', ico:'🌿', base:35 },
+  { id:'iron',  nm:'鐵礦', ico:'⚙️', base:55 },
+  { id:'wine',  nm:'美酒', ico:'🍷', base:70 },
+  { id:'spice', nm:'香料', ico:'🌶️', base:48 },
+  { id:'silk',  nm:'絲綢', ico:'🧵', base:95 },
+  { id:'china', nm:'瓷器', ico:'🏺', base:125 },
+  { id:'gem',   nm:'寶石', ico:'💎', base:210 }
+];
+var GOOD_BY = {}; GOODS.forEach(function(g){ GOOD_BY[g.id]=g; });
+// 每個市集：cheap=產地(便宜) dear=需求地(貴)
+var MARKETS = [
+  { id:'merc',  nm:'傭兵之城',  ico:'🏰', cheap:['iron','herb'],  dear:['silk','gem'] },
+  { id:'port',  nm:'風帆港都',  ico:'⛵', cheap:['silk','china'], dear:['spice','iron'] },
+  { id:'oasis', nm:'沙漠綠洲',  ico:'🏜️', cheap:['spice','salt'], dear:['wine','herb'] },
+  { id:'snow',  nm:'雪山商站',  ico:'🏔️', cheap:['wine','gem'],   dear:['salt','china'] }
+];
+var MARKET_BY = {}; MARKETS.forEach(function(m){ MARKET_BY[m.id]=m; });
+var CARGO_MAX = 20;
+
+function hashNoise(str){ var h=2166136261; for (var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return ((h>>>0)%1000)/1000; }
+function tradeDayBucket(){ return Math.floor(Date.now()/(1000*60*60*4)); }   // 每 4 小時波動一次
+// 回傳某市集某商品的市價（波動後）
+function tradePrice(marketId, goodId, day){
+  var good=GOOD_BY[goodId], mk=MARKET_BY[marketId]; if (!good||!mk) return 0;
+  var mod = mk.cheap.indexOf(goodId)>=0 ? 0.6 : (mk.dear.indexOf(goodId)>=0 ? 1.5 : 1.0);
+  var fl = 0.8 + hashNoise(marketId+'_'+goodId+'_'+day)*0.5;      // 0.8 ~ 1.3
+  return Math.max(1, Math.round(good.base*mod*fl));
+}
+
 // 依樓層產出戰利品池（回傳裝備 id 或 null）
 function lootTierForFloor(floor){
   if (floor >= 20) return 4;
