@@ -119,7 +119,7 @@ function runDungeon(team, startFloor, targetFloor){
   });
 
   var report = { start:startFloor, target:targetFloor, reached:startFloor-1, cleared:false, wiped:false,
-    gold:0, xp:0, loot:[], floors:[], levelUps:[] };
+    gold:0, xp:0, kills:0, loot:[], floors:[], levelUps:[] };
 
   // 復原戰鬥狀態（_allies 供牧師群補/復活使用）
   heroes.forEach(function(h){ if (h.hp<=0) h.hp = 1; h._cs = combatStats(h); h._charge = 0; h._allies = heroes; });
@@ -152,6 +152,7 @@ function runDungeon(team, startFloor, targetFloor){
     floorLog.boss = isBoss;
     var enc = resolveCombat(heroes, enemies, buff, f, surprise);
     floorLog.encounters.push(enc);
+    report.kills += (enc.killed||0);
 
     // 全滅判定
     if (aliveList(heroes).length === 0){

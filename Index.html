@@ -11,7 +11,17 @@
   html,body{margin:0}
   body{color:var(--ink);font-family:"Baloo 2","Segoe UI Rounded","Hiragino Maru Gothic ProN","Noto Sans TC",system-ui,sans-serif;
     background:linear-gradient(180deg,var(--t1),var(--t2) 45%,#2a211a);min-height:100dvh}
-  #app{max-width:520px;margin:0 auto;min-height:100dvh;position:relative}
+  #app{max-width:520px;margin:0 auto;min-height:100dvh;position:relative;background:linear-gradient(180deg,var(--t1),var(--t2) 45%,#2a211a)}
+  /* 電腦寬螢幕：兩側不再空蕩，做成置中「遊戲機台」框 */
+  @media(min-width:760px){
+    body{background:radial-gradient(120% 90% at 50% -10%,#4a3a63 0%,#241c2e 55%,#160f18 100%)}
+    body::before{content:'🏰　⚔️　🛡️　🗡️　🍺　🏹　✨　🐉';position:fixed;inset:0;z-index:0;
+      font-size:70px;line-height:2.4;letter-spacing:34px;color:#fff;opacity:.035;overflow:hidden;
+      word-break:break-word;padding:20px;pointer-events:none;user-select:none}
+    #app{box-shadow:0 0 0 1px var(--line),0 18px 60px rgba(0,0,0,.55);border-radius:16px;
+      margin:16px auto;min-height:calc(100dvh - 32px);overflow:hidden;position:relative;z-index:1}
+    .bar{border-radius:16px 16px 0 0}
+  }
   h1{font-size:22px;text-align:center;margin:6px 0 2px}
   .lead{text-align:center;color:#f0d6ad;font-size:12.5px;margin:0 0 12px;opacity:.9}
   .pad{padding:14px 12px 30px}
@@ -158,6 +168,8 @@ var CLASS_SKILLS={fighter:['athletics','survival'],paladin:['athletics','persuas
 var RACE_SKILLS={human:['persuasion'],elf:['perception'],darkelf:['stealth'],beast:['survival'],dragon:['athletics'],demon:['persuasion'],angel:['medicine'],vampire:['stealth']};
 function charSkills(job,race){var s={};(CLASS_SKILLS[job]||[]).forEach(function(k){s[k]=1;});(RACE_SKILLS[race]||[]).forEach(function(k){s[k]=1;});return Object.keys(s);}
 function skillNames(job,race){return charSkills(job,race).map(function(k){return SKILLS[k].nm+'('+ABN[SKILLS[k].ab]+')';}).join('、');}
+var RANKS=[{nm:'見習傭兵',floor:0},{nm:'銅牌傭兵',floor:5},{nm:'銀牌傭兵',floor:10},{nm:'金牌傭兵',floor:15},{nm:'白金傭兵',floor:20},{nm:'傳說傭兵',floor:25}];
+function rankOf(dp){var ix=0;for(var i=0;i<RANKS.length;i++){if((dp||0)>=RANKS[i].floor)ix=i;}return ix;}
 function effBase(raw,race){var o={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){o[a]=Math.min(20,(raw[a]||10)+(g[a]||0));});return o;}
 var WEAPONS=[
   {id:'w_dagger',nm:'匕首',ico:'🔪',dmg:[1,4],bonus:0,price:20,tier:1},
@@ -218,7 +230,11 @@ function mock(action,p){return new Promise(function(res,rej){
     if(action==='save'){put(p.player);return res(p.player);}
     if(action==='recruit'){var pl=DB[p.nick.trim()];if(pl.roster.length>=10)return rej(new Error('倉庫已滿'));if(pl.gold<p.cost)return rej(new Error('金幣不足'));var c=mk(p.name,p.job,p.portrait,p.seed,p.base,p.race);pl.gold-=p.cost;pl.roster.push(c);put(pl);return res({player:pl,recruited:c});}
     if(action==='dismiss'){var pl=DB[p.nick.trim()];if(p.id===pl.heroId)return rej(new Error('主角無法遣散'));var tc=pl.roster.filter(function(c){return c.id===p.id;})[0]||{level:1};var cost=20+tc.level*10;if(pl.gold<cost)return rej(new Error('遣散費不足'));pl.roster=pl.roster.filter(function(c){return c.id!==p.id;});pl.gold-=cost;pl.team.battle=pl.team.battle.filter(function(x){return x!==p.id;});pl.team.support=pl.team.support.filter(function(x){return x!==p.id;});put(pl);return res({player:pl,cost:cost});}
-    if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,skills:(f>st?['🔍 隊長 察覺發現暗格 +'+Math.round(gg*0.3)+'🪙']:[]),loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2,lines:['R1','⚔️ 隊長 擊中 👺哥布林 −5','🩸 👺哥布林 打中 隊長 −3','R2','✦ 隊長 擊中 👺哥布林 −9（暴擊！） 💀']}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};if(reached>pl.deepest)pl.deepest=reached;rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
+    if(action==='quest'){var pl=DB[p.nick.trim()];if(p.op==='accept'){var dd=Math.max(1,pl.deepest||0);var n=6+dd*2;pl.quest={id:'q'+Math.random().toString(36).slice(2,7),type:'kill',target:n,prog:0,name:'清剿 '+n+' 隻魔物',desc:'累積擊敗 '+n+' 隻敵人',reward:40+n*7};}else pl.quest=null;put(pl);return res({player:pl});}
+    if(action==='dungeon'){var pl=DB[p.nick.trim()];var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,skills:(f>st?['🔍 隊長 察覺發現暗格 +'+Math.round(gg*0.3)+'🪙']:[]),loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[{enemies:[{nm:'哥布林',ico:'👺'}],killed:2,lines:['R1','⚔️ 隊長 擊中 👺哥布林 −5','🩸 👺哥布林 打中 隊長 −3','R2','✦ 隊長 擊中 👺哥布林 −9（暴擊！） 💀']}]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,kills:fl.length*2,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};
+      var oldR=rankOf(pl.deepest||0);if(reached>pl.deepest)pl.deepest=reached;var newR=rankOf(pl.deepest||0);if(newR>oldR){var bn=newR*100;pl.gold+=bn;rep.rankUp={to:RANKS[newR].nm,reward:bn};}
+      if(pl.quest){var q=pl.quest;if(q.type==='kill')q.prog+=rep.kills;else if(q.type==='depth')q.prog=Math.max(q.prog,reached);else q.prog+=rep.gold;if(q.prog>=q.target){pl.gold+=q.reward;pl.questsDone=(pl.questsDone||0)+1;rep.questDone={name:q.name,reward:q.reward};pl.quest=null;}}
+      rep.loot.forEach(function(id){pl.bag.push(id);});put(pl);return res({player:pl,report:rep});}
     if(action==='roster'){return res({players:Object.keys(DB).map(function(k){var pl=DB[k];var team=pl.team.battle.concat(pl.team.support);var by={};pl.roster.forEach(function(c){by[c.id]=c;});return{nick:k,deepest:pl.deepest,gold:pl.gold,updated:0,members:team.map(function(id){var c=by[id];return c?{name:c.name,job:c.job,ico:(cinfo(c.job)||{}).ico,level:c.level,portrait:c.portrait}:null;}).filter(Boolean)};})});}
     rej(new Error('mock 未支援：'+action));
   }catch(e){rej(e);}},250);
@@ -368,11 +384,13 @@ function topbar(){return '<div class="bar"><div class="t">🏰 傭兵之城<smal
   '<div class="pill">🪙 <span id="topgold">'+P.gold+'</span></div><div class="pill">⬇️ 第 <span id="topdeep">'+(P.deepest||0)+'</span> 層</div></div>';}
 function refreshTopbar(){var g=document.getElementById('topgold');if(g)g.textContent=P.gold;var d=document.getElementById('topdeep');if(d)d.textContent=(P.deepest||0);}
 var BLDG=[
+  ['guild','🗡️','傭兵公會','接委託領獎'],
   ['team','🧭','隊伍編成','出戰 4 + 後勤 2'],
   ['equip','🎒','裝備','武器/防具/飾品'],
   ['tavern','🍺','酒館','招募夥伴'],
   ['shop','🛡️','武器防具飾品店','購買裝備'],
   ['inn','🛏️','旅館','休息回血'],
+  ['castle','🏰','領主城堡','主線・晉升'],
   ['roster','📜','冒險者名冊','看大家的進度']
 ];
 // 主城 AI 背景（固定 seed → 全城一致；載不出就用手繪打底）
@@ -389,8 +407,13 @@ function renderTown(){
   h+='<div class="pad" style="padding-top:12px">';
   h+='<div class="u" style="background:linear-gradient(180deg,#4a3a52,#33291f)"><div class="av" data-detail="'+hero.id+'" style="cursor:pointer">'+avatarHTML(hero)+'</div>'+
     '<div class="info"><b>'+hero.name+' <span class="tag">Lv'+hero.level+'</span></b><small>'+(RACES[hero.race]?RACES[hero.race].ico+RACES[hero.race].nm+' ':'')+cinfo(hero.job).ico+cinfo(hero.job).nm+' ・ HP '+hero.hp+'/'+hero.maxhp+' ・ AC '+cStats(hero).ac+'</small></div></div>';
+  // 目標橫幅
+  var ri=rankOf(P.deepest||0);
+  h+='<div class="card" style="margin-bottom:10px;border-color:var(--gold-d)"><div class="note" style="text-align:left;line-height:1.7">'+
+    '🎖️ <b>'+RANKS[ri].nm+'</b> ・ 👑 主線：討伐第 20 層魔王'+
+    (P.quest?'<br>📜 委託：'+P.quest.name+'（'+Math.min(P.quest.prog,P.quest.target)+'/'+P.quest.target+'）':'<br>📜 目前無委託 —— 到公會接一張吧')+'</div></div>';
   h+='<div class="signs">';
-  BLDG.forEach(function(b){var badge=(b[0]==='inn'&&P.roster.some(function(c){return c.hp<c.maxhp;}))?'<span class="badge">傷</span>':'';h+='<div class="sign" data-b="'+b[0]+'">'+badge+'<div class="ico">'+b[1]+'</div><div class="nm">'+b[2]+'</div><div class="ds">'+b[3]+'</div></div>';});
+  BLDG.forEach(function(b){var badge=(b[0]==='inn'&&P.roster.some(function(c){return c.hp<c.maxhp;}))?'<span class="badge">傷</span>':((b[0]==='guild'&&P.quest&&P.quest.prog>=P.quest.target)?'<span class="badge">領獎</span>':(b[0]==='guild'&&!P.quest?'<span class="badge">!</span>':''));h+='<div class="sign" data-b="'+b[0]+'">'+badge+'<div class="ico">'+b[1]+'</div><div class="nm">'+b[2]+'</div><div class="ds">'+b[3]+'</div></div>';});
   h+='</div>';
   h+='<div class="signs" style="margin-top:10px"><div class="sign gate" data-b="dungeon"><div class="ico">⬇️🏚️</div><div class="nm">進入地下城</div><div class="ds">自動探索・可達第 '+(P.deepest||0)+' 層，挑戰更深</div></div></div>';
   h+='</div>';
@@ -409,6 +432,8 @@ function flushSave(){ if(_saveTimer) return doSaveNow(); return _savePending||Pr
 
 function openBldg(b){
   if(b==='dungeon')return openDungeon();
+  if(b==='guild')return openGuild();
+  if(b==='castle')return openCastle();
   if(b==='team')return openTeam();
   if(b==='equip')return openEquip();
   if(b==='tavern')return openTavern();
@@ -575,6 +600,38 @@ function openInn(){
   var r=document.getElementById('rest');if(r)r.onclick=function(){if(P.gold<cost)return;P.gold-=cost;P.roster.forEach(function(c){c.hp=c.maxhp;});saveP(function(){openSheet('🛏️ 旅館','','<div class="note" style="font-size:14px">😴 一夜好眠，全隊生龍活虎！</div>');});};
 }
 
+// ---- 傭兵公會（委託）----
+function openGuild(){
+  var body='';
+  if(P.quest){var q=P.quest;var done=q.prog>=q.target;var pct=Math.min(100,Math.round(q.prog/q.target*100));
+    body+='<div class="card"><b>📜 進行中委託</b><div class="note" style="text-align:left;margin-top:4px">'+q.name+'<br>'+q.desc+'</div>'+
+      '<div class="hpbar" style="height:9px;margin-top:7px"><i style="background:linear-gradient(90deg,#7cc36a,#4f9e42);width:'+pct+'%"></i></div>'+
+      '<div class="note" style="text-align:left">進度 '+Math.min(q.prog,q.target)+' / '+q.target+' ・ 賞金 '+q.reward+'🪙</div>'+
+      (done?'<div class="note" style="text-align:left;color:var(--good)">✅ 已達成！下次探索回城時自動領賞。</div>':'<div class="note" style="text-align:left">下地下城達成目標，回城自動結算。</div>')+
+      '<button class="btn dim sm" id="qab" style="margin-top:6px">放棄委託</button></div>';
+  }else{
+    body+='<div class="note">接一張委託，進地下城達成目標就自動領賞金。委託目標依你目前最深層調整。</div><button class="btn ok" id="qacc">接新委託</button>';
+  }
+  openSheet('🗡️ 傭兵公會','接委託 → 下地下城達成 → 回城自動領獎',body);
+  var acc=document.getElementById('qacc');if(acc)acc.onclick=function(){acc.disabled=true;acc.textContent='接洽中…';flushSave().then(function(){return srv('quest',{nick:P.nick,op:'accept'});}).then(function(r){P=r.player;openGuild();}).catch(function(e){acc.disabled=false;acc.textContent='接新委託';toast(e.message);});};
+  var ab=document.getElementById('qab');if(ab)ab.onclick=function(){if(!confirm('確定放棄目前委託？'))return;flushSave().then(function(){return srv('quest',{nick:P.nick,op:'abandon'});}).then(function(r){P=r.player;openGuild();}).catch(function(e){toast(e.message);});};
+}
+
+// ---- 領主城堡（主線・階級）----
+function openCastle(){
+  var deep=P.deepest||0,ri=rankOf(deep),next=RANKS[ri+1];
+  var body='<div class="card"><b>🎖️ 目前階級：'+RANKS[ri].nm+'</b>';
+  if(next){var pct=Math.min(100,Math.round(deep/next.floor*100));
+    body+='<div class="note" style="text-align:left;margin-top:4px">下一階「'+next.nm+'」：探索到第 '+next.floor+' 層（目前最深 '+deep+'）</div>'+
+      '<div class="hpbar" style="height:9px;margin-top:6px"><i style="background:linear-gradient(90deg,#f4c34e,#c8971f);width:'+pct+'%"></i></div>';}
+  else body+='<div class="note" style="text-align:left;margin-top:4px">🏆 你已是傳說傭兵，全城以你為傲！</div>';
+  body+='</div>';
+  body+='<div class="card"><b>👑 領主的懸賞（主線）</b><div class="note" style="text-align:left;margin-top:4px">'+
+    '討伐盤踞地下城第 20 層的魔王【巫妖】，成為傳說傭兵。<br>每 5 層有一名頭目把守：哥布林王(5) → 巨魔領主(10) → 骨龍(15) → 巫妖(20)。</div></div>';
+  body+='<div class="note">階級越高，代表你探得越深。晉升自動觸發並發放賞金。</div>';
+  openSheet('🏰 領主城堡','向領主稟報你的功績',body);
+}
+
 // ---- 冒險者名冊（觀戰）----
 function openRoster(){
   openSheet('📜 冒險者名冊','大家的探索進度與隊伍（唯讀）','<div class="note">讀取中…</div>');
@@ -619,6 +676,8 @@ function renderReport(rep){
   h+='<h1>'+head+'</h1><p class="lead">從第 '+(rep.start||1)+' 層探索 → 目標第 '+rep.target+' 層 ・ 實際抵達第 '+rep.reached+' 層</p>';
   h+='<div class="card"><b>結算</b><div class="note" style="text-align:left;margin-top:6px">'+
     '🪙 金幣 +'+rep.gold+'　⭐ 經驗 +'+rep.xp+'　🎁 掉落 '+(rep.loot.length||0)+' 件</div>';
+  if(rep.rankUp)h+='<div class="note" style="text-align:left;color:var(--gold);font-weight:800">🎖️ 晉升為「'+rep.rankUp.to+'」！ +'+rep.rankUp.reward+'🪙</div>';
+  if(rep.questDone)h+='<div class="note" style="text-align:left;color:var(--good);font-weight:800">📜 委託完成【'+rep.questDone.name+'】 +'+rep.questDone.reward+'🪙</div>';
   if(rep.levelUps&&rep.levelUps.length){h+='<div class="note" style="text-align:left;color:var(--gold)">⬆️ '+rep.levelUps.map(function(u){return u.name+' → Lv'+u.level;}).join('、')+'</div>';}
   if(rep.loot&&rep.loot.length){h+='<div class="note" style="text-align:left">戰利品：'+rep.loot.map(function(id){var g=gById(id);return g?g.ico+g.nm:id;}).join('、')+'</div>';}
   h+='</div>';

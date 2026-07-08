@@ -31,6 +31,7 @@ function route_(action, p){
     case 'save':    return apiSave_(p);
     case 'recruit': return apiRecruit_(p);
     case 'dismiss': return apiDismiss_(p);
+    case 'quest':   return apiQuest_(p);
     case 'dungeon': return apiDungeon_(p);
     case 'roster':  return { players: listPlayers() };
     case 'meta':    return apiMeta_();
@@ -121,6 +122,32 @@ function apiDismiss_(p){
   return { player: player, cost: cost };
 }
 
+// 公會委託：接新委託 / 放棄
+function apiQuest_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (p.op === 'accept'){ player.quest = genQuest(player.deepest||0); }
+  else if (p.op === 'abandon'){ player.quest = null; }
+  cleanPlayer_(player);
+  savePlayer(player);
+  return { player: player };
+}
+
+// 依戰報更新委託進度並自動結算
+function applyQuest_(player, report){
+  var q = player.quest; if (!q) return null;
+  if (q.type === 'kill')  q.prog = (q.prog||0) + (report.kills||0);
+  else if (q.type === 'depth') q.prog = Math.max(q.prog||0, report.reached||0);
+  else if (q.type === 'gold')  q.prog = (q.prog||0) + (report.gold||0);
+  if (q.prog >= q.target){
+    player.gold = (player.gold||0) + q.reward;
+    player.questsDone = (player.questsDone||0) + 1;
+    player.quest = null;
+    return { name:q.name, reward:q.reward };
+  }
+  return null;
+}
+
 // 地下城：後端跑完整探索，套用結果後存檔
 function apiDungeon_(p){
   var nick = (p.nick||'').trim();
@@ -141,7 +168,18 @@ function apiDungeon_(p){
   // 套用結果
   player.gold = (player.gold||0) + report.gold;
   report.loot.forEach(function(id){ player.bag.push(id); });
+  var oldRank = rankOf(player.deepest||0);
   if (report.reached > (player.deepest||0)) player.deepest = report.reached;
+
+  // 主線晉升（靠最深層）
+  var newRank = rankOf(player.deepest||0);
+  if (newRank > oldRank){
+    var bonus = newRank * 100;
+    player.gold += bonus;
+    report.rankUp = { to: RANKS[newRank].nm, reward: bonus };
+  }
+  // 委託結算
+  report.questDone = applyQuest_(player, report);
 
   cleanPlayer_(player);
   savePlayer(player);

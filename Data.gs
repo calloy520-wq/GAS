@@ -158,6 +158,25 @@ var BOSSES = [
   { nm:'巫妖',     ico:'☠️', hd:15, ac:19, dmg:[3,8], atk:12, xp:600, gold:[200,400] }
 ];
 
+// ---- 主線階級（靠探索最深層自動晉升）----
+var RANKS = [
+  { nm:'見習傭兵', floor:0 }, { nm:'銅牌傭兵', floor:5 }, { nm:'銀牌傭兵', floor:10 },
+  { nm:'金牌傭兵', floor:15 }, { nm:'白金傭兵', floor:20 }, { nm:'傳說傭兵', floor:25 }
+];
+function rankOf(deepest){ var ix=0; for (var i=0;i<RANKS.length;i++){ if ((deepest||0) >= RANKS[i].floor) ix=i; } return ix; }
+
+// ---- 公會委託（支線任務）----
+function genQuest(deepest){
+  var dd = Math.max(1, deepest||0);
+  var r = Math.random();
+  if (r < 0.4){ var tgt = (deepest||0) + 1; return { id:'q'+uid(), type:'depth', target:tgt, prog:(deepest||0),
+    name:'探索到第 '+tgt+' 層', desc:'抵達地下城第 '+tgt+' 層', reward: 40 + tgt*25 }; }
+  if (r < 0.75){ var n = 6 + dd*2; return { id:'q'+uid(), type:'kill', target:n, prog:0,
+    name:'清剿 '+n+' 隻魔物', desc:'累積擊敗 '+n+' 隻敵人', reward: 40 + n*7 }; }
+  var gold = 60 + dd*35; return { id:'q'+uid(), type:'gold', target:gold, prog:0,
+    name:'賺取 '+gold+' 🪙', desc:'累積探索賺到 '+gold+' 金幣', reward: Math.round(gold*0.7) };
+}
+
 // 依樓層產出戰利品池（回傳裝備 id 或 null）
 function lootTierForFloor(floor){
   if (floor >= 20) return 4;
