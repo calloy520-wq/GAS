@@ -366,6 +366,16 @@ function shipFaction_(nm){ return SHIP_FACTION[nm] || 'pirate'; }
 // 港口歸屬勢力（沒列到＝中立）
 var MARKET_FACTION = { merc:'navy', whale:'league', port:'guild', gold:'guild', oasis:'league', temple:'league', coral:'pirate' };
 function marketFac_(id){ return MARKET_FACTION[id] || ''; }
+// 勢力懸賞（好感達中立可接；商會＝跑商賣貨，其餘＝獵殺宿敵的船）
+function genBounty(facId, pl){
+  var fac = FACTION_BY[facId] || {}, dd = (pl&&pl.deepest)||0;
+  if (fac.kind === 'trade'){
+    var n = 4 + Math.floor(dd/8);
+    return { fac:facId, type:'deliver', target:n, prog:0, name:'在'+fac.nm+'的港口賣出 '+n+' 箱貨物', reward:100+n*35, rep:160 };
+  }
+  var foe = fac.foe, fn = (FACTION_BY[foe]||{}).nm || '敵對勢力', n2 = 2 + Math.floor(dd/12);
+  return { fac:facId, type:'hunt', foeFac:foe, target:n2, prog:0, name:'掠奪或擊沉 '+n2+' 艘'+fn+'的船', reward:140+n2*70, rep:160 };
+}
 
 function npcTradersForDay(day){
   var list=[];
