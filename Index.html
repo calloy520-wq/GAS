@@ -392,7 +392,10 @@ function heroOf(){return (P.roster||[]).filter(function(c){return c.id===P.heroI
 function byId(id){return (P.roster||[]).filter(function(c){return c.id===id;})[0];}
 
 // 縮圖：把存下來的 512 立繪網址改成小尺寸請求（頭像只需小圖 → 流量大幅降低）
-function pthumb(url,size){if(!url||url.indexOf('pollinations.ai')<0)return url;return url.replace(/width=\d+/,'width='+size).replace(/height=\d+/,'height='+size);}
+// 立繪一律用「同一個已生成的網址」，交給瀏覽器縮放/裁切（CSS object-fit:cover）。
+// 改請求別的尺寸會逼 Pollinations 重新生成（慢又常失敗＝破圖）並讓快取失效；
+// 用同一網址 → 同角色只下載一次、之後各處吃快取，不再破圖。
+function pthumb(url,size){return url;}
 // 載入失敗（Pollinations 逾時/生成中）→ 退回職業圖示，不顯示破圖
 function avatarHTML(c){var ic=(cinfo(c.job)||{}).ico||'❓';return c&&c.portrait?'<img loading="lazy" src="'+pthumb(c.portrait,192)+'" onerror="this.onerror=null;this.outerHTML=\''+ic+'\'">':ic;}
 
