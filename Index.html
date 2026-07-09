@@ -735,7 +735,7 @@ function openMate(){
   if(lv>=5)body+='<div class="note" style="text-align:left;color:#ff9ec7">🤝 你與 '+m.name+' 義結金蘭，生死與共。</div>';
   body+='<div class="note" id="scenebox" style="text-align:left;margin-top:6px;line-height:1.8;color:#f0d6ad"></div></div>';
   openSheet('👩‍✈️ 副手 '+m.name,'你的左右手・情義越深越有回饋',body);
-  document.getElementById('mchat').onclick=function(){var el=document.getElementById('matesay');el.textContent='✨ '+m.name+' 想了想…';mateChat(m,function(t){var e2=document.getElementById('matesay');if(e2)e2.textContent='「'+t+'」';});};
+  document.getElementById('mchat').onclick=function(){var el=document.getElementById('matesay');el.textContent='「'+mateChatLine(m)+'」';mateChat(m,function(t){var e2=document.getElementById('matesay');if(e2&&t)e2.textContent='「'+t+'」';});};
   document.getElementById('madvice').onclick=function(){var adv=getAdvice();var el=document.getElementById('matesay');el.innerHTML=adv.slice(0,4).map(function(a){return '<div style="margin:2px 0">'+a+'</div>';}).join('');};
   document.getElementById('mgift').onclick=function(){giftMenu(m.id);};
   document.getElementById('mswap').onclick=function(){swapMate();};
@@ -816,16 +816,31 @@ function mateChat(c,cb){
   var ci=cinfo(c.job),race=RACES[c.race]?RACES[c.race].nm:'人類',aff=AFF_NM[affLevel(c.id)];
   var ctx='玩家是傭兵團長，目前第'+(P.deepest||0)+'層、'+P.gold+'金幣'+(P.quest?'、正在進行委託':'');
   var prompt='你是奇幻傭兵團的副手（'+race+ci.nm+'），名叫'+c.name+'，和團長關係是「'+aff+'」。用繁體中文說一句 30 字內、有你個性、像在對團長閒聊或關心的話。情境：'+ctx+'。只回那句話，不要引號或說明。';
-  var done=false,timer=setTimeout(function(){if(!done){done=true;cb(mateTemplate(c));}},9000);
+  // 背景升級用：即時台詞已先顯示，這裡只在 AI 真的回來時才替換（逾時/失敗就維持即時台詞）
+  var done=false,timer=setTimeout(function(){if(!done){done=true;cb(null);}},8000);
   fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){
-    if(done)return;done=true;clearTimeout(timer);t=(t||'').trim().replace(/^["「』』]+|["」『』]+$/g,'').slice(0,60);cb(t||mateTemplate(c));
-  }).catch(function(){if(!done){done=true;clearTimeout(timer);cb(mateTemplate(c));}});
+    if(done)return;done=true;clearTimeout(timer);t=(t||'').trim().replace(/^["「』』]+|["」『』]+$/g,'').slice(0,60);cb(t||null);
+  }).catch(function(){if(!done){done=true;clearTimeout(timer);cb(null);}});
 }
-function mateTemplate(c){
-  var lv=affLevel(c.id);
-  var pool=lv>=3?['團長，今天也跟著你，不管往哪我都不怕。','有你在前面，我把後背交給你就好。','下次分紅…請我喝一杯就行，嘿。']
-    :['團長，出發前記得清點裝備喔。','海上風向要變了，別小看那些海盜。','錢要花在刀口上，別亂買沒用的。'];
-  return pool[Math.floor((P.deepest||0+c.level)%pool.length)];
+function mateTemplate(c){ return mateChatLine(c); }
+// 閒聊即時台詞：依好感＋當前局勢隨機挑，秒回、可一直聊、避免連續重複
+function mateChatLine(c){
+  var lv=affLevel(c.id), pool=[];
+  // 情境
+  if(P.roster&&P.roster.some(function(x){return x.hp<x.maxhp&&x.hp>0;}))pool.push('大家都掛彩了，先回旅館養好傷再出發吧。');
+  if((P.gold||0)>=3000)pool.push('金庫滿滿的，團長最近手氣不錯嘛。');
+  if((P.gold||0)<120)pool.push('口袋有點緊…接個委託或跑趟商週轉一下？');
+  if(P.holdings&&Object.keys(P.holdings).length)pool.push('領地的稅金又進帳了，當家的感覺不錯吧？');
+  if((P.deepest||0)>=15)pool.push('都打到這麼深了，當初那個菜鳥團長不見囉。');
+  if((P.clues||0)>=3)pool.push('海圖線索快湊齊了，寶藏在等我們呢。');
+  try{var we=worldEventC();if(we&&we.type!=='calm')pool.push('聽說了嗎？'+we.t.replace(/。$/,'').replace(/ —— .*/,'')+'，別錯過。');}catch(e){}
+  // 個性（依好感）
+  if(lv<=1)pool.push('團長，有什麼吩咐？','我隨時待命，出發前說一聲。','船和帳我都盯著，放心。','風向我看過了，隨時能開。');
+  else if(lv<=3)pool.push('跟著你跑船這陣子，其實挺開心的。','下次靠港，請我喝一杯如何？','你太拚了，偶爾也歇歇嘛。','海風真舒服…這種日子我喜歡。','別老是硬撐，有我在呢。');
+  else pool.push('不管你去哪，我都跟著，這點別懷疑。','把後背交給我，你只管往前衝。','等這趟忙完…就我們倆去看海，好不好？','有你在的每一天，我都不想結束。','我這條命，早就是你的了。');
+  var last=window._lastChat||'', tries=0, s;
+  do{ s=pool[Math.floor(Math.random()*pool.length)]; tries++; }while(s===last&&tries<6&&pool.length>1);
+  window._lastChat=s; return s;
 }
 // 桌機右側欄：成員在幹嘛 + 艦隊狀態
 function asideHTML(){
