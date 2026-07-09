@@ -415,7 +415,7 @@ function avatarHTML(c){var ic=(cinfo(c.job)||{}).ico||'❓';return c&&c.portrait
 
 // ============ 登入 ============
 function renderLogin(){
-  app.innerHTML='<div class="pad"><h1>⚓ 傭兵大航海</h1><p class="lead">輸入暱稱即可遊玩 · 每個暱稱一份存檔</p>'+
+  app.innerHTML='<div class="pad"><h1>⚔️ 海與劍之歌</h1><p class="lead">傭兵的大航海傳奇 · 地下城、貿易、海戰、爭霸<br><small style="color:var(--soft)">輸入暱稱即可遊玩，每個暱稱一份存檔</small></p>'+
     '<div class="card"><div class="glab">暱稱（＝帳號）</div><input class="inp" id="nick" maxlength="16" placeholder="例：小美"></div>'+
     '<button class="btn gold" id="enter">進入城鎮</button>'+
     '<div class="note">沒有存檔會帶你建立主角；招募夥伴、下地下城都在城裡。</div></div>';
@@ -551,7 +551,7 @@ function pDoGen(){
 
 // ============ 序章劇情 ============
 function showIntro(cb){
-  var h='<div class="scene" style="height:150px"><div class="sun"></div>'+starDots()+'<div class="sil">🌲🏠🏰🏪🏠🌲</div><div class="title">⚓ 傭兵大航海<small>序章</small></div></div>';
+  var h='<div class="scene" style="height:150px"><div class="sun"></div>'+starDots()+'<div class="sil">🌲🏠🏰🏪🏠🌲</div><div class="title">⚔️ 海與劍之歌<small>序章</small></div></div>';
   h+='<div class="pad"><div class="card" style="border-color:var(--gold-d)"><b>📖 序章</b><div class="note" style="text-align:left;margin-top:8px;white-space:pre-line;line-height:1.85;color:#f0d6ad">'+STORY.intro+'</div></div>';
   h+='<button class="btn gold" id="introgo">⚔️ 踏入城鎮</button></div>';
   app.innerHTML=h;
@@ -559,7 +559,7 @@ function showIntro(cb){
 }
 
 // ============ 城鎮 ============
-function topbar(){return '<div class="bar"><div class="t">⚓ 傭兵大航海<small> · '+P.nick+'</small></div><div class="spacer"></div>'+
+function topbar(){return '<div class="bar"><div class="t">⚔️ 海與劍之歌<small> · '+P.nick+'</small></div><div class="spacer"></div>'+
   '<div class="pill">🪙 <span id="topgold">'+P.gold+'</span></div><div class="pill">⬇️ 第 <span id="topdeep">'+(P.deepest||0)+'</span> 層</div></div>';}
 function refreshTopbar(){var g=document.getElementById('topgold');if(g)g.textContent=P.gold;var d=document.getElementById('topdeep');if(d)d.textContent=(P.deepest||0);}
 var BLDG=[
