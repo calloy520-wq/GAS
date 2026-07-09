@@ -143,6 +143,7 @@
   .u{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:9px;margin-bottom:8px}
   .u .av{width:44px;height:44px;border-radius:10px;object-fit:cover;background:#241d14;flex:none;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden}
   .u .av img{width:100%;height:100%;object-fit:cover}
+  .av img{width:100%;height:100%;object-fit:cover;display:block}
   .u .info{flex:1;min-width:0} .u .info b{font-size:14.5px} .u .info small{display:block;color:var(--soft);font-size:11.5px;line-height:1.5}
   .u .tag{font-size:10px;font-weight:800;padding:1px 7px;border-radius:8px;background:#0006;color:var(--soft)}
   .hpbar{height:6px;border-radius:4px;background:#0007;overflow:hidden;margin-top:4px}
@@ -850,7 +851,8 @@ function asideHTML(){
 }
 function renderTown(){
   var hero=heroOf();
-  if(!P.mate||!byId(P.mate))P.mate=P.heroId;
+  if(P.mate&&!byId(P.mate))P.mate=null;                 // 清掉失效參照
+  if(!P.mate){var comp=(P.roster||[]).filter(function(c){return c.id!==P.heroId;})[0];if(comp)P.mate=comp.id;}  // 預設用第一位夥伴（不是玩家自己）
   var h=topbar();
   h+='<div class="townwrap"><div class="townmain">';
   // 場景橫幅
@@ -860,8 +862,11 @@ function renderTown(){
     '<div class="title">🏰 傭兵之城<small>黃昏的傭兵城鎮 · '+P.nick+'</small></div></div>';
   h+='<div class="pad" style="padding-top:12px">';
   // 副手橫幅（點開商量）
-  var mate=byId(P.mate);
-  h+='<div class="card" id="matebar" style="border-color:#8a6fd0;cursor:pointer;display:flex;align-items:center;gap:10px"><div class="av" style="width:40px;height:40px;border-radius:10px;overflow:hidden;background:#241d14;display:flex;align-items:center;justify-content:center;font-size:22px">'+avatarHTML(mate)+'</div><div style="flex:1;min-width:0"><b style="font-size:13px">👩‍✈️ 副手 '+mate.name+'</b><div class="note" style="text-align:left;margin:0">「'+(getAdvice()[0]||'一切就緒，出發吧！')+'」點我商量 →</div></div></div>';
+  var mate=P.mate?byId(P.mate):null;
+  if(mate)
+    h+='<div class="card" id="matebar" style="border-color:#8a6fd0;cursor:pointer;display:flex;align-items:center;gap:10px"><div class="av" style="width:40px;height:40px;border-radius:10px;overflow:hidden;background:#241d14;display:flex;align-items:center;justify-content:center;font-size:22px">'+avatarHTML(mate)+'</div><div style="flex:1;min-width:0"><b style="font-size:13px">👩‍✈️ 副手 '+mate.name+'</b><div class="note" style="text-align:left;margin:0">「'+(getAdvice()[0]||'一切就緒，出發吧！')+'」點我商量 →</div></div></div>';
+  else
+    h+='<div class="card" id="matebar" style="border-color:#8a6fd0;cursor:pointer;display:flex;align-items:center;gap:10px"><div class="av" style="width:40px;height:40px;border-radius:10px;background:#241d14;display:flex;align-items:center;justify-content:center;font-size:22px">👩‍✈️</div><div style="flex:1;min-width:0"><b style="font-size:13px">尚未指定副手</b><div class="note" style="text-align:left;margin:0">到酒館招募夥伴後，點我指定一位當副手 →</div></div></div>';
   h+=eventBanner();
   h+='<div class="u" style="background:linear-gradient(180deg,#4a3a52,#33291f)"><div class="av" data-detail="'+hero.id+'" style="cursor:pointer">'+avatarHTML(hero)+'</div>'+
     '<div class="info"><b>'+hero.name+' <span class="tag">Lv'+hero.level+'</span></b><small>'+(RACES[hero.race]?RACES[hero.race].ico+RACES[hero.race].nm+' ':'')+cinfo(hero.job).ico+cinfo(hero.job).nm+' ・ HP '+hero.hp+'/'+hero.maxhp+' ・ AC '+cStats(hero).ac+'</small></div></div>';
@@ -881,7 +886,7 @@ function renderTown(){
   h+='</div>';                       // /.townwrap
   app.innerHTML=h;
   var bg=document.getElementById('townbg');if(bg){bg.onload=function(){bg.classList.add('on');};bg.src=TOWN_BG_URL;}
-  var mb=document.getElementById('matebar');if(mb)mb.onclick=openMate;
+  var mb=document.getElementById('matebar');if(mb)mb.onclick=function(){if(P.mate&&byId(P.mate))openMate();else swapMate();};
   Array.prototype.forEach.call(document.querySelectorAll('.sign'),function(el){el.onclick=function(){openBldg(el.dataset.b);};});
   Array.prototype.forEach.call(document.querySelectorAll('[data-detail]'),function(el){el.onclick=function(){charSheet(el.dataset.detail);};});
   bindTabs();
