@@ -358,7 +358,7 @@ function srv(action,payload){
 function mock(action,p){return new Promise(function(res,rej){
   var DB=JSON.parse(localStorage.getItem('merc_db')||'{}');
   function put(pl){DB[pl.nick]=pl;localStorage.setItem('merc_db',JSON.stringify(DB));}
-  function ensureC(pl){if(!pl.port)pl.port='merc';if(!pl.cargo)pl.cargo={};if(typeof pl.clues!=='number')pl.clues=0;if(pl.ship){if(typeof pl.ship.hull!=='number')pl.ship.hull=pl.ship.hullMax;if(typeof pl.ship.speed!=='number')pl.ship.speed=6;if(typeof pl.ship.gunTier!=='number')pl.ship.gunTier=1;if(typeof pl.ship.tier!=='number')pl.ship.tier=1;}if(typeof pl.invest!=='number')pl.invest=0;if(!pl.holdings)pl.holdings={};if(!pl.posts)pl.posts={};if(!pl.rep)pl.rep={};if(!pl.chats)pl.chats={};if(!pl.bag)pl.bag=[];if(!pl.roster)pl.roster=[];if(!pl.team)pl.team={battle:[],support:[]};ensureSeaC(pl);}
+  function ensureC(pl){if(!pl.port)pl.port='merc';if(!pl.cargo)pl.cargo={};if(typeof pl.clues!=='number')pl.clues=0;if(pl.ship){if(typeof pl.ship.hull!=='number')pl.ship.hull=pl.ship.hullMax;if(typeof pl.ship.speed!=='number')pl.ship.speed=6;if(typeof pl.ship.gunTier!=='number')pl.ship.gunTier=1;if(typeof pl.ship.tier!=='number')pl.ship.tier=1;}if(typeof pl.invest!=='number')pl.invest=0;if(!pl.holdings)pl.holdings={};if(!pl.posts)pl.posts={};if(!pl.rep)pl.rep={};if(!pl.chats)pl.chats={};if(typeof pl.titleTier!=='number')pl.titleTier=0;if(!pl.dateSeen)pl.dateSeen={};if(!pl.bag)pl.bag=[];if(!pl.roster)pl.roster=[];if(!pl.team)pl.team={battle:[],support:[]};ensureSeaC(pl);}
   function roll(){var a=[d6(),d6(),d6(),d6()].sort(function(x,y){return x-y;});return a[1]+a[2]+a[3];}
   function d6(){return 1+Math.floor(Math.random()*6);}
   function mk(name,job,portrait,seed,pbase,race){var base={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){base[a]=Math.min(20,((pbase&&pbase[a])||roll())+(g[a]||0));});var c={id:'c'+Math.random().toString(36).slice(2,9),name:name,job:job,race:race||'human',support:isSup(job),portrait:portrait||'',seed:seed||0,level:1,xp:0,base:base,equip:{weapon:null,armor:null,trinket:null},hp:0,maxhp:0};c.maxhp=cMaxHp(c);c.hp=c.maxhp;return c;}
@@ -984,6 +984,8 @@ function renderDate(c){
   snd.onclick=go;
   inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();go();}});
   inp.focus();
+  window._dateEv=null;
+  setTimeout(function(){maybeDateEvent(c);},500);   // 開場若達新里程碑→分歧劇情
 }
 function dateRenderLog(c){
   var el=document.getElementById('dlog');if(!el)return;
@@ -1039,6 +1041,54 @@ function dateSceneTemplate(c,sid){
   if(lv>=4&&sid!=='town')s+=' …能和你一起，真好。';
   return s;
 }
+// 💞 約會分歧劇情：好感達里程碑時觸發一次選擇題（每階一次）
+var DATE_EVENTS={
+  2:{setup:'（她欲言又止）…其實有件事我一直想問。你當初，為什麼願意收留我？',
+    choices:[{t:'因為你有本事，我看人很準。',aff:6,reply:'哈，這麼直接…被你這樣認可，我倒是挺受用的。'},
+             {t:'第一眼就覺得，跟你投緣。',aff:14,reply:'…你、你突然這樣，我可要當真了喔。'},
+             {t:'順手一提，沒想那麼多。',aff:3,reply:'欸——算了，你這人就是嘴硬，我懂。'}]},
+  3:{setup:'（靠港的夜裡，她輕聲問）要是哪天我受了重傷、不能再上船了…你會怎麼辦？',
+    choices:[{t:'我養你一輩子。',aff:16,reply:'…笨蛋，別說這種話。可這句，我會記一輩子。'},
+             {t:'那就一起退休，找片海慢慢看。',aff:13,reply:'一起退休啊…嗯，這提議，我喜歡。'},
+             {t:'不會有那天，我護著你。',aff:10,reply:'好，你這句話，我信。'}]},
+  4:{setup:'（她把一枚舊戒指放進你掌心）這是我娘留下的。我想…交給你保管。',
+    choices:[{t:'我會好好收著。',aff:10,reply:'嗯。它跟了我這麼久，往後，就看著你了。'},
+             {t:'不如，你替我戴上？',aff:19,reply:'…真拿你沒辦法。手伸過來，別抖啊你。'},
+             {t:'太貴重了，你自己留著。',aff:4,reply:'…也好。心意你收到，就夠了。'}]},
+  5:{setup:'（星海之下，她認真望著你）走到這一步，我想親耳聽你說一次——我，是你的誰？',
+    choices:[{t:'我最信賴的副手。',aff:6,reply:'……副手啊。嗯，也好。'},
+             {t:'我的愛人，往後餘生。',aff:22,reply:'…夠了，別再說了，我怕我會哭。這輩子，就賴上你了。'},
+             {t:'（握住她的手，什麼都沒說）',aff:16,reply:'…你啊，總在這種時候，讓人心都軟了。'}]}
+};
+function maybeDateEvent(c){
+  if(window._dateEv)return false;
+  var lv=affLevel(c.id),seen=(P.dateSeen&&P.dateSeen[c.id])||0,due=0;
+  [2,3,4,5].forEach(function(m){if(!due&&lv>=m&&m>seen&&DATE_EVENTS[m])due=m;});
+  if(!due)return false;
+  window._dateEv=due;
+  pushChat(c.id,1,DATE_EVENTS[due].setup);saveP();dateRenderLog(c);
+  renderDateChoices(c,due);
+  return true;
+}
+function renderDateChoices(c,m){
+  var el=document.getElementById('dchips');if(!el)return;var ev=DATE_EVENTS[m];
+  el.innerHTML='<div style="width:100%;font-size:11px;color:#c8a8e0;padding:0 4px 2px">💞 你的回答…</div>'+ev.choices.map(function(ch,i){return '<span class="dchip" style="white-space:normal;max-width:100%" data-ev="'+i+'">'+esc(ch.t)+'</span>';}).join('');
+  var snd=document.getElementById('dsend');if(snd)snd.disabled=true;
+  var inp=document.getElementById('dinput');if(inp)inp.disabled=true;
+  Array.prototype.forEach.call(document.querySelectorAll('#dchips [data-ev]'),function(elm){elm.onclick=function(){
+    var ch=ev.choices[+elm.dataset.ev];
+    pushChat(c.id,0,ch.t);
+    if(!P.dateSeen)P.dateSeen={};P.dateSeen[c.id]=m;
+    if(!P.affinity)P.affinity={};var bef=affLevel(c.id);P.affinity[c.id]=(P.affinity[c.id]||0)+ch.aff;var aft=affLevel(c.id);
+    pushChat(c.id,1,ch.reply);
+    if(aft>bef)pushChat(c.id,2,'💞 你與 '+c.name+' 的關係提升為「'+AFF_NM[aft]+'」');
+    window._dateEv=null;saveP();dateRenderLog(c);
+    var di=document.querySelector('.dhead .di small');if(di)di.innerHTML=affHearts(c.id)+' ・ '+AFF_NM[affLevel(c.id)];
+    var s=document.getElementById('dsend');if(s)s.disabled=false;var ip=document.getElementById('dinput');if(ip)ip.disabled=false;
+    dateRenderChips(c);
+    setTimeout(function(){maybeDateEvent(c);},300);   // 連鎖：一次升多階也逐一觸發
+  };});
+}
 function dateSend(c,text){
   pushChat(c.id,0,text); dateRenderLog(c);
   var snd=document.getElementById('dsend');if(snd)snd.disabled=true;
@@ -1058,6 +1108,7 @@ function dateSend(c,text){
     var di=document.querySelector('.dhead .di small');if(di)di.innerHTML=affHearts(c.id)+' ・ '+AFF_NM[affLevel(c.id)];
     if(snd)snd.disabled=false;
     var inp=document.getElementById('dinput');if(inp)inp.focus();
+    if(aft>bef)setTimeout(function(){maybeDateEvent(c);},400);   // 聊到升階→觸發分歧劇情
   });
 }
 // 免費 AI 回覆（帶最近對話＋關係＋近況＝連續記憶），逾時/失敗用模板
@@ -1211,6 +1262,7 @@ function renderTown(){
   Array.prototype.forEach.call(document.querySelectorAll('[data-detail]'),function(el){el.onclick=function(){charSheet(el.dataset.detail);};});
   bindTabs();
   if(!P.tutSeen){ P.tutSeen=true; saveP(); setTimeout(showTutorial,400); }
+  else setTimeout(checkPeerage,500);   // 名聲跨階授勳／靠山翻臉褫奪
 }
 var TABS=[['town','🏰','城鎮'],['map','🗺️','出航'],['trade','🏪','貿易'],['dungeon','⚔️','地城'],['team','👥','人員'],['help','❓','教學']];
 function tabsHTML(){return '<div class="tabbar" id="tabbar">'+TABS.filter(function(t){return !((t[0]==='map'||t[0]==='trade')&&!seaOpen());}).map(function(t){return '<div class="tab" data-tab="'+t[0]+'"><div class="ti">'+t[1]+'</div>'+t[2]+'</div>';}).join('')+'</div>';}
@@ -1979,6 +2031,46 @@ var PEERAGE_C=[{t:0,nm:'無名浪人',ico:'🚶'},{t:300,nm:'見習船長',ico:'
 function fameOfC(pl){var f=0;f+=(pl.deepest||0)*40;f+=Math.floor((pl.gold||0)/120)+Math.floor((pl.invest||0)/120);if(pl.holdings)Object.keys(pl.holdings).forEach(function(k){f+=50+(pl.holdings[k].lv||1)*50;});f+=(pl.fleet||[]).length*40;f+=(((pl.nav&&pl.nav.lv)||1)+((pl.com&&pl.com.lv)||1))*18;f+=(pl.questsDone||0)*12;(pl.roster||[]).forEach(function(c){f+=(c.level||1)*3;});if(pl.uniques)f+=Object.keys(pl.uniques).length*80;return Math.round(f);}
 function peerageOfC(f){var ix=0;for(var i=0;i<PEERAGE_C.length;i++){if(f>=PEERAGE_C[i].t)ix=i;}return ix;}
 function fameBreakdownC(pl){return [['⚔️ 地城深度',(pl.deepest||0)*40],['💰 財富',Math.floor((pl.gold||0)/120)+Math.floor((pl.invest||0)/120)],['🚩 領地',(pl.holdings?Object.keys(pl.holdings).reduce(function(a,k){return a+50+(pl.holdings[k].lv||1)*50;},0):0)],['🚢 艦隊',(pl.fleet||[]).length*40],['⚓ 海事',(((pl.nav&&pl.nav.lv)||1)+((pl.com&&pl.com.lv)||1))*18],['📜 委託',(pl.questsDone||0)*12],['👥 夥伴',(pl.roster||[]).reduce(function(a,c){return a+(c.level||1)*3;},0)],['✦ 頭目戰利',(pl.uniques?Object.keys(pl.uniques).length*80:0)]];}
+// ============ 🎖️ 授勳大典 / 反骨褫奪 ============
+// 名聲跨階＋有友好勢力當靠山→受封爵位；冊封勢力若翻臉（敵對/世仇）→褫奪、視為叛徒
+function bestAllyC(){var best=null,bv=199;FACTIONS_C.forEach(function(f){var v=repOfC(P,f.id);if(repTierC(v)>=3&&v>bv){bv=v;best=f.id;}});return best;}
+function checkPeerage(){
+  if(!P||(modal&&modal.classList.contains('show')))return false;
+  var fame=fameOfC(P),tier=peerageOfC(fame);
+  if(P.titleFrom&&repTierC(repOfC(P,P.titleFrom))<=1){   // 反骨：靠山翻臉→褫奪
+    var f=FACTION_BY_C[P.titleFrom]||{},old=P.title;
+    P.title=null;P.titleFrom=null;P.titleTier=0;saveP();refreshTopbar();
+    peerageEvent('revoke',{facNm:f.nm||'',facIco:f.ico||'',title:old||'爵位'});return true;
+  }
+  if(tier>(P.titleTier||0)){   // 授勳：跨階＋有靠山
+    var sp=bestAllyC();if(!sp)return false;
+    var pe=PEERAGE_C[tier],reward=200+tier*180,f2=FACTION_BY_C[sp]||{};
+    P.title=pe.nm;P.titleFrom=sp;P.titleTier=tier;P.gold=(P.gold||0)+reward;applyRepC(P,sp,40);saveP();refreshTopbar();
+    peerageEvent('confer',{facNm:f2.nm||'',facIco:f2.ico||'',title:pe.nm,ico:pe.ico,reward:reward});return true;
+  }
+  return false;
+}
+function peerageEvent(mode,d){
+  var body;
+  if(mode==='confer'){
+    body='<div class="note" style="text-align:center;font-size:52px">'+(d.ico||'🎖️')+'</div>'+
+      '<div class="card" style="border-color:var(--gold-d)"><div class="note" style="text-align:left;line-height:1.9">在 '+d.facIco+'<b>'+d.facNm+'</b> 的見證下，你被授予爵位<br><b style="color:var(--gold);font-size:17px">'+d.title+'</b><br>🪙 賞金 +'+d.reward+'　🤝 '+d.facNm+' 好感 +40</div><div class="note" id="ptale" style="text-align:left;margin-top:8px;color:#f0d6ad;line-height:1.8">✨ 典禮進行中…</div></div>';
+    openSheet('🎖️ 授勳大典',d.facIco+d.facNm+' 冊封',body);
+  }else{
+    body='<div class="note" style="text-align:center;font-size:52px">💢</div>'+
+      '<div class="card" style="border-color:#7a3b3b"><div class="note" style="text-align:left;line-height:1.9">'+d.facIco+'<b>'+d.facNm+'</b> 宣布褫奪你的「'+d.title+'」爵位，視你為<b style="color:var(--hp)">叛徒</b>！<br><small style="color:var(--soft)">（他們的巡邏艦會找你麻煩；若與其宿敵交好，或可另受冊封。）</small></div><div class="note" id="ptale" style="text-align:left;margin-top:8px;color:#f0d6ad;line-height:1.8">✨ …</div></div>';
+    openSheet('⚔️ 褫奪爵位',d.facIco+d.facNm+' 的通牒',body);
+  }
+  peerageTale(mode,d,function(t){var e=document.getElementById('ptale');if(e)e.textContent=t;});
+}
+function peerageTaleTpl(mode,d){return mode==='confer'?('號角齊鳴，'+d.facNm+'的旗幟下，眾人見證你受封「'+d.title+'」，掌聲如潮水般湧起。'):(d.facNm+'當眾撕下你的爵位徽記：「叛徒！這片海，不再有你的容身之處。」');}
+function peerageTale(mode,d,cb){
+  var prompt=mode==='confer'
+    ?'用繁體中文寫一段 45 字內、莊嚴有畫面感的授勳場景：大航海世界裡「'+d.facNm+'」為傭兵團長冊封「'+d.title+'」爵位的那一刻。第三人稱、只回那段話、不要引號或說明。'
+    :'用繁體中文寫一段 45 字內、有戲劇張力的場景：大航海世界裡「'+d.facNm+'」當眾宣布褫奪某傭兵團長爵位、斥其為叛徒的那一刻。第三人稱、只回那段話、不要引號或說明。';
+  var done=false,tm=setTimeout(function(){if(!done){done=true;cb(peerageTaleTpl(mode,d));}},9000);
+  fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){if(done)return;done=true;clearTimeout(tm);t=(t||'').trim().replace(/^["「『]+|["」』]+$/g,'').slice(0,90);cb(t&&!/error|unable|sorry|api/i.test(t)?t:peerageTaleTpl(mode,d));}).catch(function(){if(done)return;done=true;clearTimeout(tm);cb(peerageTaleTpl(mode,d));});
+}
 function openCastle(){
   var deep=P.deepest||0,ri=rankOf(deep),next=RANKS[ri+1];
   var fame=fameOfC(P),pix=peerageOfC(fame),pr=PEERAGE_C[pix],pn=PEERAGE_C[pix+1];
@@ -1997,6 +2089,8 @@ function openCastle(){
     }
   }
   body+='<div class="card" style="border-color:var(--gold);background:linear-gradient(180deg,rgba(200,151,31,.14),transparent)"><b style="font-size:15px">'+pr.ico+' 爵位：'+pr.nm+'</b> <span class="tag">威名 '+fame+'</span>';
+  if(P.title&&P.titleFrom){var tf=FACTION_BY_C[P.titleFrom]||{};body+='<div class="note" style="text-align:left;margin-top:4px;color:var(--gold)">👑 受封稱號「'+P.title+'」 · 冊封：'+(tf.ico||'')+(tf.nm||'')+'</div>';}
+  else if(!P.title&&bestAllyC()===null&&pix>=1)body+='<div class="note" style="text-align:left;margin-top:4px;color:var(--soft)">🏴 目前無勢力為你冊封（與某勢力交好即可受封爵位）</div>';
   if(pn){var fp=Math.min(100,Math.round((fame-pr.t)/(pn.t-pr.t)*100));body+='<div class="note" style="text-align:left;margin-top:4px">距離晉爵「'+pn.ico+pn.nm+'」還差 <b>'+(pn.t-fame)+'</b> 威名</div><div class="hpbar" style="height:9px;margin-top:6px"><i style="background:linear-gradient(90deg,#f4c34e,#c8971f);width:'+fp+'%"></i></div>';}
   else body+='<div class="note" style="text-align:left;margin-top:4px">🏆 你已受封『海洋霸主』—— 這片海域的傳說，登峰造極！</div>';
   body+='<div class="glab" style="margin-top:8px">威名來源</div>';
