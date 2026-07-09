@@ -6,7 +6,7 @@
 
 function doGet(){
   return HtmlService.createTemplateFromFile('Index').evaluate()
-    .setTitle('傭兵之城')
+    .setTitle('傭兵大航海')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }

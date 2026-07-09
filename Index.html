@@ -415,7 +415,7 @@ function avatarHTML(c){var ic=(cinfo(c.job)||{}).ico||'❓';return c&&c.portrait
 
 // ============ 登入 ============
 function renderLogin(){
-  app.innerHTML='<div class="pad"><h1>🏰 傭兵之城</h1><p class="lead">輸入暱稱即可遊玩 · 每個暱稱一份存檔</p>'+
+  app.innerHTML='<div class="pad"><h1>⚓ 傭兵大航海</h1><p class="lead">輸入暱稱即可遊玩 · 每個暱稱一份存檔</p>'+
     '<div class="card"><div class="glab">暱稱（＝帳號）</div><input class="inp" id="nick" maxlength="16" placeholder="例：小美"></div>'+
     '<button class="btn gold" id="enter">進入城鎮</button>'+
     '<div class="note">沒有存檔會帶你建立主角；招募夥伴、下地下城都在城裡。</div></div>';
@@ -551,7 +551,7 @@ function pDoGen(){
 
 // ============ 序章劇情 ============
 function showIntro(cb){
-  var h='<div class="scene" style="height:150px"><div class="sun"></div>'+starDots()+'<div class="sil">🌲🏠🏰🏪🏠🌲</div><div class="title">🏰 傭兵之城<small>序章</small></div></div>';
+  var h='<div class="scene" style="height:150px"><div class="sun"></div>'+starDots()+'<div class="sil">🌲🏠🏰🏪🏠🌲</div><div class="title">⚓ 傭兵大航海<small>序章</small></div></div>';
   h+='<div class="pad"><div class="card" style="border-color:var(--gold-d)"><b>📖 序章</b><div class="note" style="text-align:left;margin-top:8px;white-space:pre-line;line-height:1.85;color:#f0d6ad">'+STORY.intro+'</div></div>';
   h+='<button class="btn gold" id="introgo">⚔️ 踏入城鎮</button></div>';
   app.innerHTML=h;
@@ -559,7 +559,7 @@ function showIntro(cb){
 }
 
 // ============ 城鎮 ============
-function topbar(){return '<div class="bar"><div class="t">🏰 傭兵之城<small> · '+P.nick+'</small></div><div class="spacer"></div>'+
+function topbar(){return '<div class="bar"><div class="t">⚓ 傭兵大航海<small> · '+P.nick+'</small></div><div class="spacer"></div>'+
   '<div class="pill">🪙 <span id="topgold">'+P.gold+'</span></div><div class="pill">⬇️ 第 <span id="topdeep">'+(P.deepest||0)+'</span> 層</div></div>';}
 function refreshTopbar(){var g=document.getElementById('topgold');if(g)g.textContent=P.gold;var d=document.getElementById('topdeep');if(d)d.textContent=(P.deepest||0);}
 var BLDG=[
@@ -700,6 +700,9 @@ function starDots(){var s=[[10,20],[24,10],[40,26],[58,12],[72,22],[86,9],[33,15
 // 情境化建議：依當前狀態給提示（副手橫幅與建議面板共用）
 function getAdvice(){
   var out=[];
+  if(!P.ship&&(P.deepest||0)>=5)out.push('🚢 已達第 5 層！到領主城堡領取新手船艦，開啟航海。');
+  if(P.fv===1)out.push('📜 領主試航委託：揚帆到其他港口買 1 箱貨，帶回回報。');
+  else if(P.fv===2)out.push((P.port||'merc')==='merc'?'📜 回城堡向領主回報試航，領獎！':'📜 帶著貨回傭兵之城，到城堡回報試航。');
   if(P.roster.some(function(c){return c.id!==P.heroId&&!isSup(c.job)&&c.hp<c.maxhp&&c.hp>0;})||(heroOf()&&heroOf().hp<heroOf().maxhp))
     out.push('🏨 有人掛彩了，先去旅館歇口氣再出發吧。');
   if(P.roster.some(function(c){return c.hp<=0;}))
@@ -910,7 +913,7 @@ function renderTown(){
     '🎖️ <b>'+RANKS[ri].nm+'</b> ・ 👑 主線：討伐第 20 層魔王'+
     (P.quest?'<br>📜 委託：'+P.quest.name+'（'+Math.min(P.quest.prog,P.quest.target)+'/'+P.quest.target+'）':'<br>📜 目前無委託 —— 到公會接一張吧')+'</div></div>';
   h+='<div class="signs">';
-  BLDG.forEach(function(b){if(bldgLocked(b[0]))return;var badge=(b[0]==='inn'&&P.roster.some(function(c){return c.hp<c.maxhp;}))?'<span class="badge">傷</span>':((b[0]==='guild'&&P.quest&&P.quest.prog>=P.quest.target)?'<span class="badge">領獎</span>':(b[0]==='guild'&&!P.quest?'<span class="badge">!</span>':(b[0]==='castle'&&!P.ship&&(P.deepest||0)>=5?'<span class="badge">領船</span>':'')));h+='<div class="sign" data-b="'+b[0]+'">'+badge+'<div class="ico">'+b[1]+'</div><div class="nm">'+b[2]+'</div><div class="ds">'+b[3]+'</div></div>';});
+  BLDG.forEach(function(b){if(bldgLocked(b[0]))return;var badge=(b[0]==='inn'&&P.roster.some(function(c){return c.hp<c.maxhp;}))?'<span class="badge">傷</span>':((b[0]==='guild'&&P.quest&&P.quest.prog>=P.quest.target)?'<span class="badge">領獎</span>':(b[0]==='guild'&&!P.quest?'<span class="badge">!</span>':(b[0]==='castle'&&!P.ship&&(P.deepest||0)>=5?'<span class="badge">領船</span>':(b[0]==='castle'&&P.fv===2&&(P.port||'merc')==='merc'?'<span class="badge">回報</span>':''))));h+='<div class="sign" data-b="'+b[0]+'">'+badge+'<div class="ico">'+b[1]+'</div><div class="nm">'+b[2]+'</div><div class="ds">'+b[3]+'</div></div>';});
   h+='</div>';
   h+='<div class="signs" style="margin-top:10px"><div class="sign gate" data-b="dungeon"><div class="ico">⬇️🏚️</div><div class="nm">進入地下城</div><div class="ds">自動探索・可達第 '+(P.deepest||0)+' 層，挑戰更深</div></div></div>';
   h+=tabsHTML();
@@ -1377,7 +1380,7 @@ function renderTrade(v){
 }
 function tradeDo(op,good){
   var q=prompt((op==='buy'?'買入':'賣出')+' 數量：','1');if(q===null)return;q=Math.max(1,parseInt(q,10)||1);
-  flushSave().then(function(){return srv('trade',{nick:P.nick,op:op,good:good,qty:q});}).then(function(r){P=r.player;refreshTopbar();renderTrade(r.view);if(r.sea&&r.sea.ups>0)seaToast(r.sea);else toast(op==='buy'?'買入 ×'+q:'賣出 ×'+q);}).catch(function(e){toast(e.message);});
+  flushSave().then(function(){return srv('trade',{nick:P.nick,op:op,good:good,qty:q});}).then(function(r){P=r.player;var fvUp=(op==='buy'&&P.fv===1&&(P.port&&P.port!=='merc'));if(fvUp)P.fv=2;refreshTopbar();renderTrade(r.view);if(fvUp){saveP();toast('📜 試航進度：已在外地採購！帶貨回傭兵之城向領主回報');}else if(r.sea&&r.sea.ups>0)seaToast(r.sea);else toast(op==='buy'?'買入 ×'+q:'賣出 ×'+q);}).catch(function(e){toast(e.message);});
 }
 
 // ---- 世界地圖・出航 ----
@@ -1664,6 +1667,14 @@ function openCastle(){
     if(deep>=5)body+='<div class="card" style="border-color:var(--gold);background:linear-gradient(180deg,rgba(58,110,165,.2),transparent)"><b>⚓ 領主的賞賜</b><div class="note" style="text-align:left;margin-top:4px">「你已深入地下城，證明了實力。這艘船是你的了——去見識更廣的世界吧。」</div><button class="btn gold" id="claimship" style="margin-top:8px">🚢 領取新手船艦（開啟航海/貿易）</button></div>';
     else body+='<div class="card" style="border-color:#3a6ea5"><b>⚓ 領主的話</b><div class="note" style="text-align:left;margin-top:4px">「先下地下城歷練——探到 <b>第 5 層</b>，我便賜你一艘船，讓你揚帆出海、跑商掠奪。」（目前最深第 '+deep+' 層）</div></div>';
   }
+  // 領主試航委託（領船後的第一趟商旅引導）
+  if(P.ship&&P.fv&&P.fv<3){
+    if(P.fv===1)body+='<div class="card" style="border-color:#3a6ea5"><b>📜 領主試航委託</b><div class="note" style="text-align:left;margin-top:4px">「揚帆到<b>任一其他港口</b>，在貿易所買 <b>1 箱貨</b>，再帶回傭兵之城向我回報——就當是你的第一趟商旅。」</div></div>';
+    else if(P.fv===2){
+      if((P.port||'merc')==='merc')body+='<div class="card" style="border-color:var(--gold)"><b>📜 試航委託・可回報</b><div class="note" style="text-align:left;margin-top:4px">你帶著外地的貨回來了！向領主回報，領取賞賜。</div><button class="btn gold" id="fvreport" style="margin-top:8px">📜 回報試航（+300🪙 ＋ 秘寶線索）</button></div>';
+      else body+='<div class="card" style="border-color:#3a6ea5"><b>📜 試航委託・帶貨回航</b><div class="note" style="text-align:left;margin-top:4px">已在外地採購！現在<b>揚帆回傭兵之城</b>（'+portNmC('merc')+'），再到城堡回報。</div></div>';
+    }
+  }
   body+='<div class="card" style="border-color:var(--gold);background:linear-gradient(180deg,rgba(200,151,31,.14),transparent)"><b style="font-size:15px">'+pr.ico+' 爵位：'+pr.nm+'</b> <span class="tag">威名 '+fame+'</span>';
   if(pn){var fp=Math.min(100,Math.round((fame-pr.t)/(pn.t-pr.t)*100));body+='<div class="note" style="text-align:left;margin-top:4px">距離晉爵「'+pn.ico+pn.nm+'」還差 <b>'+(pn.t-fame)+'</b> 威名</div><div class="hpbar" style="height:9px;margin-top:6px"><i style="background:linear-gradient(90deg,#f4c34e,#c8971f);width:'+fp+'%"></i></div>';}
   else body+='<div class="note" style="text-align:left;margin-top:4px">🏆 你已受封『海洋霸主』—— 這片海域的傳說，登峰造極！</div>';
@@ -1681,9 +1692,11 @@ function openCastle(){
     '討伐盤踞地下城第 20 層的魔王【巫妖】，成為傳說傭兵。<br>每 5 層有一名頭目把守：哥布林王(5) → 巨魔領主(10) → 骨龍(15) → 巫妖(20)。</div></div>';
   body+='<div class="note">階級越高，代表你探得越深。晉升自動觸發並發放賞金。</div>';
   openSheet('🏰 領主城堡','向領主稟報你的功績',body);
-  var cs=document.getElementById('claimship');if(cs)cs.onclick=function(){cs.disabled=true;flushSave().then(function(){return srv('ship',{nick:P.nick,op:'claim'});}).then(function(r){P=r.player;refreshTopbar();openSheet('🚢 揚帆待發！','',
-    '<div class="note" style="text-align:center;font-size:44px">⛵</div><div class="note" style="text-align:left;line-height:1.9">領主賜予你一艘 <b>初心號</b>！<br>現在城鎮多了 <b>🏪 貿易所・🗺️ 出航・⚓ 船塢</b>，底部也出現「出航／貿易」分頁。<br><br>到需求地跑商賺價差、巡弋掠奪、探索秘寶——大海任你闖！<br><small style="color:var(--soft)">（第 10 層後還會解鎖 🛳️船商／🚢艦隊 的船隊玩法）</small></div>'+
+  var cs=document.getElementById('claimship');if(cs)cs.onclick=function(){cs.disabled=true;flushSave().then(function(){return srv('ship',{nick:P.nick,op:'claim'});}).then(function(r){P=r.player;P.fv=1;saveP();refreshTopbar();openSheet('🚢 揚帆待發！','',
+    '<div class="note" style="text-align:center;font-size:44px">⛵</div><div class="note" style="text-align:left;line-height:1.9">領主賜予你一艘 <b>初心號</b>！<br>現在城鎮多了 <b>🏪 貿易所・🗺️ 出航・⚓ 船塢</b>，底部也出現「出航／貿易」分頁。<br><br>📜 <b>領主的試航委託</b>：揚帆到<b>其他港口</b>買 1 箱貨，帶回傭兵之城向領主回報。<br><small style="color:var(--soft)">（第 10 層後還會解鎖 🛳️船商／🚢艦隊 的船隊玩法）</small></div>'+
     '<button class="btn gold" onclick="closeSheet()" style="margin-top:8px">出發！</button>');}).catch(function(e){cs.disabled=false;toast(e.message);});};
+  var fr=document.getElementById('fvreport');if(fr)fr.onclick=function(){P.gold=(P.gold||0)+300;P.clues=(P.clues||0)+1;P.fv=3;saveP();refreshTopbar();openSheet('📜 試航達成！','',
+    '<div class="note" style="text-align:center;font-size:40px">🎉</div><div class="note" style="text-align:left;line-height:1.9">領主頷首：「不錯，有商人的樣子了。這 300🪙 拿去，還有一片海圖殘片——往後這片海，就靠你闖蕩了。」<br><br>🪙 +300　🧭 秘寶線索 +1</div><button class="btn gold" onclick="closeSheet()" style="margin-top:8px">領命！</button>');};
 }
 
 // ---- 冒險者名冊（觀戰）----
