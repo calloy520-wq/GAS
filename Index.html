@@ -362,13 +362,13 @@ function mock(action,p){return new Promise(function(res,rej){
   function roll(){var a=[d6(),d6(),d6(),d6()].sort(function(x,y){return x-y;});return a[1]+a[2]+a[3];}
   function d6(){return 1+Math.floor(Math.random()*6);}
   function mk(name,job,portrait,seed,pbase,race){var base={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){base[a]=Math.min(20,((pbase&&pbase[a])||roll())+(g[a]||0));});var c={id:'c'+Math.random().toString(36).slice(2,9),name:name,job:job,race:race||'human',support:isSup(job),portrait:portrait||'',seed:seed||0,level:1,xp:0,base:base,equip:{weapon:null,armor:null,trinket:null},hp:0,maxhp:0};c.maxhp=cMaxHp(c);c.hp=c.maxhp;return c;}
-  function mockCand(pl){var rw=[['common',50],['fine',27],['rare',15],['epic',7],['legend',1]],tot=100,x=Math.random()*tot,rk='common';for(var i=0;i<rw.length;i++){x-=rw[i][1];if(x<0){rk=rw[i][0];break;}}var sup=Math.random()<0.32,pool=sup?Object.keys(SUPPORT):Object.keys(COMBAT);var job=pool[Math.floor(Math.random()*pool.length)],race=RACE_KEYS[Math.floor(Math.random()*RACE_KEYS.length)];var bonus={common:0,fine:0,rare:1,epic:1,legend:2}[rk],base={};AB.forEach(function(a){base[a]=Math.min(20,roll()+bonus);});var mul={common:1,fine:1.8,rare:3.4,epic:6,legend:11}[rk];var cost=Math.round((60+(pl.deepest||0)*8)*mul*(1+pl.roster.length*0.12));return {cid:'cand'+Math.random().toString(36).slice(2,8),job:job,race:race,rarity:rk,base:base,cost:cost};}
+  function mockCand(pl){var rw=[['common',50],['fine',27],['rare',15],['epic',7],['legend',1]],tot=100,x=Math.random()*tot,rk='common';for(var i=0;i<rw.length;i++){x-=rw[i][1];if(x<0){rk=rw[i][0];break;}}var sup=Math.random()<0.32,pool=sup?Object.keys(SUPPORT):Object.keys(COMBAT);var job=pool[Math.floor(Math.random()*pool.length)],race=RACE_KEYS[Math.floor(Math.random()*RACE_KEYS.length)];var bonus={common:0,fine:0,rare:1,epic:1,legend:2}[rk],base={};AB.forEach(function(a){base[a]=Math.min(20,roll()+bonus);});var mul={common:1,fine:1.8,rare:3.4,epic:6,legend:11}[rk];var cost=Math.round((48+(pl.deepest||0)*7)*mul*(1+pl.roster.length*0.10));return {cid:'cand'+Math.random().toString(36).slice(2,8),job:job,race:race,rarity:rk,base:base,cost:cost};}
   var CAPTIVE_NAMES_C=['獨眼傑克','斷手洛','紅鬍子','疤面桑','鐵鉤','小刀','浪人阿蒼','老砲手棠','沉默的西','跛腳阿工','鯊牙','黑手比爾','海狼','斷桅的老楊'];
   function rollRarityBoostedC(boost){var rw=[['common',50],['fine',27],['rare',15],['epic',7],['legend',1]],tot=0,w=rw.map(function(r,i){var ww=r[1]*(1+(boost||0)*i*0.6);tot+=ww;return ww;});var t=Math.random()*tot;for(var i=0;i<rw.length;i++){t-=w[i];if(t<0)return rw[i][0];}return 'common';}
   function tryPersuadeC(pl,ammo,rep,enemy){var ch=0.30;if(teamHasSkillC(pl,'persuasion'))ch+=0.35;if(ammo==='grape')ch+=0.10;ch+=officerRankC(pl,'quartermaster')*0.02;ch+=mateLoyaltyC(pl)*0.02;ch=Math.max(0.1,Math.min(0.85,ch));rep.persuadeTried=true;rep.persuadeChance=Math.round(ch*100);if(Math.random()>=ch)return;var facId=(enemy&&enemy.fac)||'pirate',boost=(enemy&&enemy.tier)||0,fac=FACTION_BY_C[facId]||{};var job=(fac.jobs&&fac.jobs[Math.floor(Math.random()*fac.jobs.length)])||Object.keys(COMBAT)[0],rk=rollRarityBoostedC(boost),race=RACE_KEYS[Math.floor(Math.random()*RACE_KEYS.length)];var bonus={common:0,fine:0,rare:1,epic:1,legend:2}[rk],base={};AB.forEach(function(a){base[a]=Math.min(20,roll()+bonus);});var c=mk(CAPTIVE_NAMES_C[Math.floor(Math.random()*CAPTIVE_NAMES_C.length)],job,'',0,base,race);c.rarity=rk;var mul={common:1,fine:1.8,rare:3.4,epic:6,legend:11}[rk]||1;var ransom=40+(c.level||1)*20+Math.round((mul-1)*40);pl.pendingRecruit={char:c,ransom:ransom};var ci=cinfo(c.job)||{},ri=RACES[c.race]||{},star={common:'⭐',fine:'⭐⭐',rare:'⭐⭐⭐',epic:'⭐⭐⭐⭐',legend:'⭐⭐⭐⭐⭐'}[rk]||'⭐';rep.persuaded={name:c.name,job:c.job,ico:ci.ico||'❓',jobNm:ci.nm||'',race:c.race,raceIco:ri.ico||'',raceNm:ri.nm||'',rarity:rk,star:star,level:c.level,ransom:ransom,rosterFull:(pl.roster||[]).length>=10,facIco:fac.ico||'',facNm:fac.nm||''};}
   setTimeout(function(){try{
     if(action==='login'){var pl=DB[p.nick.trim()]||null;return res({exists:!!pl,player:pl});}
-    if(action==='create'){var h=mk(p.name,p.job,p.portrait,p.seed,p.base,p.race);var pl={nick:p.nick.trim(),gold:120,deepest:0,heroId:h.id,roster:[h],bag:[],team:{battle:[h.id],support:[]}};ensureC(pl);put(pl);return res(pl);}
+    if(action==='create'){var h=mk(p.name,p.job,p.portrait,p.seed,p.base,p.race);h.equip.weapon='w_short';h.equip.armor='a_leather';var pl={nick:p.nick.trim(),gold:180,deepest:0,heroId:h.id,roster:[h],bag:[],team:{battle:[h.id],support:[]}};ensureC(pl);put(pl);return res(pl);}
     if(action==='save'){put(p.player);return res(p.player);}
     if(action==='tavern'){var pl=DB[p.nick.trim()];if(p.op==='refresh'){if(pl.gold<30)return rej(new Error('金幣不足'));pl.gold-=30;pl.tavern=null;}if(!pl.tavern||!pl.tavern.length){pl.tavern=[mockCand(pl),mockCand(pl),mockCand(pl)];}put(pl);return res({player:pl});}
     if(action==='recruit'){var pl=DB[p.nick.trim()];if(pl.roster.length>=10)return rej(new Error('倉庫已滿'));var idx=-1;(pl.tavern||[]).forEach(function(c,i){if(c.cid===p.cid)idx=i;});if(idx<0)return rej(new Error('候選人已不在'));var cand=pl.tavern[idx];if(pl.gold<cand.cost)return rej(new Error('金幣不足'));var c=mk(p.name,cand.job,p.portrait,p.seed,cand.base,cand.race);c.rarity=cand.rarity;pl.gold-=cand.cost;pl.roster.push(c);pl.tavern.splice(idx,1);put(pl);return res({player:pl,recruited:c});}
@@ -1697,13 +1697,14 @@ function renderRecruitForm(){
 
 // ---- 旅館 ----
 function openInn(){
-  var cost=15+(P.deepest||0)*2;
+  var base=15+(P.deepest||0)*2;
+  var broke=(P.gold||0)<base, cost=broke?0:base;   // 沒錢也能休息（賒帳急救），杜絕死亡螺旋
   var hurt=P.roster.some(function(c){return c.hp<c.maxhp;});
   var body='<div class="u"><div class="av">🛏️</div><div class="info"><b>住宿一晚</b><small>回滿全隊生命、救回陣亡者</small></div>'+
-    '<button class="btn gold sm" id="rest"'+(P.gold<cost?' disabled':'')+'>休息 '+cost+'🪙</button></div>'+
-    '<div class="note">'+(hurt?'有夥伴受傷了，好好休息再出發。':'全隊狀態良好。')+'</div>';
+    '<button class="btn gold sm" id="rest">休息 '+(cost>0?cost+'🪙':'免費')+'</button></div>'+
+    '<div class="note">'+(broke?'💛 老闆看你阮囊羞澀，讓你賒帳歇一晚——別再逞強送死啦。':(hurt?'有夥伴受傷了，好好休息再出發。':'全隊狀態良好。'))+'</div>';
   openSheet('🛏️ 旅館','旅店老闆熱情招呼你',body);
-  var r=document.getElementById('rest');if(r)r.onclick=function(){if(P.gold<cost)return;P.gold-=cost;P.roster.forEach(function(c){c.hp=c.maxhp;});saveP(function(){openSheet('🛏️ 旅館','','<div class="note" style="font-size:14px">😴 一夜好眠，全隊生龍活虎！</div>');});};
+  var r=document.getElementById('rest');if(r)r.onclick=function(){if((P.gold||0)<cost)return;P.gold-=cost;P.roster.forEach(function(c){c.hp=c.maxhp;});saveP(function(){openSheet('🛏️ 旅館','','<div class="note" style="font-size:14px">😴 一夜好眠，全隊生龍活虎！</div>');});};
 }
 
 // ---- 傭兵公會（委託）----

@@ -84,6 +84,7 @@ function apiCreate_(p){
   if (loadPlayer(nick)) throw new Error('這個暱稱已經有存檔了');
   if (!COMBAT_CLASSES[p.job]) throw new Error('主角必須是戰鬥職業');
   var hero = makeChar(p.name, p.job, p.portrait, p.seed, p.base, p.race);
+  hero.equip.weapon = 'w_short'; hero.equip.armor = 'a_leather';   // 新手起始裝備：短劍＋皮甲（別赤手空拳送死）
   var player = {
     nick: nick, created: Date.now(), updated: Date.now(),
     gold: CFG.START_GOLD, deepest: 0,

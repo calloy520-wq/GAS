@@ -8,7 +8,7 @@ var CFG = {
   BATTLE_SLOTS: 4,     // 戰鬥位（含主角）
   SUPPORT_SLOTS: 2,    // 後勤位
   ROSTER_MAX: 10,      // 角色倉庫上限（含主角）
-  START_GOLD: 120,
+  START_GOLD: 180,
   DISMISS_REFUND: 20,  // 遣散給對方的遣散費（從玩家金幣扣）
   MAX_FLOOR: 30
 };

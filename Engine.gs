@@ -40,7 +40,7 @@ function genCandidate(deepest, rosterSize){
   var race = RACE_KEYS[Math.floor(Math.random()*RACE_KEYS.length)];
   var rk = rollRarity();
   var base = rollBaseByRarity(rk);
-  var cost = Math.round((60 + (deepest||0)*8) * rarityInfo(rk).costMul * (1 + (rosterSize||0)*0.12));
+  var cost = Math.round((48 + (deepest||0)*7) * rarityInfo(rk).costMul * (1 + (rosterSize||0)*0.10));
   return { cid:'cand'+uid(), job:job, race:race, rarity:rk, base:base, cost:cost };
 }
 
@@ -264,15 +264,17 @@ function spawnEnemies(floor, isBoss){
     var adds = Math.min(2, Math.floor(floor/8));
     for (var i=0;i<adds;i++) list.push(mkMonster(pick(MONSTERS), floor, false));
   } else {
-    var n = 1 + (Math.random()<0.55?1:0) + (floor>=6 && Math.random()<0.45?1:0) + (floor>=14 && Math.random()<0.5?1:0);
+    // 前 3 層固定單體、4~5 層偶爾兩隻，之後才變多（新手友善）
+    var n = 1 + (floor>=4 && Math.random()<0.4?1:0) + (floor>=6 && Math.random()<0.45?1:0) + (floor>=14 && Math.random()<0.5?1:0);
     for (var j=0;j<n;j++) list.push(mkMonster(pick(MONSTERS), floor, false));
   }
   return list;
 }
 function mkMonster(m, floor, boss){
   var scale = 1 + (floor-1)*0.19 + Math.max(0,floor-15)*0.05;   // 深層(>15)額外變硬
+  var soft = floor<=5 ? 0.7 : 1;                                 // 前 5 層敵人整體弱化（新手友善）
   var goldScale = 1 + (floor-1)*0.15;                            // 金幣隨樓層成長：深潛更值錢（修正中期太窮）
-  var maxhp = Math.round((m.hd*6 + m.hd) * scale);
+  var maxhp = Math.max(1, Math.round((m.hd*6 + m.hd) * scale * soft));
   return { nm:m.nm, ico:m.ico, ac:m.ac + Math.floor(floor/5), maxhp:maxhp, hp:maxhp,
     atkBonus:m.atk + Math.floor(floor/3), dmg:m.dmg,
     xp:Math.round(m.xp*scale), gold:Math.round(rint(m.gold[0],m.gold[1])*goldScale), boss:!!boss };
