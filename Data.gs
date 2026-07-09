@@ -222,35 +222,49 @@ function genQuest(deepest){
 
 // ---- 大航海式貿易：商品、市集、浮動價格 ----
 var GOODS = [
-  { id:'salt',  nm:'鹽',   ico:'🧂', base:20 },
-  { id:'herb',  nm:'藥草', ico:'🌿', base:35 },
-  { id:'iron',  nm:'鐵礦', ico:'⚙️', base:55 },
-  { id:'wine',  nm:'美酒', ico:'🍷', base:70 },
-  { id:'spice', nm:'香料', ico:'🌶️', base:48 },
-  { id:'silk',  nm:'絲綢', ico:'🧵', base:95 },
-  { id:'china', nm:'瓷器', ico:'🏺', base:125 },
-  { id:'gem',   nm:'寶石', ico:'💎', base:210 }
+  { id:'salt',  nm:'鹽',     ico:'🧂', base:20 },
+  { id:'herb',  nm:'藥草',   ico:'🌿', base:35 },
+  { id:'spice', nm:'香料',   ico:'🌶️', base:48 },
+  { id:'iron',  nm:'鐵礦',   ico:'⚙️', base:55 },
+  { id:'coffee',nm:'咖啡豆', ico:'☕', base:62 },
+  { id:'wine',  nm:'美酒',   ico:'🍷', base:70 },
+  { id:'fur',   nm:'皮草',   ico:'🦊', base:88 },
+  { id:'silk',  nm:'絲綢',   ico:'🧵', base:95 },
+  { id:'china', nm:'瓷器',   ico:'🏺', base:125 },
+  { id:'powder',nm:'火藥',   ico:'🧨', base:135 },
+  { id:'pearl', nm:'珍珠',   ico:'🦪', base:160 },
+  { id:'ivory', nm:'象牙',   ico:'🐘', base:185 },
+  { id:'gem',   nm:'寶石',   ico:'💎', base:210 },
+  { id:'amber', nm:'龍涎香', ico:'🐋', base:300 }
 ];
 var GOOD_BY = {}; GOODS.forEach(function(g){ GOOD_BY[g.id]=g; });
-// 每個港口：x,y=世界地圖座標(%)；cheap=產地(便宜) dear=需求地(貴)
+// 每個港口：x,y=世界地圖座標(%)；cheap=產地(便宜) dear=需求地(貴)；sig=招牌名產
 var MARKETS = [
-  { id:'merc',  nm:'傭兵之城', ico:'🏰', x:20, y:42, cheap:['iron','herb'],  dear:['silk','gem'],   blurb:'傭兵與冒險者的據點' },
-  { id:'port',  nm:'風帆港都', ico:'⛵', x:44, y:24, cheap:['silk','china'], dear:['spice','iron'], blurb:'船隻雲集的繁華貿易港' },
-  { id:'gold',  nm:'黃金港',   ico:'🏛️', x:80, y:30, cheap:['china','gem'],  dear:['salt','silk'],  blurb:'富甲一方的黃金之都' },
-  { id:'oasis', nm:'沙漠綠洲', ico:'🏜️', x:70, y:56, cheap:['spice','salt'], dear:['wine','herb'],  blurb:'沙海中的香料集散地' },
-  { id:'coral', nm:'珊瑚礁島', ico:'🏝️', x:56, y:82, cheap:['spice','wine'], dear:['china','iron'], blurb:'南方的熱帶島嶼' },
-  { id:'snow',  nm:'雪山商站', ico:'🏔️', x:26, y:72, cheap:['wine','gem'],   dear:['salt','china'], blurb:'冰封山脈的邊境商站' }
+  { id:'merc',  nm:'傭兵之城',   ico:'🏰', x:18, y:44, cheap:['iron','herb'],   dear:['silk','pearl'],  sig:'iron',   blurb:'傭兵與冒險者的據點，精鐵鍛造聞名' },
+  { id:'whale', nm:'迷霧捕鯨鎮', ico:'🐋', x:14, y:18, cheap:['amber','salt'],  dear:['wine','china'],  sig:'amber',  blurb:'終年迷霧的捕鯨港——龍涎香唯一的產地' },
+  { id:'port',  nm:'風帆港都',   ico:'⛵', x:42, y:22, cheap:['silk','china'],  dear:['spice','powder'],sig:'silk',   blurb:'船隻雲集的繁華貿易港，絲綢集散地' },
+  { id:'gold',  nm:'黃金港',     ico:'🏛️', x:80, y:26, cheap:['gem','china'],   dear:['salt','coffee'], sig:'gem',    blurb:'富甲一方的黃金之都，寶石璀璨' },
+  { id:'bean',  nm:'翠蔭咖啡島', ico:'☕', x:50, y:50, cheap:['coffee','spice'],dear:['iron','silk'],   sig:'coffee', blurb:'火山沃土的梯田群島，咖啡香飄十里' },
+  { id:'oasis', nm:'沙漠綠洲',   ico:'🏜️', x:72, y:54, cheap:['spice','salt'],  dear:['wine','fur'],    sig:'spice',  blurb:'沙海中的香料集散地' },
+  { id:'volcano',nm:'熔岩鍛造島',ico:'🌋', x:36, y:64, cheap:['powder','iron'], dear:['herb','silk'],   sig:'powder', blurb:'熔岩之島，火藥與精鐵的源頭' },
+  { id:'temple',nm:'失落神廟島', ico:'🗿', x:90, y:66, cheap:['ivory','gem'],   dear:['salt','herb'],   sig:'ivory',  blurb:'被藤蔓吞沒的古文明遺跡，象牙與古董' },
+  { id:'snow',  nm:'雪山商站',   ico:'🏔️', x:24, y:74, cheap:['fur','gem'],     dear:['spice','pearl'], sig:'fur',    blurb:'冰封山脈的邊境商站，頂級皮草' },
+  { id:'coral', nm:'珊瑚礁島',   ico:'🏝️', x:56, y:84, cheap:['pearl','wine'],  dear:['iron','fur'],    sig:'pearl',  blurb:'南方熱帶島嶼，採珠人的天堂' }
 ];
 var MARKET_BY = {}; MARKETS.forEach(function(m){ MARKET_BY[m.id]=m; });
 var CARGO_MAX = 20;
 // ---- 城市攻佔：各港駐軍（越遠越強）＋領地稅收 ----
 var GARRISONS = {
-  merc:  { nm:'傭兵城衛隊', hull:90,  cannon:9,  gold:[80,160]  },
-  port:  { nm:'港都巡防隊', hull:130, cannon:12, gold:[140,260] },
-  gold:  { nm:'黃金港衛兵', hull:200, cannon:18, gold:[260,480] },
-  oasis: { nm:'綠洲傭騎團', hull:160, cannon:15, gold:[200,360] },
-  coral: { nm:'礁島海防軍', hull:180, cannon:16, gold:[230,420] },
-  snow:  { nm:'雪山邊防軍', hull:150, cannon:14, gold:[180,340] }
+  merc:   { nm:'傭兵城衛隊', hull:90,  cannon:9,  gold:[80,160]  },
+  whale:  { nm:'捕鯨鎮民兵', hull:120, cannon:11, gold:[120,240] },
+  port:   { nm:'港都巡防隊', hull:130, cannon:12, gold:[140,260] },
+  gold:   { nm:'黃金港衛兵', hull:200, cannon:18, gold:[260,480] },
+  bean:   { nm:'咖啡島守衛', hull:150, cannon:14, gold:[190,350] },
+  oasis:  { nm:'綠洲傭騎團', hull:160, cannon:15, gold:[200,360] },
+  volcano:{ nm:'鍛造島鐵衛', hull:210, cannon:19, gold:[270,500] },
+  temple: { nm:'神廟守墓者', hull:230, cannon:20, gold:[300,560] },
+  snow:   { nm:'雪山邊防軍', hull:150, cannon:14, gold:[180,340] },
+  coral:  { nm:'礁島海防軍', hull:180, cannon:16, gold:[230,420] }
 };
 var HOLD_TAX_BASE = 26;             // 每領地每「稅收週期」基礎稅金（×等級）
 var HOLD_CYCLE_MS = 5*60*1000;      // 稅收約 5 分鐘累積一次
