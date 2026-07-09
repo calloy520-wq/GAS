@@ -345,6 +345,28 @@ var TRADE_CYCLE_MS = 5*60*1000;   // 每「航海日」約 5 分鐘一趟
 var NPC_NAMES = ['信天翁號','黑珍珠號','晨曦號','海燕號','金鹿號','南風號','翡翠號','浪花號','北極星號','女王復仇號'];
 // 接舷俘虜後可招降的敗方船員名號
 var CAPTIVE_NAMES = ['獨眼傑克','斷手洛','紅鬍子','疤面桑','鐵鉤','小刀','浪人阿蒼','老砲手棠','沉默的西','跛腳阿工','鯊牙','黑手比爾','海狼','斷桅的老楊'];
+
+// ============================================================
+//  NPC 勢力 / 好感度（rep -1000~+1000）
+//  掠奪/貿易/攻佔會自動增減好感；串起船長贖金、招降兵種、友好折扣。
+// ============================================================
+var FACTIONS = [
+  { id:'guild',  nm:'黃金商會',   ico:'🏛️', kind:'trade',   foe:'league', jobs:['merchant','scholar','bard'],  blurb:'壟斷大洋航路的商人聯盟' },
+  { id:'navy',   nm:'王國海軍',   ico:'⚓',  kind:'navy',    foe:'pirate', jobs:['fighter','paladin','cleric'], blurb:'維護海疆秩序的王國艦隊' },
+  { id:'pirate', nm:'黑帆海盜團', ico:'☠️',  kind:'pirate',  foe:'navy',   jobs:['rogue','ranger','fighter'],   blurb:'劫掠四海的無旗艦隊' },
+  { id:'league', nm:'探險同盟',   ico:'🧭',  kind:'explore', foe:'guild',  jobs:['ranger','scholar','wizard'],  blurb:'追尋秘寶與新大陸的自由結社' }
+];
+var FACTION_BY = {}; FACTIONS.forEach(function(f){ FACTION_BY[f.id]=f; });
+var REP_TIERS = [ {nm:'世仇',ico:'💢'},{nm:'敵對',ico:'⚔️'},{nm:'中立',ico:'🤝'},{nm:'友好',ico:'😊'},{nm:'盟友',ico:'🎖️'} ];
+function repTier(v){ v=v||0; if (v<=-600) return 0; if (v<-200) return 1; if (v<200) return 2; if (v<600) return 3; return 4; }
+function repClamp(v){ return Math.max(-1000, Math.min(1000, Math.round(v||0))); }
+// 敵船依類型歸屬勢力（＋強度階；招降稀有度與勢力兵種靠它）
+var SHIP_FACTION = { '小商船':'league', '武裝商船':'guild', '海盜船':'pirate', '私掠艦':'navy' };
+function shipFaction_(nm){ return SHIP_FACTION[nm] || 'pirate'; }
+// 港口歸屬勢力（沒列到＝中立）
+var MARKET_FACTION = { merc:'navy', whale:'league', port:'guild', gold:'guild', oasis:'league', temple:'league', coral:'pirate' };
+function marketFac_(id){ return MARKET_FACTION[id] || ''; }
+
 function npcTradersForDay(day){
   var list=[];
   for (var i=0;i<5;i++){
@@ -354,7 +376,8 @@ function npcTradersForDay(day){
     var ti = seed % ENEMY_SHIPS.length;
     var es = ENEMY_SHIPS[ti];
     list.push({ id:'npc'+i, nm:nm, ico:es.ico, portNm:port.nm, portIco:port.ico,
-      hull:es.hull, cannon:es.cannon, speed:es.speed||6, gold:es.gold, loot:es.loot });
+      hull:es.hull, cannon:es.cannon, speed:es.speed||6, gold:es.gold, loot:es.loot,
+      fac:shipFaction_(es.nm), tier:ti, cls:es.nm });
   }
   return list;
 }

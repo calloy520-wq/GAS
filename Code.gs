@@ -38,6 +38,7 @@ function route_(action, p){
     case 'naval':   return apiNaval_(p);
     case 'prize':   return apiPrize_(p);
     case 'captive': return apiCaptive_(p);
+    case 'captain': return apiCaptain_(p);
     case 'raid':    return apiRaidPlayer_(p);
     case 'shipbuy': return apiShipBuy_(p);
     case 'fleet':   return apiFleet_(p);
@@ -218,7 +219,7 @@ function navGunBonus_(pl){ ensureSea_(pl); return Math.floor((pl.nav.lv-1)/3); }
 function navLuck_(pl){ ensureSea_(pl); return Math.min(0.2, 0.011*(pl.nav.lv-1) + 0.008*officerRank_(pl,'navigator')); }  // 航海長更好運
 function comBuyMul_(pl){ ensureSea_(pl); return Math.max(0.72, 1 - 0.0075*(pl.com.lv-1)); }  // 進貨更便宜
 function comSellMul_(pl){ ensureSea_(pl); return Math.min(1.30, 1 + 0.011*(pl.com.lv-1)); }  // 賣貨更高價
-function tradeDisc_(pl){ ensureSea_(pl); var has=teamHasSkill_(pl,'persuasion'); var home=(pl.holdings&&pl.holdings[pl.port])?0.03:0; var qm=officerRank_(pl,'quartermaster')*0.008; return { buyMul:comBuyMul_(pl)*(has?0.97:1)*(1-home)*(1-qm), sellMul:comSellMul_(pl)*(has?1.03:1)*(1+home)*(1+qm), haggle:has, home:home>0 }; }
+function tradeDisc_(pl){ ensureSea_(pl); var has=teamHasSkill_(pl,'persuasion'); var home=(pl.holdings&&pl.holdings[pl.port])?0.03:0; var qm=officerRank_(pl,'quartermaster')*0.008; var pf=marketFac_(pl.port); var fav=(pf&&repTier((pl.rep&&pl.rep[pf])||0)>=3)?0.04:0; return { buyMul:comBuyMul_(pl)*(has?0.97:1)*(1-home)*(1-qm)*(1-fav), sellMul:comSellMul_(pl)*(has?1.03:1)*(1+home)*(1+qm)*(1+fav), haggle:has, home:home>0, fav:fav>0 }; }
 // 里程碑效果
 function fleetCap_(pl){ ensureSea_(pl); return FLEET_MAX + (pl.nav.lv>=4?1:0) + (pl.nav.lv>=8?1:0); }   // 5→7
 function dividendRate_(pl){ ensureSea_(pl); return 0.05 + (pl.com.lv>=4?0.02:0) + (pl.com.lv>=10?0.03:0); }
@@ -272,6 +273,7 @@ function apiTrade_(p){
     if (player.cargo[p.good] <= 0) delete player.cargo[p.good];
     sea = grantSea_(player, 'com', Math.max(1, Math.round(rev/22)));   // 賣貨練「商業」
   }
+  if (p.op==='buy' || p.op==='sell') applyRep_(player, marketFac_(player.port), 3);   // 在勢力港口做生意→好感微升
   if (p.op){ cleanPlayer_(player); savePlayer(player); }   // 只有實際買/賣/移動才寫檔
   return { player: player, view: tradeView_(player, day, disc), sea: sea };
 }
@@ -380,19 +382,42 @@ function persuadeChance_(player, ammo){
   return Math.max(0.10, Math.min(0.85, c));
 }
 function captiveRansom_(c){ return 40 + (c.level||1)*20 + Math.round((rarityInfo(c.rarity).costMul-1)*40); }
-function tryPersuade_(player, report, ammo){
+// 勢力好感度增減（敵人的敵人反向連動）
+function applyRep_(player, facId, delta){
+  if (!facId || !FACTION_BY[facId] || !delta) return;
+  if (!player.rep) player.rep = {};
+  player.rep[facId] = repClamp((player.rep[facId]||0) + delta);
+  var foe = FACTION_BY[facId].foe;
+  if (foe) player.rep[foe] = repClamp((player.rep[foe]||0) + Math.round(-delta*0.4));
+}
+// 招降候選：職業依敵船勢力、稀有度依敵船強度階（越強的船招到越稀有）
+function rollRarityBoosted_(boost){
+  var x=0, w=RARITY.map(function(r,i){ var ww=r.w*(1+(boost||0)*i*0.6); x+=ww; return ww; });
+  var t=Math.random()*x;
+  for (var i=0;i<RARITY.length;i++){ t-=w[i]; if (t<0) return RARITY[i].key; }
+  return 'common';
+}
+function factionCandidate_(player, facId, boost){
+  var fac = FACTION_BY[facId];
+  var job = fac ? pick(fac.jobs) : pick(Object.keys(COMBAT_CLASSES));
+  var rk = rollRarityBoosted_(boost);
+  return { job:job, race:RACE_KEYS[rint(0,RACE_KEYS.length-1)], rarity:rk, base:rollBaseByRarity(rk) };
+}
+function tryPersuade_(player, report, ammo, enemy){
   report.persuadeTried = true;
   var ch = persuadeChance_(player, ammo);
   report.persuadeChance = Math.round(ch*100);
   if (Math.random() >= ch) return;                       // 招降失敗（對方寧死不從）
-  var cand = genCandidate(player.deepest||0, (player.roster||[]).length);
+  var facId = (enemy&&enemy.fac)||'pirate', boost=(enemy&&enemy.tier)||0;
+  var cand = factionCandidate_(player, facId, boost);
   var c = makeChar(pick(CAPTIVE_NAMES), cand.job, '', 0, cand.base, cand.race);
   c.rarity = cand.rarity;
   player.pendingRecruit = { char:c, ransom:captiveRansom_(c) };
-  var ci = classInfo(c.job)||{}, ri = raceInfo(c.race)||{};
+  var ci = classInfo(c.job)||{}, ri = raceInfo(c.race)||{}, fac=FACTION_BY[facId]||{};
   report.persuaded = { name:c.name, job:c.job, ico:ci.ico||'❓', jobNm:ci.nm||'',
     race:c.race, raceIco:ri.ico||'', raceNm:ri.nm||'', rarity:c.rarity, star:rarityInfo(c.rarity).star,
-    level:c.level, ransom:player.pendingRecruit.ransom, rosterFull:(player.roster||[]).length>=CFG.ROSTER_MAX };
+    level:c.level, ransom:player.pendingRecruit.ransom, rosterFull:(player.roster||[]).length>=CFG.ROSTER_MAX,
+    facIco:fac.ico||'', facNm:fac.nm||'' };
 }
 // 決定俘虜去留：收編入團 or 放走換贖金
 function apiCaptive_(p){
@@ -412,19 +437,32 @@ function apiCaptive_(p){
   cleanPlayer_(player); savePlayer(player);
   return { player:player, kept:out };
 }
-// 依結果發戰利品：逃跑=無・擊沉=打撈半數・俘虜=全額＋奪船（待玩家決定編入/拆解）＋有機會招降船員
+// 依結果發戰利品：逃跑=無・擊沉=打撈半數・俘虜=全額＋奪船＋俘虜船長＋有機會招降船員；並依勢力調整好感
 function applyNavalReward_(player, enemy, r, report, ammo){
   if (!player.cargo) player.cargo = {};
+  // 勢力好感：對誰動手就得罪誰（擊沉最兇、俘虜次之、打帶跑最輕）
+  var eFac = enemy.fac;
+  if (eFac){
+    var hit = r.fled ? -10 : (r.win ? (r.capture ? -35 : -55) : -15);
+    applyRep_(player, eFac, hit);
+    var ef = FACTION_BY[eFac]||{};
+    report.repHit = { fac:eFac, ico:ef.ico||'', nm:ef.nm||'', delta:hit };
+  }
   if (r.fled){ report.fled = true; report.note = '成功脫離，全身而退（未取得戰利品）。'; return; }
   if (r.win){
     var g = rint(enemy.gold[0], enemy.gold[1]); player.gold += g; report.gold = g;
-    if (r.capture){   // 接舷俘虜：全額貨物 + 奪下敵船 + 有機會招降船員
+    if (r.capture){   // 接舷俘虜：全額貨物 + 奪船 + 俘虜船長（可贖金）+ 有機會招降船員
       for (var i=0;i<enemy.loot;i++){ if (cargoCount_(player) >= effectiveCargoMax(player)) break; var gd=GOODS[rint(0,GOODS.length-1)]; player.cargo[gd.id]=(player.cargo[gd.id]||0)+1; report.loot.push(gd.id); }
       player.pendingPrize = makePrize_(enemy);
       var pz = player.pendingPrize;
       report.prize = { nm:pz.nm, ico:pz.ico, hullMax:pz.hullMax, cannon:pz.cannon, cargoBonus:pz.cargoBonus, speed:pz.speed, scrapGold:pz.scrapGold, full:(player.fleet||[]).length>=fleetCap_(player) };
-      tryPersuade_(player, report, ammo);
-    } else {          // 砲擊擊沉：只能打撈半數
+      // 俘虜船長
+      var cfac = FACTION_BY[eFac]||{}, cfoe = FACTION_BY[cfac.foe]||{};
+      player.pendingCaptain = { nm:enemy.nm+' 船長', fac:eFac||'', ransom: 80 + (enemy.tier||0)*120 + rint(0,60) };
+      report.captain = { nm:player.pendingCaptain.nm, ico:'🧑‍✈️', fac:eFac||'', facIco:cfac.ico||'', facNm:cfac.nm||'',
+        foe:cfac.foe||'', foeNm:cfoe.nm||'', foeIco:cfoe.ico||'', ransom:player.pendingCaptain.ransom };
+      tryPersuade_(player, report, ammo, enemy);
+    } else {          // 砲擊擊沉：只能打撈半數（人與船同歸於盡）
       var half = Math.max(1, Math.ceil(enemy.loot/2));
       for (var j=0;j<half;j++){ if (cargoCount_(player) >= effectiveCargoMax(player)) break; var g2=GOODS[rint(0,GOODS.length-1)]; player.cargo[g2.id]=(player.cargo[g2.id]||0)+1; report.loot.push(g2.id); }
       report.sunk = true;
@@ -434,6 +472,29 @@ function applyNavalReward_(player, enemy, r, report, ammo){
     if (gs.length){ var lg=gs[rint(0,gs.length-1)]; var ll=Math.min(player.cargo[lg], 1+rint(0,2)); player.cargo[lg]-=ll; if(player.cargo[lg]<=0)delete player.cargo[lg]; report.lostCargo=ll; }
     var pen=Math.min(player.gold||0, rint(20,60)); player.gold-=pen; report.lostGold=pen;
   }
+}
+// 處置俘虜船長：贖回原勢力（緩和仇）／賣給敵對（賺更多但徹底得罪）／放走（賣人情）
+function apiCaptain_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (!player.pendingCaptain) throw new Error('沒有待處置的俘虜船長');
+  var cap = player.pendingCaptain, fac = FACTION_BY[cap.fac]||{}, out;
+  if (p.decision === 'sell'){
+    var g = Math.round((cap.ransom||0)*1.6); player.gold += g;
+    applyRep_(player, cap.fac, -80);
+    out = { mode:'sell', gold:g, foeNm:(FACTION_BY[fac.foe]||{}).nm||'敵對勢力' };
+  } else if (p.decision === 'release'){
+    applyRep_(player, cap.fac, +120);
+    out = { mode:'release', facNm:fac.nm||'' };
+  } else {
+    player.gold += (cap.ransom||0);
+    applyRep_(player, cap.fac, +50);
+    out = { mode:'ransom', gold:cap.ransom||0, facNm:fac.nm||'' };
+  }
+  player.gold = Math.max(0, player.gold);
+  delete player.pendingCaptain;
+  cleanPlayer_(player); savePlayer(player);
+  return { player:player, kept:out };
 }
 // 決定戰利品船：編入艦隊 or 拆解換金
 function apiPrize_(p){
@@ -462,7 +523,7 @@ function apiNaval_(p){
   var prog = Math.min(3, Math.floor((player.deepest||0)/8));
   var ti = Math.max(0, Math.min(3, prog - 1 + rint(0,2)));
   var base = ENEMY_SHIPS[ti];
-  var enemy = { nm:base.nm, ico:base.ico, hull:base.hull, cannon:base.cannon, speed:base.speed, gold:base.gold, loot:base.loot };
+  var enemy = { nm:base.nm, ico:base.ico, hull:base.hull, cannon:base.cannon, speed:base.speed, gold:base.gold, loot:base.loot, fac:shipFaction_(base.nm), tier:ti };
   var r = resolveNaval_(player.ship, party, enemy, navalGun_(player), p.stance, base.speed, 0, p.ammo);
   injectMateLine_(player, r);
   player.ship.hull = r.playerHull;
@@ -556,7 +617,7 @@ function apiSea_(p){
     if (player.raided[rk]) throw new Error('這艘商船今天已被你打劫過了');
     var byId={}; (player.roster||[]).forEach(function(c){ byId[c.id]=c; });
     var party=(player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
-    var enemy={ nm:npc.nm, ico:npc.ico, hull:npc.hull, cannon:npc.cannon, speed:npc.speed, gold:npc.gold, loot:npc.loot };
+    var enemy={ nm:npc.nm, ico:npc.ico, hull:npc.hull, cannon:npc.cannon, speed:npc.speed, gold:npc.gold, loot:npc.loot, fac:npc.fac, tier:npc.tier };
     if (worldEvent().type==='pirate') enemy.loot = (enemy.loot||0)+1;   // 海盜猖獗日：掠奪更豐
     var surp = consumeScout_(player, 'sea:'+p.id);
     var r = resolveNaval_(player.ship, party, enemy, navalGun_(player), p.stance, npc.speed, surp, p.ammo);
@@ -650,6 +711,8 @@ function apiConquer_(p){
     var g = rint(gar.gold[0], gar.gold[1]); player.gold += g; report.gold = g;
     player.holdings[pid] = { lv:1, since: Date.now(), lastAt: Date.now() };
     report.captured = true;
+    var cfac = marketFac_(pid);
+    if (cfac){ applyRep_(player, cfac, -150); var cf=FACTION_BY[cfac]||{}; report.repHit={ fac:cfac, ico:cf.ico||'', nm:cf.nm||'', delta:-150 }; }   // 攻佔其港＝重創好感
   } else {
     var pen = Math.min(player.gold||0, rint(30,80)); player.gold -= pen; report.lostGold = pen;
   }

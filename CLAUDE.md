@@ -22,7 +22,8 @@
 ## ⚠️ 動工前必記的雷區
 1. **離線 mock 鏡像**：`Index.html` 有一整套 `*C`/`*_C` 後綴函式與常數（`tradePriceC`/`MARKETS_C`/`resolveNavalC`/`GARRISONS_C`…）鏡像伺服器邏輯。
    **改伺服器規則/資料 → 一定同步這些鏡像**，否則線上/離線不一致。
-2. **新增港口** → 同步 `MARKETS`＋`MARKETS_C`、`GARRISONS`＋`GARRISONS_C`。
+2. **新增港口** → 同步 `MARKETS`＋`MARKETS_C`、`GARRISONS`＋`GARRISONS_C`、`MARKET_FACTION`＋`MARKET_FACTION_C`（勢力歸屬）。
+   **改勢力/好感規則** → 同步 `FACTIONS`/`applyRep_`（Code.gs）與 `FACTIONS_C`/`applyRepC`（Index.html）。
 3. **改 player 欄位** → 同步 `ensureShape_`（Store.gs）與 `ensureC`（Index.html mock）補洞。
 4. **頭像 `pthumb` 永遠回傳原網址**（`return url`）；靠 CSS `object-fit:cover` 裁切＋瀏覽器快取。
    **絕不**改請求別的尺寸——會逼 Pollinations 重新生成（慢＋常破圖＋失快取）。載入失敗 `onerror` 退回職業圖示。
