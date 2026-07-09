@@ -178,6 +178,30 @@
   .lscene{position:absolute;pointer-events:none;font-size:19px;z-index:1;opacity:.72;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))}
   .lbanner{position:absolute;left:8px;top:8px;z-index:5;background:rgba(50,36,18,.6);color:#ffe9bf;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:8px;border:1px solid rgba(244,195,78,.4)}
 
+  /* ── 約會 / 副手對話窗 ── */
+  .date{display:flex;flex-direction:column;height:100dvh;background:radial-gradient(130% 80% at 50% 0%,#3a2c46,#241a2e 55%,#181019)}
+  .dhead{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);background:rgba(20,14,26,.6);backdrop-filter:blur(6px)}
+  .dhead .dav{width:42px;height:42px;border-radius:12px;overflow:hidden;background:#241d14;flex:none;display:flex;align-items:center;justify-content:center;font-size:22px}
+  .dhead .dav img{width:100%;height:100%;object-fit:cover;display:block}
+  .dhead .di{flex:1;min-width:0}.dhead .di b{font-size:15px}.dhead .di small{display:block;color:#ffb8d8;font-size:11px}
+  .dhead .dback{background:#0005;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:6px 10px;font-size:13px;font-weight:700;cursor:pointer}
+  .dlog{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:9px}
+  .dbub{max-width:80%;padding:8px 12px;border-radius:15px;font-size:14px;line-height:1.65;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+  .dbub.her{align-self:flex-start;background:linear-gradient(180deg,#463a5e,#3a2f50);color:#f2e9ff;border-bottom-left-radius:5px}
+  .dbub.me{align-self:flex-end;background:linear-gradient(180deg,#f4c34e,#d7a52a);color:#3a2600;border-bottom-right-radius:5px}
+  .dbub.sys{align-self:center;background:rgba(0,0,0,.35);color:var(--soft);font-size:11px;border-radius:10px;text-align:center}
+  .dnm{font-size:10px;color:#c8a8e0;margin:2px 0 -3px 5px}
+  .dtyping{align-self:flex-start;background:#3a2f50;color:#c8a8e0;padding:8px 14px;border-radius:15px;font-size:14px;letter-spacing:2px;animation:dpulse 1.1s ease-in-out infinite}
+  @keyframes dpulse{0%,100%{opacity:.5}50%{opacity:1}}
+  .dchips{display:flex;gap:6px;overflow-x:auto;padding:7px 10px 3px;scrollbar-width:none}.dchips::-webkit-scrollbar{display:none}
+  .dchip{flex:none;background:rgba(200,168,224,.15);border:1px solid #6d5a8e;color:#e6d8f5;border-radius:14px;padding:4px 11px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .dchip:active{transform:scale(.94)}
+  .dbar{display:flex;gap:7px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:rgba(20,14,26,.9)}
+  .dbar input{flex:1;min-width:0;background:#1c1524;border:1px solid #4a3a5e;color:var(--ink);border-radius:20px;padding:10px 14px;font-size:14px;font-family:inherit;outline:none}
+  .dbar input:focus{border-color:#8a6fd0}
+  .dbar .dsend{flex:none;background:linear-gradient(180deg,#c86fb0,#a04f88);color:#fff;border:none;border-radius:20px;padding:0 16px;font-size:15px;font-weight:800;cursor:pointer}
+  .dbar .dsend:active{transform:scale(.95)}.dbar .dsend:disabled{opacity:.5}
+
   .u{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:9px;margin-bottom:8px}
   .u .av{width:44px;height:44px;border-radius:10px;object-fit:cover;background:#241d14;flex:none;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden}
   .u .av img{width:100%;height:100%;object-fit:cover}
@@ -330,7 +354,7 @@ function srv(action,payload){
 function mock(action,p){return new Promise(function(res,rej){
   var DB=JSON.parse(localStorage.getItem('merc_db')||'{}');
   function put(pl){DB[pl.nick]=pl;localStorage.setItem('merc_db',JSON.stringify(DB));}
-  function ensureC(pl){if(!pl.port)pl.port='merc';if(!pl.cargo)pl.cargo={};if(typeof pl.clues!=='number')pl.clues=0;if(pl.ship){if(typeof pl.ship.hull!=='number')pl.ship.hull=pl.ship.hullMax;if(typeof pl.ship.speed!=='number')pl.ship.speed=6;if(typeof pl.ship.gunTier!=='number')pl.ship.gunTier=1;if(typeof pl.ship.tier!=='number')pl.ship.tier=1;}if(typeof pl.invest!=='number')pl.invest=0;if(!pl.holdings)pl.holdings={};if(!pl.posts)pl.posts={};if(!pl.rep)pl.rep={};if(!pl.bag)pl.bag=[];if(!pl.roster)pl.roster=[];if(!pl.team)pl.team={battle:[],support:[]};ensureSeaC(pl);}
+  function ensureC(pl){if(!pl.port)pl.port='merc';if(!pl.cargo)pl.cargo={};if(typeof pl.clues!=='number')pl.clues=0;if(pl.ship){if(typeof pl.ship.hull!=='number')pl.ship.hull=pl.ship.hullMax;if(typeof pl.ship.speed!=='number')pl.ship.speed=6;if(typeof pl.ship.gunTier!=='number')pl.ship.gunTier=1;if(typeof pl.ship.tier!=='number')pl.ship.tier=1;}if(typeof pl.invest!=='number')pl.invest=0;if(!pl.holdings)pl.holdings={};if(!pl.posts)pl.posts={};if(!pl.rep)pl.rep={};if(!pl.chats)pl.chats={};if(!pl.bag)pl.bag=[];if(!pl.roster)pl.roster=[];if(!pl.team)pl.team={battle:[],support:[]};ensureSeaC(pl);}
   function roll(){var a=[d6(),d6(),d6(),d6()].sort(function(x,y){return x-y;});return a[1]+a[2]+a[3];}
   function d6(){return 1+Math.floor(Math.random()*6);}
   function mk(name,job,portrait,seed,pbase,race){var base={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){base[a]=Math.min(20,((pbase&&pbase[a])||roll())+(g[a]||0));});var c={id:'c'+Math.random().toString(36).slice(2,9),name:name,job:job,race:race||'human',support:isSup(job),portrait:portrait||'',seed:seed||0,level:1,xp:0,base:base,equip:{weapon:null,armor:null,trinket:null},hp:0,maxhp:0};c.maxhp=cMaxHp(c);c.hp=c.maxhp;return c;}
@@ -795,7 +819,8 @@ function openMate(){
   body+='<div class="note" style="text-align:center;margin:6px 0 2px">'+(ri?ri.ico+ri.nm+' ':'')+ci.ico+ci.nm+' ・ Lv'+m.level+'</div>';
   body+='<div class="note" style="text-align:center;font-size:15px">'+affHearts(m.id)+'<br><small style="color:var(--gold)">'+AFF_NM[affLevel(m.id)]+'</small></div>';
   body+='<div class="card" style="border-color:#8a6fd0;margin-top:8px"><b>👩‍✈️ '+m.name+'</b><div class="note" id="matesay" style="text-align:left;margin-top:6px;line-height:1.75;color:#f0d6ad;min-height:44px">「'+(m.bio||'…（想聽聽她的想法嗎？）')+'」</div></div>';
-  body+='<div class="rowbtns" style="margin-top:10px"><button class="btn re" id="mchat">💬 閒聊</button><button class="btn ok" id="madvice">💡 給建議</button></div>';
+  body+='<button class="btn" id="mdate" style="margin-top:10px;background:linear-gradient(180deg,#c86fb0,#a04f88);color:#fff">💗 約會 · 專屬對話</button>';
+  body+='<div class="rowbtns" style="margin-top:8px"><button class="btn re" id="mchat">💬 閒聊</button><button class="btn ok" id="madvice">💡 給建議</button></div>';
   body+='<div class="rowbtns"><button class="btn gold" id="mgift">🎁 送禮物</button><button class="btn dim" id="mswap">🔄 更換副手</button></div>';
   // 💞 情義線
   var lv=affLevel(m.id),seenLv=(P.mateStory&&P.mateStory[m.id])||0;
@@ -811,6 +836,7 @@ function openMate(){
   document.getElementById('madvice').onclick=function(){var adv=getAdvice();var el=document.getElementById('matesay');el.innerHTML=adv.slice(0,4).map(function(a){return '<div style="margin:2px 0">'+a+'</div>';}).join('');};
   document.getElementById('mgift').onclick=function(){giftMenu(m.id);};
   document.getElementById('mswap').onclick=function(){swapMate();};
+  document.getElementById('mdate').onclick=function(){closeSheet();renderDate(m);};
   var ms=document.getElementById('mscene');if(ms)ms.onclick=function(){var sl=+ms.dataset.lv;ms.disabled=true;ms.textContent='回憶湧現…';var box=document.getElementById('scenebox');box.textContent='✨ '+m.name+'…';mateScene(m,sl,function(t){box.textContent=t;if(!P.mateStory)P.mateStory={};P.mateStory[m.id]=Math.max(seenLv,sl);saveP();if(ms)ms.remove();});};
 }
 var MATE_STORY=[2,3,4,5];
@@ -913,6 +939,112 @@ function mateChatLine(c){
   var last=window._lastChat||'', tries=0, s;
   do{ s=pool[Math.floor(Math.random()*pool.length)]; tries++; }while(s===last&&tries<6&&pool.length>1);
   window._lastChat=s; return s;
+}
+// ============ 💗 約會 / 對話窗（獨立畫面・連續記憶・免費 AI＋模板保底）============
+// 個性：依職業給一句人設，讓每位夥伴語氣有別（AI prompt 與模板都用）
+var JOB_PERSONA={
+  fighter:'豪爽直率、重義氣，講話大喇喇但心很暖',paladin:'正直溫柔、有點一本正經，會默默守護你',
+  rogue:'俏皮機靈、愛逗你、嘴上損你心裡在乎',ranger:'沉靜寡言、可靠細膩，話不多但總在看著你',
+  wizard:'聰慧冷靜、偶爾毒舌，其實很在意你的安危',cleric:'溫暖包容、愛操心，像會照顧人的大姊姊',
+  bard:'浪漫健談、甜言蜜語信手拈來，愛開玩笑',merchant:'精明現實又有點小可愛，算盤打得響卻對你心軟',
+  scholar:'書卷氣、好奇心重，喜歡和你分享冷知識',medic:'細心體貼、把你的傷放第一位',diviner:'神秘慵懶、話裡有話，偶爾冒出預言般的浪漫'};
+function matePersona(c){return JOB_PERSONA[c.job]||'個性鮮明、對團長有一份特別的在意';}
+function chatlog(id){if(!P.chats)P.chats={};if(!Array.isArray(P.chats[id]))P.chats[id]=[];return P.chats[id];}
+function pushChat(id,w,t){var l=chatlog(id);l.push({w:w,t:t});if(l.length>16)P.chats[id]=l.slice(-16);}
+// 全螢幕對話畫面
+function renderDate(c){
+  if(!c){toast('尚未指定副手');return;}
+  var ci=cinfo(c.job)||{},ri=RACES[c.race]||{};
+  var h='<div class="date"><div class="dhead"><button class="dback" id="dback">← 回城鎮</button>'+
+    '<div class="dav">'+avatarHTML(c)+'</div><div class="di"><b>'+c.name+'</b><small>'+affHearts(c.id)+' ・ '+AFF_NM[affLevel(c.id)]+'</small></div>'+
+    '<button class="dback" id="dgift">🎁</button></div>';
+  h+='<div class="dlog" id="dlog"></div>';
+  h+='<div class="dchips" id="dchips"></div>';
+  h+='<div class="dbar"><input id="dinput" placeholder="對 '+c.name+' 說點什麼…" maxlength="80" autocomplete="off"><button class="dsend" id="dsend">送出</button></div>';
+  h+='</div>';
+  app.innerHTML=h;
+  document.getElementById('dback').onclick=renderTown;
+  document.getElementById('dgift').onclick=function(){giftMenu(c.id);};
+  var log=chatlog(c.id);
+  if(!log.length){ pushChat(c.id,1,dateGreeting(c)); saveP(); }
+  dateRenderLog(c);
+  dateRenderChips(c);
+  var inp=document.getElementById('dinput'), snd=document.getElementById('dsend');
+  function go(){var t=(inp.value||'').trim();if(!t)return;inp.value='';dateSend(c,t);}
+  snd.onclick=go;
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();go();}});
+  inp.focus();
+}
+function dateRenderLog(c){
+  var el=document.getElementById('dlog');if(!el)return;
+  el.innerHTML=chatlog(c.id).map(function(m){
+    if(m.w===2)return '<div class="dbub sys">'+m.t+'</div>';
+    return (m.w===1?'<div class="dnm">'+c.name+'</div>':'')+'<div class="dbub '+(m.w===1?'her':'me')+'">'+esc(m.t)+'</div>';
+  }).join('');
+  el.scrollTop=el.scrollHeight;
+}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function dateRenderChips(c){
+  var el=document.getElementById('dchips');if(!el)return;
+  var lv=affLevel(c.id);
+  var chips=['最近好嗎？','聊聊你的過去','等下想去哪？','謝謝你一直都在'];
+  if(lv>=3)chips.push('我們的將來…','你對我來說很特別');
+  if((P.deepest||0)>=5)chips.push('這趟航海累了吧');
+  chips.push('🎁 送禮');
+  el.innerHTML=chips.map(function(t){return '<span class="dchip" data-q="'+esc(t)+'">'+t+'</span>';}).join('');
+  q('[data-q]',function(elm){var t=elm.dataset.q;if(t==='🎁 送禮'){giftMenu(c.id);return;}var inp=document.getElementById('dinput');if(inp){inp.value=t;inp.focus();}});
+}
+function dateSend(c,text){
+  pushChat(c.id,0,text); dateRenderLog(c);
+  var snd=document.getElementById('dsend');if(snd)snd.disabled=true;
+  // 打字中…
+  var log=document.getElementById('dlog');
+  var typ=document.createElement('div');typ.className='dtyping';typ.id='dtyping';typ.textContent='● ● ●';
+  if(log){log.appendChild(typ);log.scrollTop=log.scrollHeight;}
+  dateReply(c,text,function(reply){
+    var t=document.getElementById('dtyping');if(t)t.remove();
+    pushChat(c.id,1,reply);
+    // 聊天加好感（每句 +3）
+    if(!P.affinity)P.affinity={};var bef=affLevel(c.id);P.affinity[c.id]=(P.affinity[c.id]||0)+3;var aft=affLevel(c.id);
+    saveP();
+    if(aft>bef)pushChat(c.id,2,'💞 你與 '+c.name+' 的關係提升為「'+AFF_NM[aft]+'」');
+    dateRenderLog(c); dateRenderChips(c);
+    // 更新標題好感
+    var di=document.querySelector('.dhead .di small');if(di)di.innerHTML=affHearts(c.id)+' ・ '+AFF_NM[affLevel(c.id)];
+    if(snd)snd.disabled=false;
+    var inp=document.getElementById('dinput');if(inp)inp.focus();
+  });
+}
+// 免費 AI 回覆（帶最近對話＋關係＋近況＝連續記憶），逾時/失敗用模板
+function dateReply(c,text,cb){
+  var ci=cinfo(c.job)||{},race=(RACES[c.race]||{}).nm||'人類',aff=AFF_NM[affLevel(c.id)];
+  var ctx='團長「'+P.nick+'」目前地城第'+(P.deepest||0)+'層、'+(P.gold||0)+'金幣'+(P.ship?'、有船在跑海':'、還在陸地起步')+(P.quest?'、正在跑委託':'');
+  var hist=chatlog(c.id).filter(function(m){return m.w!==2;}).slice(-6).map(function(m){return (m.w===1?c.name:'團長')+'：'+m.t;}).join('\n');
+  var prompt='你是奇幻大航海世界裡傭兵團長的副手兼心上人，名叫'+c.name+'，是'+race+ci.nm+'，個性：'+matePersona(c)+'。你和團長的關係是「'+aff+'」。近況：'+ctx+'。這是你們最近的對話，請「延續記憶與語氣」自然回覆團長最新一句，用繁體中文、30~55字、有感情有你的個性，可主動延伸話題或回憶過去，但別浮誇。只回你要說的話，不要旁白、不要引號、不要寫出名字前綴。\n'+hist+'\n團長：'+text+'\n'+c.name+'：';
+  var done=false,timer=setTimeout(function(){if(!done){done=true;cb(dateTemplate(c,text));}},9000);
+  fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){
+    if(done)return;done=true;clearTimeout(timer);
+    t=(t||'').trim().replace(/^["「『』]+|["」『』]+$/g,'').replace(new RegExp('^'+c.name+'[：:]\\s*'),'').slice(0,90);
+    cb(t&&!/error|unable|sorry|api/i.test(t)?t:dateTemplate(c,text));
+  }).catch(function(){if(done)return;done=true;clearTimeout(timer);cb(dateTemplate(c,text));});
+}
+function dateGreeting(c){
+  var lv=affLevel(c.id);
+  if(lv>=4)return '你來啦～我等你好久了。今天想跟我說些什麼？';
+  if(lv>=2)return '嗨，團長。難得有空坐下來聊聊，我可高興了。';
+  return '團長？找我有事嗎…還是，只是想跟我說說話？';
+}
+// 模板保底：依關鍵字＋好感給有溫度的回覆（sandbox 無網路也能聊）
+function dateTemplate(c,text){
+  var lv=affLevel(c.id),t=text||'';
+  if(/愛|喜歡|心動|在乎|想你/.test(t))return lv>=3?'…你突然這樣，害我臉都燙了。這句話，我會記很久很久。':'欸、欸你別亂說啦…不過，聽了還是有點開心。';
+  if(/謝謝|感謝|辛苦/.test(t))return '傻瓜，跟我還這麼客氣。我陪著你，是心甘情願的。';
+  if(/過去|以前|故事|身世/.test(t))return lv>=2?'我的過去啊…等哪天靠了港，我泡壺茶，慢慢說給你聽，好嗎？':'那些陳年往事…有機會再說吧。現在，我更想聽你的。';
+  if(/未來|將來|以後|一起/.test(t))return lv>=3?'以後啊…我想和你一直航下去，哪片海都好，只要你在。':'以後的事誰說得準，但只要這團還在，我就在。';
+  if(/累|辛苦|休息|睡/.test(t))return '你也是，別老硬撐。今晚早點歇著，船和帳都交給我盯。';
+  if(/去哪|哪裡|出海|航|港/.test(t))return '想去哪我都奉陪。不如下個港口，我們偷個閒逛逛？';
+  if(/[?？]$/.test(t))return lv>=3?'嗯…讓我想想。不管答案是什麼，我都站在你這邊。':'這問題有點難倒我了，不過我會陪你一起找答案。';
+  return ['有你在身邊說說話，就覺得踏實。','海風正好，這種悠閒難得，多陪我一會兒嘛。','跟你聊天總是特別快，時間都不夠用。','無論你說什麼，我都愛聽。'][Math.floor(Math.random()*4)];
 }
 // 桌機右側欄：成員在幹嘛 + 艦隊狀態
 function asideHTML(){

@@ -131,6 +131,7 @@ function ensureShape_(pl){
   if (!pl.holdings || typeof pl.holdings !== 'object') pl.holdings = {};   // 領地
   if (!pl.posts || typeof pl.posts !== 'object') pl.posts = {};           // 船上職務
   if (!pl.rep || typeof pl.rep !== 'object') pl.rep = {};                 // 勢力好感度
+  if (!pl.chats || typeof pl.chats !== 'object') pl.chats = {};           // 副手對話紀錄（約會窗記憶）
   ensureSea_(pl);   // 航海術 / 商業 等級
   pl.roster.forEach(function(c){
     if (!c) return;
