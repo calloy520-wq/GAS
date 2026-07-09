@@ -264,19 +264,19 @@
 <script>
 // ============ 前端資料（顯示用；戰鬥仍以後端為準）============
 var COMBAT={
-  fighter:{nm:'戰士',ico:'⚔️',atk:'str',hd:10,dmg:[1,8],skill:'猛擊',blurb:'血厚攻高的前線支柱'},
-  paladin:{nm:'聖騎士',ico:'🛡️',atk:'str',hd:10,dmg:[1,8],skill:'神聖斬',blurb:'能扛能奶的重甲騎士'},
-  rogue:{nm:'盜賊',ico:'🗡️',atk:'dex',hd:8,dmg:[1,6],skill:'偷襲',blurb:'高暴擊高閃避的收割者'},
-  ranger:{nm:'遊俠',ico:'🏹',atk:'dex',hd:10,dmg:[1,8],skill:'瞄準連射',blurb:'穩定輸出的遠程獵手'},
-  wizard:{nm:'法師',ico:'🔮',atk:'int',hd:6,dmg:[1,6],skill:'火球術',blurb:'脆皮但一發清場'},
-  cleric:{nm:'牧師',ico:'✨',atk:'wis',hd:8,dmg:[1,6],skill:'聖光',blurb:'能打能奶的定海神針'}
+  fighter:{nm:'戰士',ico:'⚔️',atk:'str',hd:10,dmg:[1,8],grow:{str:2,con:1},skill:'猛擊',blurb:'血厚攻高的前線支柱'},
+  paladin:{nm:'聖騎士',ico:'🛡️',atk:'str',hd:10,dmg:[1,8],grow:{str:1,con:1,cha:1},skill:'神聖斬',blurb:'能扛能奶的重甲騎士'},
+  rogue:{nm:'盜賊',ico:'🗡️',atk:'dex',hd:8,dmg:[1,6],grow:{dex:2,cha:1},skill:'偷襲',blurb:'高暴擊高閃避的收割者'},
+  ranger:{nm:'遊俠',ico:'🏹',atk:'dex',hd:10,dmg:[1,8],grow:{dex:2,wis:1},skill:'瞄準連射',blurb:'穩定輸出的遠程獵手'},
+  wizard:{nm:'法師',ico:'🔮',atk:'int',hd:6,dmg:[1,6],grow:{int:2,con:1},skill:'火球術',blurb:'脆皮但一發清場'},
+  cleric:{nm:'牧師',ico:'✨',atk:'wis',hd:8,dmg:[1,6],grow:{wis:2,con:1},skill:'聖光',blurb:'能打能奶的定海神針'}
 };
 var SUPPORT={
-  bard:{nm:'吟遊詩人',ico:'🎵',hd:8,dmg:[1,6],desc:'全隊攻擊檢定 +2'},
-  merchant:{nm:'商人',ico:'💰',hd:6,dmg:[1,4],desc:'金幣與掉落率 +40%'},
-  scholar:{nm:'學者',ico:'📖',hd:6,dmg:[1,4],desc:'經驗 +35%、自動鑑定'},
-  medic:{nm:'醫者',ico:'⛑️',hd:8,dmg:[1,6],desc:'每層自動治療全隊 12%'},
-  diviner:{nm:'占卜師',ico:'🍀',hd:6,dmg:[1,4],desc:'全隊暴擊+10%、避陷阱'}
+  bard:{nm:'吟遊詩人',ico:'🎵',hd:8,dmg:[1,6],grow:{cha:2,dex:1},desc:'全隊攻擊檢定 +2'},
+  merchant:{nm:'商人',ico:'💰',hd:6,dmg:[1,4],grow:{cha:2,int:1},desc:'金幣與掉落率 +40%'},
+  scholar:{nm:'學者',ico:'📖',hd:6,dmg:[1,4],grow:{int:2,wis:1},desc:'經驗 +35%、自動鑑定'},
+  medic:{nm:'醫者',ico:'⛑️',hd:8,dmg:[1,6],grow:{wis:2,int:1},desc:'每層自動治療全隊 12%'},
+  diviner:{nm:'占卜師',ico:'🍀',hd:6,dmg:[1,4],grow:{wis:1,cha:2},desc:'全隊暴擊+10%、避陷阱'}
 };
 var RACES={
   human:{nm:'人類',ico:'🧑',grow:{str:1,dex:1,con:1,int:1,wis:1,cha:1},perk:'全屬性 +1'},
@@ -447,6 +447,10 @@ function mock(action,p){return new Promise(function(res,rej){
       return res({player:pl,npcs:npcs()});}
     if(action==='treasure'){var pl=DB[p.nick.trim()];ensureC(pl);if((pl.clues||0)<5)return rej(new Error('海圖殘片不足（需 5 片）'));pl.clues-=5;var g=300+Math.floor(Math.random()*300);pl.gold+=g;var rep={gold:g,gear:null,goods:[]};if(Math.random()<0.6){rep.gear={ico:'🔥',nm:'烈焰之刃'};pl.bag.push('w_flame');}for(var i=0;i<3;i++){if(cargoCountC(pl)>=effCargoC(pl))break;var gd=GOODS_C[4+Math.floor(Math.random()*4)];pl.cargo[gd.id]=(pl.cargo[gd.id]||0)+1;rep.goods.push(gd.id);}put(pl);return res({player:pl,report:rep});}
     if(action==='dungeon'){var pl=DB[p.nick.trim()];ensureC(pl);var st=p.start||1;var g=0,x=0,fl=[];var reached=st-1;for(var f=st;f<=p.target;f++){if(Math.random()<0.12){reached=f;fl.push({floor:f,wipe:true,encounters:[],gold:0,xp:0,loot:[]});break;}var gg=10*f,xx=20*f;g+=gg;x+=xx;reached=f;fl.push({floor:f,boss:f%5===0,gold:gg,xp:xx,skills:(f>st?['🔍 隊長 察覺發現暗格 +'+Math.round(gg*0.3)+'🪙']:[]),loot:(f%5===0?[WEAPONS[Math.min(3,Math.floor(f/5))]]:[]),encounters:[mockBattle(pl,f,f%5===0)]});}pl.gold+=g;var rep={start:st,target:p.target,reached:reached,cleared:reached>=p.target&&!fl[fl.length-1].wipe,wiped:!!fl[fl.length-1].wipe,gold:g,xp:x,kills:fl.length*2,loot:fl.reduce(function(a,b){return a.concat((b.loot||[]).map(function(o){return o.id;}));},[]),floors:fl,levelUps:[]};
+      // 經驗分配→升級（鏡像伺服器：戰鬥位全額、後勤位半額）
+      var _by={};pl.roster.forEach(function(c){_by[c.id]=c;});
+      (pl.team.battle||[]).forEach(function(id){var c=_by[id];if(c)rep.levelUps=rep.levelUps.concat(grantXpC(c,x).map(function(u){return{name:c.name,level:u.level};}));});
+      (pl.team.support||[]).forEach(function(id){var c=_by[id];if(c)rep.levelUps=rep.levelUps.concat(grantXpC(c,Math.round(x*0.5)).map(function(u){return{name:c.name,level:u.level};}));});
       if(rep.wiped){var keep=Math.floor(g*0.5);var lost=g-keep;pl.gold-=lost;rep.gold=keep;rep.rescueGoldLost=lost;var kl=rep.loot.filter(function(){return Math.random()<0.5;});rep.rescueLootLost=rep.loot.length-kl.length;rep.loot=kl;}
       var oldDeep=pl.deepest||0;var oldR=rankOf(oldDeep);if(reached>pl.deepest)pl.deepest=reached;var newR=rankOf(pl.deepest||0);if(newR>oldR){var bn=newR*100;pl.gold+=bn;rep.rankUp={to:RANKS[newR].nm,ix:newR,reward:bn};}rep.newBosses=[];[5,10,15,20,25].forEach(function(bf){if(oldDeep<bf&&(pl.deepest||0)>=bf)rep.newBosses.push(bf);});
       if(!pl.uniques)pl.uniques={};rep.uniqueGains=[];var UBF={10:'u_hazhi',15:'u_heart',20:'u_soul',25:'u_legend'};rep.newBosses.forEach(function(bf){if(UBF[bf]&&!pl.uniques[bf]){pl.uniques[bf]=true;pl.bag.push(UBF[bf]);var u=UNIQUE_GEAR_C[UBF[bf]];rep.uniqueGains.push({ico:u.ico,nm:u.nm});}});
@@ -1489,6 +1493,14 @@ function uRow(c,btn){var st=isSup(c.job)?null:cStats(c);var ci=cinfo(c.job);
   return '<div class="u"><div class="av" data-detail="'+c.id+'" style="cursor:pointer">'+avatarHTML(c)+'</div><div class="info"><b>'+rr+c.name+' '+tr+' <span class="tag">Lv'+c.level+'</span></b><small>'+rc+ci.ico+ci.nm+' ・ '+sub+'</small>'+hpbar+'</div>'+(btn||'')+'</div>';
 }
 function cXpNext(level){return level*100+(level-1)*(level-1)*20;}
+// 離線鏡像伺服器 grantXp：給經驗→升級（屬性成長＋補血），回傳升級清單
+function grantXpC(c,amount){c.xp=(c.xp||0)+(amount||0);var ups=[];var guard=0;
+  while(c.xp>=cXpNext(c.level)&&guard++<50){c.xp-=cXpNext(c.level);c.level++;
+    var ci=cinfo(c.job)||{};var g=ci.grow||{};if(!c.base)c.base={};
+    for(var a in g){c.base[a]=Math.min(20,(c.base[a]||10)+g[a]);}
+    var oldMax=c.maxhp;c.maxhp=cMaxHp(c);if(c.hp>0)c.hp+=(c.maxhp-oldMax);
+    ups.push({level:c.level,hp:c.maxhp});}
+  return ups;}
 function charSheet(id){
   var c=byId(id);if(!c)return;var ci=cinfo(c.job);var ri=RACES[c.race];
   var body='<div class="pbox" id="csp" style="width:min(46vw,160px)">'+(c.portrait?'<img loading="lazy" src="'+pthumb(c.portrait,384)+'" onerror="this.onerror=null;this.outerHTML=&#39;'+ci.ico+'&#39;">':'<div class="ph" style="font-size:40px">'+ci.ico+'</div>')+'</div>';
