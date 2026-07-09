@@ -153,6 +153,31 @@
   .oship{position:absolute;font-size:23px;filter:drop-shadow(0 2px 3px #000);pointer-events:none;z-index:5;animation:ombob 3.2s ease-in-out infinite}
   @keyframes ombob{0%,100%{transform:translate(-50%,-150%) rotate(-4deg)}50%{transform:translate(-50%,-166%) rotate(4deg)}}
 
+  /* ── 陸地region map（城鎮周邊） ── */
+  .lmap{position:relative;width:100%;aspect-ratio:1/1.02;border-radius:16px;overflow:hidden;border:2px solid #5a4326;
+    background:radial-gradient(120% 100% at 42% 30%,#8ea865,#6f8a4c 40%,#556b3b 62%,#3f5230 100%);box-shadow:inset 0 0 46px rgba(20,30,10,.5)}
+  .lmap .lgrid{position:absolute;inset:0;opacity:.08;background-image:repeating-linear-gradient(0deg,#000 0 1px,transparent 1px 26px),repeating-linear-gradient(90deg,#000 0 1px,transparent 1px 26px);pointer-events:none}
+  .lmap .lsea{position:absolute;left:0;bottom:0;width:100%;height:26%;z-index:1;pointer-events:none;
+    background:linear-gradient(180deg,transparent,rgba(30,80,120,.35) 34%,rgba(24,72,110,.72));border-top:2px dashed rgba(210,235,255,.35)}
+  .lmap .lsea .lwv{position:absolute;inset:0;opacity:.16;background-image:repeating-linear-gradient(24deg,#fff 0 1px,transparent 1px 20px);animation:omwave 10s linear infinite}
+  .lmap .lforest{position:absolute;top:0;left:0;width:44%;height:40%;z-index:1;pointer-events:none;opacity:.5;
+    background:radial-gradient(closest-side,rgba(40,74,38,.9),transparent 72%)}
+  .lmap .lmtn{position:absolute;top:0;right:0;width:46%;height:34%;z-index:1;pointer-events:none;opacity:.55;
+    background:radial-gradient(closest-side at 70% 30%,rgba(96,88,80,.9),transparent 70%)}
+  .lroads{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;overflow:visible}
+  .lroads path{fill:none;stroke:rgba(90,66,38,.55);stroke-width:2.4;stroke-linecap:round}
+  .lroads .lr2{stroke:rgba(120,92,54,.4);stroke-width:1.4;stroke-dasharray:2 2.4}
+  .lspot{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;cursor:pointer;width:80px;z-index:4}
+  .lspot .pin{font-size:27px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+  .lspot .pn{font-size:10px;font-weight:800;color:#fff;text-shadow:0 1px 3px #000;white-space:nowrap;background:rgba(50,36,18,.6);padding:0 6px;border-radius:6px;margin-top:1px}
+  .lspot .pd{font-size:8.5px;margin-top:1px;color:#ffe9bf;background:rgba(0,0,0,.4);border-radius:6px;padding:0 4px;white-space:nowrap}
+  .lspot:active{transform:translate(-50%,-50%) scale(.93)}
+  .lspot.lock{opacity:.5;cursor:default;filter:grayscale(.6)}
+  .lspot.main .pin{filter:drop-shadow(0 0 8px #f4c34e) drop-shadow(0 0 2px #f4c34e)}
+  .lspot.main .pn{background:#c8971f;color:#3a2600}
+  .lscene{position:absolute;pointer-events:none;font-size:19px;z-index:1;opacity:.72;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))}
+  .lbanner{position:absolute;left:8px;top:8px;z-index:5;background:rgba(50,36,18,.6);color:#ffe9bf;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:8px;border:1px solid rgba(244,195,78,.4)}
+
   .u{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:9px;margin-bottom:8px}
   .u .av{width:44px;height:44px;border-radius:10px;object-fit:cover;background:#241d14;flex:none;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden}
   .u .av img{width:100%;height:100%;object-fit:cover}
@@ -886,6 +911,56 @@ function asideHTML(){
   h+='<div class="ah">📍 現況</div><div class="ai"><small>🪙 '+P.gold+'　🏙️ '+portNmC(P.port||'merc')+'　⚔️ 最深 '+(P.deepest||0)+' 層　🧭 線索 '+(P.clues||0)+'/5</small></div>';
   return h;
 }
+// ── 城郊地區地圖：把陸地畫成有邊界的一塊地（森林／山脈／通海大道），建築照地理位置擺 ──
+// [id, 圖示, 名稱, x%, y%, 只在解鎖海洋後出現?]
+var LSPOTS=[
+  ['castle','🏰','領主城堡',50,14,0],
+  ['guild','🗡️','傭兵公會',27,33,0],
+  ['tavern','🍺','酒館',70,31,0],
+  ['shop','🛡️','武具店',20,52,0],
+  ['inn','🛏️','旅館',45,50,0],
+  ['black','🕶️','黑市',73,52,0],
+  ['team','👥','人員營帳',33,67,0],
+  ['inv','🎒','倉庫',58,67,0],
+  ['dungeon','⚔️','地下城入口',86,22,0],
+  ['trade','🏪','貿易所',34,85,1],
+  ['map','⚓','港口碼頭',63,85,1]
+];
+function regionMapHTML(){
+  var sea=seaOpen();
+  var h='<div class="lmap" id="lmap"><div class="lgrid"></div>';
+  h+='<div class="lbanner">🗺️ '+P.nick+'領地 · 城郊周邊</div>';
+  // 邊界地貌
+  h+='<div class="lforest"></div><div class="lmtn"></div>';
+  h+='<div class="lsea"><div class="lwv"></div></div>';
+  // 裝飾（樹林、山、農田）
+  h+='<div class="lscene" style="left:6%;top:8%">🌲</div><div class="lscene" style="left:15%;top:20%">🌲</div><div class="lscene" style="left:4%;top:34%">🌳</div>';
+  h+='<div class="lscene" style="left:80%;top:7%">🏔️</div><div class="lscene" style="left:92%;top:14%">⛰️</div><div class="lscene" style="left:70%;top:12%">🏔️</div>';
+  h+='<div class="lscene" style="left:14%;top:74%">🌾</div><div class="lscene" style="left:88%;top:70%">🐎</div>';
+  // 道路
+  h+='<svg class="lroads" viewBox="0 0 100 100" preserveAspectRatio="none">'+
+     '<path d="M50 14 Q45 28 40 38 Q52 50 50 62 Q48 76 50 90"/>'+
+     '<path class="lr2" d="M42 36 Q64 30 86 24"/>'+
+     '<path class="lr2" d="M40 50 Q26 55 22 60"/>'+
+     '<path class="lr2" d="M50 68 Q42 78 36 84"/>'+
+     '<path class="lr2" d="M50 68 Q58 78 62 84"/></svg>';
+  // 據點
+  LSPOTS.forEach(function(s){
+    var locked=s[5]&&!sea; if(locked)return;   // 海洋據點未解鎖就先不畫，避免劇透兼保持乾淨
+    var main=(s[0]==='castle');
+    var badge='';
+    if(s[0]==='inn'&&P.roster.some(function(c){return c.hp<c.maxhp;}))badge='🩹';
+    else if(s[0]==='guild'&&P.quest&&P.quest.prog>=P.quest.target)badge='🎁';
+    else if(s[0]==='guild'&&!P.quest)badge='❗';
+    else if(s[0]==='castle'&&!P.ship&&(P.deepest||0)>=5)badge='⚓';
+    else if(s[0]==='castle'&&P.fv===2&&(P.port||'merc')==='merc')badge='📜';
+    h+='<div class="lspot'+(main?' main':'')+'" data-b="'+s[0]+'" style="left:'+s[3]+'%;top:'+s[4]+'%">'+
+       '<div class="pin">'+s[1]+(badge?'<span style="font-size:13px">'+badge+'</span>':'')+'</div><div class="pn">'+s[2]+'</div></div>';
+  });
+  h+='</div>';
+  return h;
+}
+function bindRegion(){Array.prototype.forEach.call(document.querySelectorAll('#lmap .lspot'),function(el){el.onclick=function(){openBldg(el.dataset.b);};});}
 function renderTown(){
   var hero=heroOf();
   if(P.mate&&!byId(P.mate))P.mate=null;                 // 清掉失效參照
@@ -912,6 +987,10 @@ function renderTown(){
   h+='<div class="card" style="margin-bottom:10px;border-color:var(--gold-d)"><div class="note" style="text-align:left;line-height:1.7">'+
     '🎖️ <b>'+RANKS[ri].nm+'</b> ・ 👑 主線：討伐第 20 層魔王'+
     (P.quest?'<br>📜 委託：'+P.quest.name+'（'+Math.min(P.quest.prog,P.quest.target)+'/'+P.quest.target+'）':'<br>📜 目前無委託 —— 到公會接一張吧')+'</div></div>';
+  // 城郊地區地圖（點地標＝進建築）
+  h+='<div class="ah" style="margin:2px 0 6px">🗺️ 城郊地圖<small style="color:var(--soft);font-weight:600"> · 點地標前往</small></div>';
+  h+=regionMapHTML();
+  h+='<div class="note" style="margin:6px 0 10px">🌲 西林 ・ 🏔️ 北嶺 ・ 🌊 南方通往大海'+(seaOpen()?'':'（探到地下城第 5 層、領船後開放海路）')+'</div>';
   h+='<div class="signs">';
   BLDG.forEach(function(b){if(bldgLocked(b[0]))return;var badge=(b[0]==='inn'&&P.roster.some(function(c){return c.hp<c.maxhp;}))?'<span class="badge">傷</span>':((b[0]==='guild'&&P.quest&&P.quest.prog>=P.quest.target)?'<span class="badge">領獎</span>':(b[0]==='guild'&&!P.quest?'<span class="badge">!</span>':(b[0]==='castle'&&!P.ship&&(P.deepest||0)>=5?'<span class="badge">領船</span>':(b[0]==='castle'&&P.fv===2&&(P.port||'merc')==='merc'?'<span class="badge">回報</span>':''))));h+='<div class="sign" data-b="'+b[0]+'">'+badge+'<div class="ico">'+b[1]+'</div><div class="nm">'+b[2]+'</div><div class="ds">'+b[3]+'</div></div>';});
   h+='</div>';
@@ -925,6 +1004,7 @@ function renderTown(){
   var bg=document.getElementById('townbg');if(bg){bg.onload=function(){bg.classList.add('on');};bg.src=TOWN_BG_URL;}
   var mb=document.getElementById('matebar');if(mb)mb.onclick=function(){if(P.mate&&byId(P.mate))openMate();else swapMate();};
   Array.prototype.forEach.call(document.querySelectorAll('.sign'),function(el){el.onclick=function(){openBldg(el.dataset.b);};});
+  bindRegion();
   Array.prototype.forEach.call(document.querySelectorAll('[data-detail]'),function(el){el.onclick=function(){charSheet(el.dataset.detail);};});
   bindTabs();
   if(!P.tutSeen){ P.tutSeen=true; saveP(); setTimeout(showTutorial,400); }
