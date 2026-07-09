@@ -42,6 +42,7 @@ function route_(action, p){
     case 'faction': return apiFaction_(p);
     case 'lair':    return apiLair_(p);
     case 'porttask':return apiPortTask_(p);
+    case 'gift5':   return apiGift5_(p);
     case 'raid':    return apiRaidPlayer_(p);
     case 'shipbuy': return apiShipBuy_(p);
     case 'fleet':   return apiFleet_(p);
@@ -498,6 +499,34 @@ function apiLair_(p){
     return { player:player, report:report };
   }
   cleanPlayer_(player); savePlayer(player);
+  return { player:player };
+}
+// 🌟 命定夥伴：一生一次的保底 5★（下地城探索一次後領取；之後 5★ 只能碰運氣抽）
+function apiGift5_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (p.op === 'offer'){
+    if (player.gift5Cand) return { player:player, cand:player.gift5Cand };
+    if (player.gift5) throw new Error('命定夥伴一生只有一次，你已領取過了');
+    if ((player.deepest||0) < 1) throw new Error('先下地下城探索一次，命運才會為你引來傳奇夥伴');
+    if ((player.roster||[]).length >= CFG.ROSTER_MAX) throw new Error('隊伍已滿，先遣散再領');
+    var job = pick(Object.keys(COMBAT_CLASSES));
+    var race = RACE_KEYS[rint(0, RACE_KEYS.length-1)];
+    player.gift5Cand = { cid:'g5'+uid(), job:job, race:race, rarity:'legend', base:rollBaseByRarity('legend') };
+    player.gift5 = true;
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player, cand:player.gift5Cand };
+  }
+  if (p.op === 'take'){
+    if (!player.gift5Cand) throw new Error('沒有待領取的命定夥伴');
+    if ((player.roster||[]).length >= CFG.ROSTER_MAX) throw new Error('隊伍已滿，先遣散再領');
+    var g = player.gift5Cand;
+    var c = makeChar(p.name, g.job, p.portrait, p.seed, g.base, g.race); c.rarity = 'legend';
+    player.roster.push(c);
+    delete player.gift5Cand;
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player, recruited:c };
+  }
   return { player:player };
 }
 // 在地任務：停泊該港可接，每港每日一件

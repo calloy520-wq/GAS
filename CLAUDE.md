@@ -29,6 +29,7 @@
    **絕不**改請求別的尺寸——會逼 Pollinations 重新生成（慢＋常破圖＋失快取）。載入失敗 `onerror` 退回職業圖示。
 5. **樂觀更新**：改狀態用 `saveP(cb)`（先改畫面、300ms 去抖存檔）；重讀伺服器前先 `flushSave()`。
 6. **免費 AI**（Pollinations 頭像/傳聞/戰記）一律要有**模板保底**（sandbox 無網路）。
+7. **離線 mock 閉包陷阱**：`mock()` 的 `setTimeout` callback 內若用 `var mk=...`/`var xx=...`，會因 `var` 提升**遮蔽整個 callback 的同名 helper**（例：`function mk`/`function roll` 已改名為 `mkChar`/`rollC` 避開）。新增 mock 分支時，別用會撞到 helper 的區域變數名，或呼叫已改名的 helper。
 
 ## 解鎖節奏（漸進，別破壞）
 - 新玩家**不自帶船**。地城**第 5 層** → 領主城堡領新手船（開放貿易/海戰）。**第 10 層** → 解鎖船商/艦隊。
