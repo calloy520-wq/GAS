@@ -264,7 +264,7 @@ function spawnEnemies(floor, isBoss){
   if (isBoss){
     var b = BOSSES[Math.min(BOSSES.length-1, Math.floor((floor-1)/5))];
     list.push(mkMonster(b, floor, true));
-    var adds = Math.min(2, Math.floor(floor/11));           // 魔王小怪放少（原 /8 讓深層魔王戰火力過載）
+    var adds = Math.min(2, Math.floor(floor/9));            // 魔王小怪：滿編隊要有分散火力壓力（原 /8 太多、/11 太少）
     for (var i=0;i<adds;i++) list.push(mkMonster(pick(MONSTERS), floor, false));
   } else {
     // 前 3 層固定單體、4~5 層偶爾兩隻，之後才變多（新手友善）
@@ -274,12 +274,12 @@ function spawnEnemies(floor, isBoss){
   return list;
 }
 function mkMonster(m, floor, boss){
-  var scale = 1 + (floor-1)*0.15 + Math.max(0,floor-15)*0.03;   // HP 成長放緩（原 0.19/0.05 讓深層魔王無法擊殺）
+  var scale = 1 + (floor-1)*0.15 + Math.max(0,floor-15)*0.06;   // 中層放緩、深層(>15)再變硬（對滿編 4+2 才有挑戰）
   var soft = floor<=5 ? 0.7 : 1;                                 // 前 5 層敵人整體弱化（新手友善）
   var goldScale = 1 + (floor-1)*0.15;                            // 金幣隨樓層成長：深潛更值錢（修正中期太窮）
-  var hpMul = boss ? 4.8 : 7;                                    // 魔王血池另外收斂（原 hd*7 過肥，配深層 scale 直接無敵）
+  var hpMul = boss ? 6.4 : 7;                                    // 魔王血池：對滿編隊要夠肉才有壓力（原 hd*7 太肥→曾無敵，過度削到 4.8→又被秒）
   var maxhp = Math.max(1, Math.round(m.hd * hpMul * scale * soft));
-  var atkGrow = boss ? Math.floor(floor/5) : Math.floor(floor/4); // 魔王命中成長更緩，讓高等隊伍的護甲擋得住
+  var atkGrow = boss ? Math.floor(floor/4) : Math.floor(floor/4); // 命中成長（讓 AC/護甲有意義，但深層魔王仍需威脅滿編隊）
   return { nm:m.nm, ico:m.ico, ac:m.ac + Math.floor(floor/5), maxhp:maxhp, hp:maxhp,
     atkBonus:m.atk + atkGrow, dmg:m.dmg,                        // 命中成長放緩，讓 AC/護甲有意義
     xp:Math.round(m.xp*scale), gold:Math.round(rint(m.gold[0],m.gold[1])*goldScale), boss:!!boss };
