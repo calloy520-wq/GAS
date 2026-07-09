@@ -119,11 +119,13 @@ function ensureShape_(pl){
   if (!pl.port) pl.port = 'merc';
   if (!pl.cargo || typeof pl.cargo !== 'object') pl.cargo = {};
   if (typeof pl.clues !== 'number') pl.clues = 0;
-  if (!pl.ship || typeof pl.ship !== 'object') pl.ship = startShip();
-  if (typeof pl.ship.hull !== 'number') pl.ship.hull = pl.ship.hullMax || 60;
-  if (typeof pl.ship.speed !== 'number') pl.ship.speed = 6;
-  if (typeof pl.ship.gunTier !== 'number') pl.ship.gunTier = 1;
-  if (typeof pl.ship.tier !== 'number') pl.ship.tier = 1;
+  // 不再自動配船：新玩家先玩陸地，第 5 層後到領主城堡領取新手船艦才開放海上
+  if (pl.ship && typeof pl.ship === 'object'){
+    if (typeof pl.ship.hull !== 'number') pl.ship.hull = pl.ship.hullMax || 60;
+    if (typeof pl.ship.speed !== 'number') pl.ship.speed = 6;
+    if (typeof pl.ship.gunTier !== 'number') pl.ship.gunTier = 1;
+    if (typeof pl.ship.tier !== 'number') pl.ship.tier = 1;
+  }
   if (typeof pl.invest !== 'number') pl.invest = 0;
   if (!Array.isArray(pl.fleet)) pl.fleet = [];
   if (!pl.holdings || typeof pl.holdings !== 'object') pl.holdings = {};   // 領地

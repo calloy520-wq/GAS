@@ -304,6 +304,7 @@ function rollSeaEvent_(pl, haggle){
 function apiVoyage_(p){
   var player = loadPlayer((p.nick||'').trim());
   if (!player) throw new Error('找不到存檔');
+  if (!player.ship) throw new Error('你還沒有船艦，先到領主城堡領取新手船艦');
   if (!player.port || !MARKET_BY[player.port]) player.port='merc';
   if (!player.cargo) player.cargo={};
   var to = p.to; if (!MARKET_BY[to]) throw new Error('未知港口');
@@ -408,7 +409,7 @@ function apiPrize_(p){
 function apiNaval_(p){
   var player = loadPlayer((p.nick||'').trim());
   if (!player) throw new Error('找不到存檔');
-  if (!player.ship) player.ship = startShip();
+  if (!player.ship) throw new Error('你還沒有船艦，先到領主城堡領取新手船艦');
   if (player.ship.hull <= 0) throw new Error('船身破損，請先到船塢修理');
   var byId={}; (player.roster||[]).forEach(function(c){ byId[c.id]=c; });
   var party = (player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
@@ -498,7 +499,7 @@ function apiFleet_(p){
 function apiSea_(p){
   var player = loadPlayer((p.nick||'').trim());
   if (!player) throw new Error('找不到存檔');
-  if (!player.ship) player.ship = startShip();
+  if (!player.ship) throw new Error('你還沒有船艦，先到領主城堡領取新手船艦');
   var day = tradeDayBucket();
   if (p.op === 'raid'){
     if (player.ship.hull <= 0) throw new Error('船身破損，請先到船塢修理');
@@ -532,12 +533,12 @@ function apiSea_(p){
 function apiRaidPlayer_(p){
   var me = loadPlayer((p.nick||'').trim());
   if (!me) throw new Error('找不到存檔');
-  if (!me.ship) me.ship = startShip();
+  if (!me.ship) throw new Error('你還沒有船艦，先到領主城堡領取新手船艦');
   if (me.ship.hull <= 0) throw new Error('船身破損，請先到船塢修理');
   var target = loadPlayer((p.target||'').trim());
   if (!target || target.nick === me.nick) throw new Error('目標無效');
   if ((target.deepest||0) < 3) throw new Error('對方是新手，受保護不可掠奪');
-  if (!target.ship) target.ship = startShip();
+  if (!target.ship) throw new Error('對方還沒有船艦，無法海上掠奪');
   var byId={}; (me.roster||[]).forEach(function(c){ byId[c.id]=c; });
   var party = (me.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
   var tById={}; (target.roster||[]).forEach(function(c){ tById[c.id]=c; });
@@ -582,7 +583,7 @@ function apiRaidPlayer_(p){
 function apiConquer_(p){
   var player = loadPlayer((p.nick||'').trim());
   if (!player) throw new Error('找不到存檔');
-  if (!player.ship) player.ship = startShip();
+  if (!player.ship) throw new Error('你還沒有船艦，先到領主城堡領取新手船艦');
   if (player.ship.hull <= 0) throw new Error('船身破損，請先到船塢修理');
   var pid = p.port, mk = MARKET_BY[pid]; if (!mk) throw new Error('未知港口');
   if (!player.holdings) player.holdings = {};
@@ -679,7 +680,7 @@ function consumeScout_(player, key){ if (player.scout && player.scout.key===key)
 function apiScout_(p){
   var player = loadPlayer((p.nick||'').trim());
   if (!player) throw new Error('找不到存檔');
-  if (!player.ship) player.ship = startShip();
+  if (!player.ship) throw new Error('你還沒有船艦，先到領主城堡領取新手船艦');
   var day = tradeDayBucket();
   var look = officerRank_(player,'lookout');
   var perceive = teamHasSkill_(player,'perception') || teamHasSkill_(player,'stealth') || look>0;
@@ -704,7 +705,15 @@ function upgradeCost_(kind, tier){ var u=SHIP_UP[kind]; return Math.round(u.base
 function apiShip_(p){
   var player = loadPlayer((p.nick||'').trim());
   if (!player) throw new Error('找不到存檔');
-  if (!player.ship) player.ship = startShip();
+  // 領取新手船艦（第 5 層後開放）
+  if (p.op === 'claim'){
+    if (player.ship) throw new Error('你已經有船艦了');
+    if ((player.deepest||0) < 5) throw new Error('尚未達成條件（先下地下城到第 5 層，領主才會賜船）');
+    player.ship = startShip();
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player, claimed:true };
+  }
+  if (!player.ship) throw new Error('你還沒有船艦，先到領主城堡領取新手船艦');
   var s = player.ship;
   if (p.op === 'repair'){
     var missing = (s.hullMax||60) - (s.hull||0);
