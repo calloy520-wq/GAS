@@ -37,6 +37,7 @@ function route_(action, p){
     case 'voyage':  return apiVoyage_(p);
     case 'naval':   return apiNaval_(p);
     case 'prize':   return apiPrize_(p);
+    case 'captive': return apiCaptive_(p);
     case 'raid':    return apiRaidPlayer_(p);
     case 'shipbuy': return apiShipBuy_(p);
     case 'fleet':   return apiFleet_(p);
@@ -368,17 +369,61 @@ function resolveNaval_(ship, party, enemy, gunBonus, stance, enemySpeed, surpris
     nev:nev, snap:{ me:{ ico:(ship.ico||'⛵'), hullMax:meMax }, foe:{ ico:enemy.ico, nm:enemy.nm, hullMax:foeMax } } };
 }
 function injectMateLine_(pl, r){ var ln=mateNavalLine_(pl); if (ln && r.log) r.log.splice(1,0,ln); }
-// 依結果發戰利品：逃跑=無・擊沉=打撈半數・俘虜=全額＋奪船（待玩家決定編入/拆解）
-function applyNavalReward_(player, enemy, r, report){
+// ===== 說服敗方船員入夥（接舷俘虜 NPC 時觸發）=====
+// 交涉專長大幅提升；霰彈壓制、總管與副手情義小幅加成。成功→生成一名可招降的角色。
+function persuadeChance_(player, ammo){
+  var c = 0.30;
+  if (teamHasSkill_(player,'persuasion')) c += 0.35;
+  if (ammo === 'grape') c += 0.10;
+  c += officerRank_(player,'quartermaster')*0.02;
+  c += mateLoyalty_(player)*0.02;
+  return Math.max(0.10, Math.min(0.85, c));
+}
+function captiveRansom_(c){ return 40 + (c.level||1)*20 + Math.round((rarityInfo(c.rarity).costMul-1)*40); }
+function tryPersuade_(player, report, ammo){
+  report.persuadeTried = true;
+  var ch = persuadeChance_(player, ammo);
+  report.persuadeChance = Math.round(ch*100);
+  if (Math.random() >= ch) return;                       // 招降失敗（對方寧死不從）
+  var cand = genCandidate(player.deepest||0, (player.roster||[]).length);
+  var c = makeChar(pick(CAPTIVE_NAMES), cand.job, '', 0, cand.base, cand.race);
+  c.rarity = cand.rarity;
+  player.pendingRecruit = { char:c, ransom:captiveRansom_(c) };
+  var ci = classInfo(c.job)||{}, ri = raceInfo(c.race)||{};
+  report.persuaded = { name:c.name, job:c.job, ico:ci.ico||'❓', jobNm:ci.nm||'',
+    race:c.race, raceIco:ri.ico||'', raceNm:ri.nm||'', rarity:c.rarity, star:rarityInfo(c.rarity).star,
+    level:c.level, ransom:player.pendingRecruit.ransom, rosterFull:(player.roster||[]).length>=CFG.ROSTER_MAX };
+}
+// 決定俘虜去留：收編入團 or 放走換贖金
+function apiCaptive_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (!player.pendingRecruit) throw new Error('沒有待決定的俘虜');
+  var pr = player.pendingRecruit, out;
+  if (p.decision === 'take'){
+    if ((player.roster||[]).length >= CFG.ROSTER_MAX) throw new Error('隊伍已滿（上限 '+CFG.ROSTER_MAX+'），請先遣散，或改「放走換贖金」');
+    player.roster.push(pr.char);
+    out = { mode:'take', name:pr.char.name };
+  } else {
+    player.gold = (player.gold||0) + (pr.ransom||0);
+    out = { mode:'ransom', gold:pr.ransom||0 };
+  }
+  delete player.pendingRecruit;
+  cleanPlayer_(player); savePlayer(player);
+  return { player:player, kept:out };
+}
+// 依結果發戰利品：逃跑=無・擊沉=打撈半數・俘虜=全額＋奪船（待玩家決定編入/拆解）＋有機會招降船員
+function applyNavalReward_(player, enemy, r, report, ammo){
   if (!player.cargo) player.cargo = {};
   if (r.fled){ report.fled = true; report.note = '成功脫離，全身而退（未取得戰利品）。'; return; }
   if (r.win){
     var g = rint(enemy.gold[0], enemy.gold[1]); player.gold += g; report.gold = g;
-    if (r.capture){   // 接舷俘虜：全額貨物 + 奪下敵船
+    if (r.capture){   // 接舷俘虜：全額貨物 + 奪下敵船 + 有機會招降船員
       for (var i=0;i<enemy.loot;i++){ if (cargoCount_(player) >= effectiveCargoMax(player)) break; var gd=GOODS[rint(0,GOODS.length-1)]; player.cargo[gd.id]=(player.cargo[gd.id]||0)+1; report.loot.push(gd.id); }
       player.pendingPrize = makePrize_(enemy);
       var pz = player.pendingPrize;
       report.prize = { nm:pz.nm, ico:pz.ico, hullMax:pz.hullMax, cannon:pz.cannon, cargoBonus:pz.cargoBonus, speed:pz.speed, scrapGold:pz.scrapGold, full:(player.fleet||[]).length>=fleetCap_(player) };
+      tryPersuade_(player, report, ammo);
     } else {          // 砲擊擊沉：只能打撈半數
       var half = Math.max(1, Math.ceil(enemy.loot/2));
       for (var j=0;j<half;j++){ if (cargoCount_(player) >= effectiveCargoMax(player)) break; var g2=GOODS[rint(0,GOODS.length-1)]; player.cargo[g2.id]=(player.cargo[g2.id]||0)+1; report.loot.push(g2.id); }
@@ -424,7 +469,7 @@ function apiNaval_(p){
   var report = { enemy:{nm:enemy.nm, ico:enemy.ico}, win:r.win, mode:r.mode, fled:r.fled, log:r.log, gold:0, loot:[], hull:player.ship.hull, hullMax:player.ship.hullMax };
   report.sea = grantSea_(player, 'nav', r.fled?4:(r.win ? (8 + Math.floor(enemy.hull/6)) : 3));   // 海戰練「航海術」
   report.nev = r.nev; report.snap = r.snap;
-  applyNavalReward_(player, enemy, r, report);
+  applyNavalReward_(player, enemy, r, report, p.ammo);
   player.gold = Math.max(0, player.gold);
   cleanPlayer_(player); savePlayer(player);
   return { player:player, report:report };
@@ -521,7 +566,7 @@ function apiSea_(p){
     report.sea = grantSea_(player, 'nav', r.fled?4:(r.win ? (8 + Math.floor(npc.hull/6)) : 3));
     report.nev = r.nev; report.snap = r.snap;
     if (r.win && !r.fled) player.raided[rk]=true;   // 打贏（含擊沉/俘虜）才算今日已搶；逃跑不算
-    applyNavalReward_(player, enemy, r, report);
+    applyNavalReward_(player, enemy, r, report, p.ammo);
     player.gold=Math.max(0,player.gold);
     cleanPlayer_(player); savePlayer(player);
     return { player:player, report:report };
