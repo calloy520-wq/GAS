@@ -358,7 +358,7 @@ function srv(action,payload){
 function mock(action,p){return new Promise(function(res,rej){
   var DB=JSON.parse(localStorage.getItem('merc_db')||'{}');
   function put(pl){DB[pl.nick]=pl;localStorage.setItem('merc_db',JSON.stringify(DB));}
-  function ensureC(pl){if(!pl.port)pl.port='merc';if(!pl.cargo)pl.cargo={};if(typeof pl.clues!=='number')pl.clues=0;if(pl.ship){if(typeof pl.ship.hull!=='number')pl.ship.hull=pl.ship.hullMax;if(typeof pl.ship.speed!=='number')pl.ship.speed=6;if(typeof pl.ship.gunTier!=='number')pl.ship.gunTier=1;if(typeof pl.ship.tier!=='number')pl.ship.tier=1;}if(typeof pl.invest!=='number')pl.invest=0;if(!pl.holdings)pl.holdings={};if(!pl.posts)pl.posts={};if(!pl.rep)pl.rep={};if(!pl.chats)pl.chats={};if(typeof pl.titleTier!=='number')pl.titleTier=0;if(!pl.dateSeen)pl.dateSeen={};if(!pl.dateEnd)pl.dateEnd={};if(!pl.bag)pl.bag=[];if(!pl.roster)pl.roster=[];if(!pl.team)pl.team={battle:[],support:[]};ensureSeaC(pl);}
+  function ensureC(pl){if(!pl.port)pl.port='merc';if(!pl.cargo)pl.cargo={};if(typeof pl.clues!=='number')pl.clues=0;if(pl.ship){if(typeof pl.ship.hull!=='number')pl.ship.hull=pl.ship.hullMax;if(typeof pl.ship.speed!=='number')pl.ship.speed=6;if(typeof pl.ship.gunTier!=='number')pl.ship.gunTier=1;if(typeof pl.ship.tier!=='number')pl.ship.tier=1;}if(typeof pl.invest!=='number')pl.invest=0;if(!pl.holdings)pl.holdings={};if(!pl.posts)pl.posts={};if(!pl.rep)pl.rep={};if(!pl.chats)pl.chats={};if(typeof pl.titleTier!=='number')pl.titleTier=0;if(!pl.dateSeen)pl.dateSeen={};if(!pl.dateEnd)pl.dateEnd={};if(!pl.jealous)pl.jealous={};if(!pl.bag)pl.bag=[];if(!pl.roster)pl.roster=[];if(!pl.team)pl.team={battle:[],support:[]};ensureSeaC(pl);}
   function roll(){var a=[d6(),d6(),d6(),d6()].sort(function(x,y){return x-y;});return a[1]+a[2]+a[3];}
   function d6(){return 1+Math.floor(Math.random()*6);}
   function mk(name,job,portrait,seed,pbase,race){var base={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){base[a]=Math.min(20,((pbase&&pbase[a])||roll())+(g[a]||0));});var c={id:'c'+Math.random().toString(36).slice(2,9),name:name,job:job,race:race||'human',support:isSup(job),portrait:portrait||'',seed:seed||0,level:1,xp:0,base:base,equip:{weapon:null,armor:null,trinket:null},hp:0,maxhp:0};c.maxhp=cMaxHp(c);c.hp=c.maxhp;return c;}
@@ -636,13 +636,14 @@ var BLDG=[
   ['shipbuy','🛳️','船商','購買艦隊船'],
   ['fleet','🚢','艦隊','自動商隊・護衛'],
   ['castle','🏰','領主城堡','主線・晉升'],
+  ['lair','☠️','海盜巢穴','叛徒的根據地'],
   ['roster','📜','冒險者名冊','看大家的進度']
 ];
 // 漸進解鎖：有船才開放海上；船隊功能（船商/艦隊）到第 10 層才出現
 function seaOpen(){return !!(P&&P.ship);}
 function fleetOpen(){return seaOpen()&&(P.deepest||0)>=10;}
 var SEA_BLDG={trade:1,map:1,shipyard:1}, FLEET_BLDG={shipbuy:1,fleet:1};
-function bldgLocked(id){if(FLEET_BLDG[id])return !fleetOpen();if(SEA_BLDG[id])return !seaOpen();return false;}
+function bldgLocked(id){if(id==='lair')return !(P&&P.lair);if(FLEET_BLDG[id])return !fleetOpen();if(SEA_BLDG[id])return !seaOpen();return false;}
 // 貿易（客製顯示＋離線 mock 用）
 var GOODS_C=[{id:'salt',nm:'鹽',ico:'🧂',base:20},{id:'herb',nm:'藥草',ico:'🌿',base:35},{id:'spice',nm:'香料',ico:'🌶️',base:48},{id:'iron',nm:'鐵礦',ico:'⚙️',base:55},{id:'coffee',nm:'咖啡豆',ico:'☕',base:62},{id:'wine',nm:'美酒',ico:'🍷',base:70},{id:'fur',nm:'皮草',ico:'🦊',base:88},{id:'silk',nm:'絲綢',ico:'🧵',base:95},{id:'china',nm:'瓷器',ico:'🏺',base:125},{id:'powder',nm:'火藥',ico:'🧨',base:135},{id:'pearl',nm:'珍珠',ico:'🦪',base:160},{id:'ivory',nm:'象牙',ico:'🐘',base:185},{id:'gem',nm:'寶石',ico:'💎',base:210},{id:'amber',nm:'龍涎香',ico:'🐋',base:300}];
 var MARKETS_C=[{id:'merc',nm:'傭兵之城',ico:'🏰',x:18,y:44,cheap:['iron','herb'],dear:['silk','pearl'],sig:'iron',blurb:'傭兵與冒險者的據點，精鐵鍛造聞名'},{id:'whale',nm:'迷霧捕鯨鎮',ico:'🐋',x:14,y:18,cheap:['amber','salt'],dear:['wine','china'],sig:'amber',blurb:'終年迷霧的捕鯨港——龍涎香唯一的產地'},{id:'port',nm:'風帆港都',ico:'⛵',x:42,y:22,cheap:['silk','china'],dear:['spice','powder'],sig:'silk',blurb:'船隻雲集的繁華貿易港，絲綢集散地'},{id:'gold',nm:'黃金港',ico:'🏛️',x:80,y:26,cheap:['gem','china'],dear:['salt','coffee'],sig:'gem',blurb:'富甲一方的黃金之都，寶石璀璨'},{id:'bean',nm:'翠蔭咖啡島',ico:'☕',x:50,y:50,cheap:['coffee','spice'],dear:['iron','silk'],sig:'coffee',blurb:'火山沃土的梯田群島，咖啡香飄十里'},{id:'oasis',nm:'沙漠綠洲',ico:'🏜️',x:72,y:54,cheap:['spice','salt'],dear:['wine','fur'],sig:'spice',blurb:'沙海中的香料集散地'},{id:'volcano',nm:'熔岩鍛造島',ico:'🌋',x:36,y:64,cheap:['powder','iron'],dear:['herb','silk'],sig:'powder',blurb:'熔岩之島，火藥與精鐵的源頭'},{id:'temple',nm:'失落神廟島',ico:'🗿',x:90,y:66,cheap:['ivory','gem'],dear:['salt','herb'],sig:'ivory',blurb:'被藤蔓吞沒的古文明遺跡，象牙與古董'},{id:'snow',nm:'雪山商站',ico:'🏔️',x:24,y:74,cheap:['fur','gem'],dear:['spice','pearl'],sig:'fur',blurb:'冰封山脈的邊境商站，頂級皮草'},{id:'coral',nm:'珊瑚礁島',ico:'🏝️',x:56,y:84,cheap:['pearl','wine'],dear:['iron','fur'],sig:'pearl',blurb:'南方熱帶島嶼，採珠人的天堂'}];
@@ -818,6 +819,11 @@ function affPts(id){return (P.affinity&&P.affinity[id])||0;}
 function affLevel(id){var p=affPts(id);var t=[0,30,90,200,400,700];var lv=0;for(var i=0;i<t.length;i++){if(p>=t[i])lv=i;}return lv;}
 function affHearts(id){var lv=affLevel(id);return '❤️'.repeat(lv)+'🤍'.repeat(5-lv);}
 function addAff(id,amt){if(!P.affinity)P.affinity={};var bef=affLevel(id);P.affinity[id]=(P.affinity[id]||0)+amt;var aft=affLevel(id);saveP();if(aft>bef){var c=byId(id);toast('💞 與 '+(c?c.name:'夥伴')+' 的關係提升為「'+AFF_NM[aft]+'」！');}}
+// 💢 吃醋（純劇情心情・絕不扣好感、不破壞任何進度）：陪聊/送禮就哄好
+function jealOf(id){return (P.jealous&&P.jealous[id])||0;}
+function addJeal(id,n){if(!P.jealous)P.jealous={};P.jealous[id]=Math.max(0,Math.min(100,(P.jealous[id]||0)+n));}
+function isRomanced(id){return id!==P.heroId&&(affLevel(id)>=2||(P.dateEnd&&P.dateEnd[id])||(P.chats&&P.chats[id]&&P.chats[id].length>1));}
+function jealLine(c){var lv=affLevel(c.id);return ['哼，你可算想起我了。剛剛跑去找誰啦？','……我沒生氣。（明明就有）','別以為說兩句好話我就消氣囉。','你呀，心裡到底有沒有我？'][Math.floor((affPts(c.id)+ (P.gold||0))%4)];}
 // 副手面板
 function openMate(){
   var m=byId(P.mate);if(!m)return;
@@ -826,6 +832,7 @@ function openMate(){
   body+='<div class="note" style="text-align:center;margin:6px 0 2px">'+(ri?ri.ico+ri.nm+' ':'')+ci.ico+ci.nm+' ・ Lv'+m.level+'</div>';
   body+='<div class="note" style="text-align:center;font-size:15px">'+affHearts(m.id)+'<br><small style="color:var(--gold)">'+AFF_NM[affLevel(m.id)]+'</small></div>';
   if(P.dateEnd&&P.dateEnd[m.id])body+='<div class="note" style="text-align:center;color:#ff9ec7;font-weight:800">'+(P.dateEnd[m.id]==='wed'?'💍':'🤝')+' '+(P.loveTitle||'摯愛')+'</div>';
+  if(jealOf(m.id)>=30)body+='<div class="note" style="text-align:center;color:#e5889a">😤 她有點鬧彆扭…多陪陪、送個禮就哄好（不會扣好感）</div>';
   body+='<div class="card" style="border-color:#8a6fd0;margin-top:8px"><b>👩‍✈️ '+m.name+'</b><div class="note" id="matesay" style="text-align:left;margin-top:6px;line-height:1.75;color:#f0d6ad;min-height:44px">「'+(m.bio||'…（想聽聽她的想法嗎？）')+'」</div></div>';
   body+='<button class="btn" id="mdate" style="margin-top:10px;background:linear-gradient(180deg,#c86fb0,#a04f88);color:#fff">💗 約會 · 專屬對話</button>';
   body+='<div class="rowbtns" style="margin-top:8px"><button class="btn re" id="mchat">💬 閒聊</button><button class="btn ok" id="madvice">💡 給建議</button></div>';
@@ -884,8 +891,8 @@ function giftMenu(id){
   if(!goods.length)body+='<div class="note">貨艙沒有東西可送。</div>';
   goods.forEach(function(k){var g=GOOD_BYC[k];if(!g)return;var af=Math.round(g.base/6);body+='<div class="u"><div class="av">'+g.ico+'</div><div class="info"><b>'+g.nm+' ×1</b><small>好感 +'+af+'（貨艙 '+P.cargo[k]+'）</small></div><button class="btn ok sm" data-good="'+k+'" data-af="'+af+'">送出</button></div>';});
   openSheet('🎁 送禮物給 '+c.name,'',body);
-  q('[data-gold]',function(el){var cost=+el.dataset.gold,af=+el.dataset.af;if(P.gold<cost){toast('金幣不足');return;}P.gold-=cost;addAff(id,af);refreshTopbar();giftMenu(id);});
-  q('[data-good]',function(el){var k=el.dataset.good,af=+el.dataset.af;if(!P.cargo[k]){toast('沒有這個貨');return;}P.cargo[k]--;if(P.cargo[k]<=0)delete P.cargo[k];addAff(id,af);giftMenu(id);});
+  q('[data-gold]',function(el){var cost=+el.dataset.gold,af=+el.dataset.af;if(P.gold<cost){toast('金幣不足');return;}P.gold-=cost;addAff(id,af);addJeal(id,-15);refreshTopbar();giftMenu(id);});
+  q('[data-good]',function(el){var k=el.dataset.good,af=+el.dataset.af;if(!P.cargo[k]){toast('沒有這個貨');return;}P.cargo[k]--;if(P.cargo[k]<=0)delete P.cargo[k];addAff(id,af);addJeal(id,-15);giftMenu(id);});
 }
 // ⚓ 船上職務
 function officerRankForChar(c,key){if(!c)return 0;var meta=POSTS_C[key];var m=cmod(cab(c,meta.ab));var sk=(meta.skill&&charSkills(c.job,c.race).indexOf(meta.skill)>=0)?1:0;return Math.max(0,Math.min(8,Math.floor((c.level||1)/4)+Math.max(0,m)+sk));}
@@ -977,6 +984,11 @@ function renderDate(c){
   document.getElementById('dgift').onclick=function(){giftMenu(c.id);};
   var log=chatlog(c.id);
   if(!log.length){ pushChat(c.id,1,dateGreeting(c)); saveP(); }
+  // 💢 吃醋：她鬧彆扭→開場先撒嬌抱怨；你來陪她，氣就消一截。其他戀人則會吃味（純心情，不扣好感）
+  if(jealOf(c.id)>=30){ pushChat(c.id,1,jealLine(c)); pushChat(c.id,2,'（多陪陪她、送個禮就哄好了，不會扣好感）'); }
+  addJeal(c.id,-25);
+  (P.roster||[]).forEach(function(x){ if(x&&x.id!==c.id&&isRomanced(x.id)) addJeal(x.id,8); });
+  saveP();
   dateRenderLog(c);
   dateRenderScenes(c);
   dateRenderChips(c);
@@ -1148,6 +1160,7 @@ function dateSend(c,text){
     var di=document.querySelector('.dhead .di small');if(di)di.innerHTML=affHearts(c.id)+' ・ '+AFF_NM[affLevel(c.id)];
     if(snd)snd.disabled=false;
     var inp=document.getElementById('dinput');if(inp)inp.focus();
+    addJeal(c.id,-10);   // 陪她聊天，氣就消
     if(aft>bef)setTimeout(function(){dateStory(c);},400);   // 聊到升階→觸發分歧劇情／終章
   });
 }
@@ -1355,6 +1368,7 @@ function openBldg(b){
   if(b==='dungeon')return openDungeon();
   if(b==='guild')return openGuild();
   if(b==='castle')return openCastle();
+  if(b==='lair')return openLair();
   if(b==='black')return openBlack();
   if(b==='trade')return openTrade();
   if(b==='map')return openMap();
@@ -1474,9 +1488,11 @@ function charSheet(id){
     (c.bio?'':'<button class="btn re sm" id="cbiogen" style="margin-top:6px">✨ 認識一下（AI 生成個性）</button>')+'</div>';
   body+='<div class="note" style="text-align:left;margin-top:6px">💞 好感：'+affHearts(c.id)+' <small style="color:var(--gold)">'+AFF_NM[affLevel(c.id)]+'</small></div>';
   body+='<div class="rowbtns" style="margin-top:8px">'+(c.id===P.mate?'<button class="btn ok sm" disabled>👩‍✈️ 現任副手</button>':'<button class="btn re sm" id="csetmate">👩‍✈️ 設為副手</button>')+'<button class="btn gold sm" id="csgift">🎁 送禮物</button></div>';
+  if(c.id!==P.heroId)body+='<button class="btn sm" id="csdate" style="margin-top:6px;background:linear-gradient(180deg,#c86fb0,#a04f88);color:#fff">💗 約會 · 專屬對話'+(P.dateEnd&&P.dateEnd[c.id]?'（'+(P.loveTitle||'摯愛')+'）':'')+(jealOf(c.id)>=30?' 😤':'')+'</button>';
   openSheet('📋 '+c.name,'',body);
   var sm=document.getElementById('csetmate');if(sm)sm.onclick=function(){P.mate=c.id;saveP();toast('已將 '+c.name+' 設為副手');closeSheet();};
   var gf=document.getElementById('csgift');if(gf)gf.onclick=function(){giftMenu(c.id);};
+  var cd=document.getElementById('csdate');if(cd)cd.onclick=function(){closeSheet();renderDate(c);};
   var bg=document.getElementById('cbiogen');
   if(bg)bg.onclick=function(){bg.disabled=true;bg.textContent='傾聽中…';var el=document.getElementById('cbio');el.textContent='✨ 傾聽 '+c.name+' 說話…';
     genBio(c,function(t){c.bio=t;var e2=document.getElementById('cbio');if(e2)e2.textContent=t;if(bg)bg.remove();saveP();});};
@@ -2089,8 +2105,11 @@ function checkPeerage(){
     var sp=bestAllyC();if(!sp)return false;
     var outlaw=(sp==='pirate'&&isOutlawC());
     var nm=outlaw?OUTLAW_TITLES[tier]:PEERAGE_C[tier].nm,reward=200+tier*180,f2=FACTION_BY_C[sp]||{};
-    P.title=nm;P.titleFrom=sp;P.titleTier=tier;P.outlaw=outlaw;P.gold=(P.gold||0)+reward;applyRepC(P,sp,40);saveP();refreshTopbar();
-    peerageEvent('confer',{facNm:f2.nm||'',facIco:f2.ico||'',title:nm,ico:outlaw?'☠️':PEERAGE_C[tier].ico,reward:reward,outlaw:outlaw});return true;
+    P.title=nm;P.titleFrom=sp;P.titleTier=tier;P.outlaw=outlaw;P.gold=(P.gold||0)+reward;applyRepC(P,sp,40);
+    var gotLair=false;
+    if(outlaw&&!P.lair){P.lair='coral';if(!P.holdings)P.holdings={};if(!P.holdings.coral){P.holdings.coral={lv:2,since:Date.now(),lastAt:Date.now()};}gotLair=true;}
+    saveP();refreshTopbar();
+    peerageEvent('confer',{facNm:f2.nm||'',facIco:f2.ico||'',title:nm,ico:outlaw?'☠️':PEERAGE_C[tier].ico,reward:reward,outlaw:outlaw,lair:gotLair});return true;
   }
   return false;
 }
@@ -2099,7 +2118,7 @@ function peerageEvent(mode,d){
   if(mode==='confer'){
     var oc=d.outlaw;
     body='<div class="note" style="text-align:center;font-size:52px">'+(d.ico||'🎖️')+'</div>'+
-      '<div class="card" style="border-color:'+(oc?'#7a3b3b':'var(--gold-d)')+'"><div class="note" style="text-align:left;line-height:1.9">'+(oc?'☠️ 在 '+d.facIco+'<b>'+d.facNm+'</b> 的擁戴下，眾海盜奉你為':'在 '+d.facIco+'<b>'+d.facNm+'</b> 的見證下，你被授予爵位')+'<br><b style="color:'+(oc?'#ff9ec7':'var(--gold)')+';font-size:17px">'+d.title+'</b><br>🪙 '+(oc?'分贓':'賞金')+' +'+d.reward+'　🤝 '+d.facNm+' 好感 +40</div><div class="note" id="ptale" style="text-align:left;margin-top:8px;color:#f0d6ad;line-height:1.8">✨ 典禮進行中…</div></div>';
+      '<div class="card" style="border-color:'+(oc?'#7a3b3b':'var(--gold-d)')+'"><div class="note" style="text-align:left;line-height:1.9">'+(oc?'☠️ 在 '+d.facIco+'<b>'+d.facNm+'</b> 的擁戴下，眾海盜奉你為':'在 '+d.facIco+'<b>'+d.facNm+'</b> 的見證下，你被授予爵位')+'<br><b style="color:'+(oc?'#ff9ec7':'var(--gold)')+';font-size:17px">'+d.title+'</b><br>🪙 '+(oc?'分贓':'賞金')+' +'+d.reward+'　🤝 '+d.facNm+' 好感 +40'+(d.lair?'<br>🏴‍☠️ 黑帆將 <b>珊瑚礁島</b> 交予你作為根據地——你的<b>海盜巢穴</b>！':'')+'</div><div class="note" id="ptale" style="text-align:left;margin-top:8px;color:#f0d6ad;line-height:1.8">✨ 典禮進行中…</div></div>';
     openSheet(oc?'☠️ 海盜擁立':'🎖️ 授勳大典',(oc?'黑帆之下・':'')+d.facIco+d.facNm+(oc?' 擁戴':' 冊封'),body);
   }else{
     body='<div class="note" style="text-align:center;font-size:52px">💢</div>'+
@@ -2116,6 +2135,21 @@ function peerageTale(mode,d,cb){
     :'用繁體中文寫一段 45 字內、有戲劇張力的場景：大航海世界裡「'+d.facNm+'」當眾宣布褫奪某傭兵團長爵位、斥其為叛徒的那一刻。第三人稱、只回那段話、不要引號或說明。';
   var done=false,tm=setTimeout(function(){if(!done){done=true;cb(peerageTaleTpl(mode,d));}},9000);
   fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){if(done)return;done=true;clearTimeout(tm);t=(t||'').trim().replace(/^["「『]+|["」』]+$/g,'').slice(0,90);cb(t&&!/error|unable|sorry|api/i.test(t)?t:peerageTaleTpl(mode,d));}).catch(function(){if(done)return;done=true;clearTimeout(tm);cb(peerageTaleTpl(mode,d));});
+}
+// ☠️ 海盜巢穴（叛徒專屬據點）：黑帆擁立時把珊瑚礁島給你當老巢
+function openLair(){
+  if(!P.lair){toast('你還沒有海盜巢穴');return;}
+  var mk=MARKET_BYC[P.lair]||{},pr=repOfC(P,'pirate'),ptier=repTierC(pr),h=P.holdings&&P.holdings[P.lair];
+  var body='<div class="card" style="border-color:#7a3b3b;background:linear-gradient(180deg,rgba(122,59,59,.2),transparent)"><b>☠️ '+(P.title||'亡命之徒')+' 的根據地</b><div class="note" style="text-align:left;margin-top:4px">'+(mk.ico||'🏝️')+' <b>'+(mk.nm||'巢穴')+'</b> —— 黑帆海盜團交予你的老巢。這裡沒有王法，只有海與劍。</div><div class="note" style="text-align:left">🏴 惡名（黑帆好感）：'+(REP_TIERS_C[ptier]?REP_TIERS_C[ptier].ico+REP_TIERS_C[ptier].nm:'')+' '+pr+(h?'　🏛️ 巢穴治理 Lv'+h.lv:'')+'</div></div>';
+  body+='<div class="signs">';
+  body+='<div class="sign" data-l="holds"><div class="ico">💰</div><div class="nm">領分贓</div><div class="ds">巢穴稅收・被動進帳</div></div>';
+  body+='<div class="sign" data-l="black"><div class="ico">🕶️</div><div class="nm">銷贓黑市</div><div class="ds">稀有交易</div></div>';
+  body+='<div class="sign" data-l="tavern"><div class="ico">🦜</div><div class="nm">招募亡命之徒</div><div class="ds">找幫手入夥</div></div>';
+  body+='<div class="sign" data-l="shipyard"><div class="ico">⚓</div><div class="nm">整備船艦</div><div class="ds">修船・升級</div></div>';
+  body+='</div>';
+  body+='<div class="note" style="text-align:left;margin-top:8px;color:var(--soft)">💡 身為叛徒：貴族勢力不再冊封你、巡邏艦會找碴；但海盜是你的家人，這片海任你縱橫。哪天與體制重修舊好，也能洗白重新受爵。</div>';
+  openSheet('☠️ 海盜巢穴',(mk.nm||'')+' · 黑帆之下',body);
+  q('[data-l]',function(el){var t=el.dataset.l;closeSheet();if(t==='holds')openHoldings();else if(t==='black')openBlack();else if(t==='tavern')openTavern();else if(t==='shipyard')openShipyard();});
 }
 function openCastle(){
   var deep=P.deepest||0,ri=rankOf(deep),next=RANKS[ri+1];

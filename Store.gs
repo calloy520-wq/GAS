@@ -135,6 +135,7 @@ function ensureShape_(pl){
   if (typeof pl.titleTier !== 'number') pl.titleTier = 0;                 // 已受封爵位階
   if (!pl.dateSeen || typeof pl.dateSeen !== 'object') pl.dateSeen = {};  // 已觸發的約會分歧劇情
   if (!pl.dateEnd || typeof pl.dateEnd !== 'object') pl.dateEnd = {};     // 約會終章結局
+  if (!pl.jealous || typeof pl.jealous !== 'object') pl.jealous = {};     // 吃醋心情值（純劇情）
   ensureSea_(pl);   // 航海術 / 商業 等級
   pl.roster.forEach(function(c){
     if (!c) return;
