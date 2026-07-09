@@ -41,6 +41,7 @@ function route_(action, p){
     case 'captain': return apiCaptain_(p);
     case 'faction': return apiFaction_(p);
     case 'lair':    return apiLair_(p);
+    case 'porttask':return apiPortTask_(p);
     case 'raid':    return apiRaidPlayer_(p);
     case 'shipbuy': return apiShipBuy_(p);
     case 'fleet':   return apiFleet_(p);
@@ -497,6 +498,56 @@ function apiLair_(p){
   }
   cleanPlayer_(player); savePlayer(player);
   return { player:player };
+}
+// 在地任務：停泊該港可接，每港每日一件
+function apiPortTask_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (!player.ship) throw new Error('你還沒有船艦，先到領主城堡領取新手船艦');
+  var pid = p.port, mk = MARKET_BY[pid]; if (!mk) throw new Error('未知港口');
+  if ((player.port||'merc') !== pid) throw new Error('要先停泊在此港才能接在地委託');
+  var day = eventDay(); if (!player.portTasks) player.portTasks = {};
+  var t = portTaskFor(pid, day, player.deepest||0);
+  if (p.op !== 'do') return { player:player, task:t, done:(player.portTasks[pid]===day) };
+  if (player.portTasks[pid] === day) throw new Error('今日已完成本港的在地委託，明天再來');
+  var report = { type:t.type, desc:t.desc, portNm:mk.nm, rep:t.rep, fac:t.fac, fame:t.fame };
+  if (t.type === 'raid'){
+    if (player.ship.hull <= 0) throw new Error('船身破損，請先到船塢修理');
+    var lvl = player.deepest||0;
+    var enemy = { nm:'近海海盜', ico:'🏴‍☠️', hull:80+lvl*4, cannon:9+Math.floor(lvl/2), speed:7, gold:[t.gold, t.gold+80], loot:3, fac:'pirate', tier:1 };
+    var byId={}; (player.roster||[]).forEach(function(c){ byId[c.id]=c; });
+    var party = (player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
+    var r = resolveNaval_(player.ship, party, enemy, navalGun_(player), 'sink', enemy.speed, 2, 'round');
+    player.ship.hull = r.playerHull;
+    report.win=r.win; report.mode=r.mode; report.fled=r.fled; report.log=r.log; report.nev=r.nev; report.snap=r.snap;
+    report.hull=player.ship.hull; report.hullMax=player.ship.hullMax; report.enemy={nm:enemy.nm,ico:enemy.ico}; report.gold=0; report.loot=[]; report.porttask=true;
+    if (r.win){ var g=rint(t.gold,t.gold+80); player.gold+=g; report.gold=g; applyRep_(player,t.fac,t.rep); player.fameBonus=(player.fameBonus||0)+t.fame; player.portTasks[pid]=day; report.taskDone=true; }
+    else { var pen=Math.min(player.gold||0, rint(20,50)); player.gold-=pen; report.lostGold=pen; }
+    report.sea = grantSea_(player, 'nav', r.win?8:3);
+    player.gold=Math.max(0,player.gold);
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player, report:report };
+  }
+  if (t.type === 'supply'){
+    var need=3, boxes=0, ck=Object.keys(player.cargo||{});
+    for (var i=0;i<ck.length&&need>0;i++){ var k=ck[i], take=Math.min(player.cargo[k],need); player.cargo[k]-=take; if(player.cargo[k]<=0)delete player.cargo[k]; need-=take; boxes+=take; }
+    if (need>0){ if((player.gold||0)<300){ // 退回已扣的貨（避免半扣）：重讀較麻煩，這裡直接報錯前不落地
+        throw new Error('需要 3 箱貨物、或改用 300🪙 才能賑濟'); } player.gold-=300; report.paid='gold'; }
+    else report.paid='cargo';
+    player.gold += t.gold; report.reward=t.gold; applyRep_(player,t.fac,t.rep); player.fameBonus=(player.fameBonus||0)+t.fame; player.portTasks[pid]=day;
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player, report:report };
+  }
+  // search
+  if ((player.gold||0) < 200) throw new Error('懸賞尋人需要 200🪙');
+  player.gold -= 200;
+  var roll=Math.random(), out={};
+  if (roll<0.40 && (player.roster||[]).length<CFG.ROSTER_MAX){ var cand=factionCandidate_(player,t.fac,1); var c=makeChar(pick(CAPTIVE_NAMES),cand.job,'',0,cand.base,cand.race); c.rarity=cand.rarity; player.pendingRecruit={char:c,ransom:captiveRansom_(c)}; var ci=classInfo(c.job)||{}; out.recruit={name:c.name,jobNm:ci.nm||'',star:rarityInfo(c.rarity).star}; }
+  else if (roll<0.70){ player.clues=(player.clues||0)+2; out.clues=2; }
+  else { var g3=rint(220,520); player.gold+=g3; out.gold=g3; }
+  applyRep_(player,t.fac,t.rep); player.fameBonus=(player.fameBonus||0)+t.fame; player.portTasks[pid]=day; report.out=out;
+  cleanPlayer_(player); savePlayer(player);
+  return { player:player, report:report };
 }
 // 勢力懸賞：接受／領獎／放棄
 function apiFaction_(p){

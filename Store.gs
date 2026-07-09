@@ -139,6 +139,8 @@ function ensureShape_(pl){
   if (!pl.dex || typeof pl.dex !== 'object') pl.dex = { titles:{}, romance:{} };  // 結局圖鑑
   if (!pl.dex.titles) pl.dex.titles = {}; if (!pl.dex.romance) pl.dex.romance = {};
   if (pl.lair && typeof pl.lairLv !== 'number') pl.lairLv = 1;            // 巢穴等級
+  if (typeof pl.fameBonus !== 'number') pl.fameBonus = 0;                 // 獻金換取的威名
+  if (!pl.portTasks || typeof pl.portTasks !== 'object') pl.portTasks = {}; // 在地任務每日紀錄
   ensureSea_(pl);   // 航海術 / 商業 等級
   pl.roster.forEach(function(c){
     if (!c) return;

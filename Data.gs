@@ -376,6 +376,14 @@ function genBounty(facId, pl){
   var foe = fac.foe, fn = (FACTION_BY[foe]||{}).nm || '敵對勢力', n2 = 2 + Math.floor(dd/12);
   return { fac:facId, type:'hunt', foeFac:foe, target:n2, prog:0, name:'掠奪或擊沉 '+n2+' 艘'+fn+'的船', reward:140+n2*70, rep:160 };
 }
+// 在地任務：每港每日一件（以港+日 seed 決定），停泊該港可接。剿匪／濟港／尋人。
+function portTaskFor(pid, day, dd){
+  var h = hashNoise('pt'+pid+day), mk = MARKET_BY[pid]||{}, fac = marketFac_(pid);
+  dd = dd||0;
+  if (h < 0.40) return { type:'raid',   ico:'🎯', fac:fac, gold:120+dd*12, rep:60, fame:15, desc:'替 '+(mk.nm||'本港')+' 剷除外海的近海海盜' };
+  if (h < 0.72) return { type:'supply', ico:'📦', fac:fac, gold:200+dd*8,  rep:80, fame:20, desc:(mk.nm||'本港')+' 鬧糧荒——捐 3 箱貨物（或付 300🪙）賑濟' };
+  return              { type:'search', ico:'🔎', fac:fac, gold:0,         rep:40, fame:10, desc:'出資 200🪙 協助 '+(mk.nm||'本港')+' 懸賞尋人' };
+}
 
 function npcTradersForDay(day){
   var list=[];
@@ -394,7 +402,7 @@ function npcTradersForDay(day){
 
 // ---- 威名 / 爵位（總目標：多面向合成的名聲分數）----
 var PEERAGE = [{t:0,nm:'無名浪人',ico:'🚶'},{t:300,nm:'見習船長',ico:'⛵'},{t:800,nm:'名聞商賈',ico:'💰'},{t:1600,nm:'海域騎士',ico:'🗡️'},{t:2800,nm:'男爵',ico:'🎖️'},{t:4500,nm:'子爵',ico:'🏅'},{t:7000,nm:'伯爵',ico:'👑'},{t:10000,nm:'侯爵',ico:'💠'},{t:15000,nm:'海洋霸主',ico:'🌊'}];
-function fameOf(pl){ var f=0; f+=(pl.deepest||0)*40; f+=Math.floor((pl.gold||0)/120)+Math.floor((pl.invest||0)/120); if(pl.holdings)Object.keys(pl.holdings).forEach(function(k){ f+=50+((pl.holdings[k]&&pl.holdings[k].lv)||1)*50; }); f+=((pl.fleet||[]).length)*40; f+=(((pl.nav&&pl.nav.lv)||1)+((pl.com&&pl.com.lv)||1))*18; f+=(pl.questsDone||0)*12; (pl.roster||[]).forEach(function(c){ if(c)f+=(c.level||1)*3; }); if(pl.uniques)f+=Object.keys(pl.uniques).length*80; return Math.round(f); }
+function fameOf(pl){ var f=0; f+=(pl.deepest||0)*40; f+=Math.floor((pl.gold||0)/120)+Math.floor((pl.invest||0)/120); if(pl.holdings)Object.keys(pl.holdings).forEach(function(k){ f+=50+((pl.holdings[k]&&pl.holdings[k].lv)||1)*50; }); f+=((pl.fleet||[]).length)*40; f+=(((pl.nav&&pl.nav.lv)||1)+((pl.com&&pl.com.lv)||1))*18; f+=(pl.questsDone||0)*12; (pl.roster||[]).forEach(function(c){ if(c)f+=(c.level||1)*3; }); if(pl.uniques)f+=Object.keys(pl.uniques).length*80; f+=(pl.fameBonus||0); return Math.round(f); }
 function peerageOf(f){ var ix=0; for(var i=0;i<PEERAGE.length;i++){ if(f>=PEERAGE[i].t) ix=i; } return ix; }
 function hashNoise(str){ var h=2166136261; for (var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return ((h>>>0)%1000)/1000; }
 function tradeDayBucket(){ return Math.floor(Date.now()/(1000*60*60*4)); }   // 每 4 小時波動一次
