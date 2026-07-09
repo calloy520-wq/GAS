@@ -757,7 +757,10 @@ function apiFleet_(p){
       if (cycles<=0) return;
       var sp = routeSpread_(s.route.from, s.route.to, day);
       var lairSupply = (player.lairLv>=2) ? 1.15 : 1;   // 巢穴 Lv2 艦隊補給站
-      var perCycle = Math.max(0, Math.round(sp.spread * s.cargoBonus * 0.7 * (haggle?1.1:1) * lairSupply));
+      // 被動收益＝主動跑商的一小口活水（不是印鈔）：夾住高價貨的極端價差、係數大幅下修。
+      // 原 spread*cargo*0.7 讓大帆船單次 collect 破萬、被動＞主動；改夾 spread≤70 + 係數 0.15。
+      var effSp = Math.min(70, sp.spread);
+      var perCycle = Math.max(0, Math.round(effSp * s.cargoBonus * 0.15 * (haggle?1.1:1) * lairSupply));
       var got=0, lost=0;
       for (var i=0;i<cycles;i++){
         var lossChance = s.escort?0.08:0.25;
