@@ -130,15 +130,28 @@
   @media(min-width:1000px){.tabbar{margin:0 -20px -90px;padding:9px 12px}.tabbar .tab{font-size:12px}.tabbar .tab .ti{font-size:24px}}
   .omap{position:relative;width:100%;aspect-ratio:1/1.02;border-radius:16px;overflow:hidden;border:2px solid #2a4a6a;
     background:radial-gradient(120% 90% at 28% 18%,#356690,#173753 58%,#0e2438);box-shadow:inset 0 0 46px rgba(0,0,0,.55)}
-  .omap .wv{position:absolute;inset:0;opacity:.10;background-image:repeating-linear-gradient(30deg,#fff 0 1px,transparent 1px 22px)}
-  .oport{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;cursor:pointer;width:70px;z-index:2}
-  .oport .pin{font-size:27px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.65))}
-  .oport .pn{font-size:10px;font-weight:800;color:#fff;text-shadow:0 1px 3px #000;white-space:nowrap;background:rgba(0,0,0,.4);padding:0 5px;border-radius:6px;margin-top:1px}
-  .oport.here .pin{filter:drop-shadow(0 0 7px #f4c34e) drop-shadow(0 0 2px #f4c34e)}
+  .omap .wv{position:absolute;inset:0;opacity:.12;background-image:repeating-linear-gradient(30deg,#fff 0 1px,transparent 1px 22px);animation:omwave 9s linear infinite}
+  @keyframes omwave{from{background-position:0 0}to{background-position:44px 0}}
+  .omap .wv2{position:absolute;inset:0;opacity:.06;background-image:repeating-linear-gradient(-24deg,#fff 0 1px,transparent 1px 30px);animation:omwave 14s linear infinite reverse}
+  .oland{position:absolute;transform:translate(-50%,-50%);border-radius:48% 52% 55% 45%;background:radial-gradient(closest-side,rgba(94,116,74,.55),rgba(70,92,58,.3) 62%,transparent);filter:blur(2px);z-index:1;pointer-events:none}
+  .olanes{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;overflow:visible}
+  .olanes line{stroke:rgba(255,240,200,.28);stroke-width:.45;stroke-dasharray:1.6 1.8}
+  .olanes text{fill:rgba(255,240,200,.6);font-size:2.7px;font-weight:800;paint-order:stroke;stroke:rgba(0,0,0,.5);stroke-width:.5}
+  .ocompass{position:absolute;right:9px;top:9px;width:42px;height:42px;border-radius:50%;border:1.5px solid rgba(244,195,78,.55);background:radial-gradient(closest-side,rgba(0,0,0,.35),rgba(0,0,0,.15));display:flex;align-items:center;justify-content:center;z-index:4;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+  .ocompass b{font-size:20px;filter:drop-shadow(0 1px 2px #000)}
+  .ocompass i{position:absolute;font-size:7px;font-weight:900;color:#f4c34e;font-style:normal;text-shadow:0 1px 2px #000}
+  .ocompass .cn{top:1px}.ocompass .cs{bottom:1px}.ocompass .ce{right:2px}.ocompass .cw{left:2px}
+  .oport{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;cursor:pointer;width:74px;z-index:4}
+  .oport .pin{font-size:28px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.65))}
+  .oport .pn{font-size:10px;font-weight:800;color:#fff;text-shadow:0 1px 3px #000;white-space:nowrap;background:rgba(0,0,0,.45);padding:0 5px;border-radius:6px;margin-top:1px}
+  .oport .prod{font-size:9px;margin-top:2px;background:rgba(0,0,0,.4);border-radius:6px;padding:0 4px;white-space:nowrap}
+  .oport.here .pin{filter:drop-shadow(0 0 7px #f4c34e) drop-shadow(0 0 2px #f4c34e);animation:ompulse 1.8s ease-in-out infinite}
+  @keyframes ompulse{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
   .oport.here .pn{background:#c8971f;color:#3a2600}
   .oport.held .pin{filter:drop-shadow(0 0 6px #e0483a) drop-shadow(0 0 2px #e0483a)}
   .oport.held .pn{background:#a8331f;color:#fff}
-  .oship{position:absolute;transform:translate(-50%,-150%);font-size:22px;filter:drop-shadow(0 2px 3px #000);pointer-events:none;z-index:3}
+  .oship{position:absolute;font-size:23px;filter:drop-shadow(0 2px 3px #000);pointer-events:none;z-index:5;animation:ombob 3.2s ease-in-out infinite}
+  @keyframes ombob{0%,100%{transform:translate(-50%,-150%) rotate(-4deg)}50%{transform:translate(-50%,-166%) rotate(4deg)}}
 
   .u{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:9px;margin-bottom:8px}
   .u .av{width:44px;height:44px;border-radius:10px;object-fit:cover;background:#241d14;flex:none;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden}
@@ -1372,16 +1385,26 @@ function portOf(id){return MARKETS_C.filter(function(m){return m.id===id;})[0];}
 function goodNames(ids){return ids.map(function(id){var g=GOOD_BYC[id];return g?g.ico+g.nm:id;}).join('、');}
 function voyDays(a,b){var A=portOf(a),B=portOf(b);var dx=A.x-B.x,dy=A.y-B.y;return Math.max(1,Math.round(Math.sqrt(dx*dx+dy*dy)/24));}
 function openMap(){
-  var here=P.port||'merc';
-  var body='<div class="omap" id="omap"><div class="wv"></div>';
+  if(!P.ship){toast('先到領主城堡領取新手船艦');return;}
+  var here=P.port||'merc', h=portOf(here);
+  var body='<div class="omap" id="omap"><div class="wv"></div><div class="wv2"></div>';
+  // 島嶼剪影（每港一塊陸地，大小隨機一點）
+  var landSz=[130,150,120,140,125,145];
+  MARKETS_C.forEach(function(m,i){var w=landSz[i%landSz.length];body+='<div class="oland" style="left:'+m.x+'%;top:'+m.y+'%;width:'+w+'px;height:'+Math.round(w*0.72)+'px"></div>';});
+  // 航線：從目前港連到各港，標上航程天數
+  var svg='<svg class="olanes" viewBox="0 0 100 100" preserveAspectRatio="none">';
+  MARKETS_C.forEach(function(m){if(m.id===here)return;var dx=(h.x+m.x)/2,dy=(h.y+m.y)/2,dd=voyDays(here,m.id);svg+='<line x1="'+h.x+'" y1="'+h.y+'" x2="'+m.x+'" y2="'+m.y+'"/><text x="'+dx+'" y="'+dy+'" text-anchor="middle">'+dd+'天</text>';});
+  svg+='</svg>';body+=svg;
+  // 港口（含產地產物提示）
   MARKETS_C.forEach(function(m){
     var held=P.holdings&&P.holdings[m.id];
-    body+='<div class="oport'+(m.id===here?' here':'')+(held?' held':'')+'" data-port="'+m.id+'" style="left:'+m.x+'%;top:'+m.y+'%"><div class="pin">'+(held?'🚩':m.ico)+'</div><div class="pn">'+m.nm+'</div></div>';
+    var prod=(m.cheap||[]).slice(0,2).map(function(k){return (GOOD_BYC[k]||{}).ico||'';}).join('');
+    body+='<div class="oport'+(m.id===here?' here':'')+(held?' held':'')+'" data-port="'+m.id+'" style="left:'+m.x+'%;top:'+m.y+'%"><div class="pin">'+(held?'🚩':m.ico)+'</div><div class="pn">'+m.nm+'</div>'+(prod?'<div class="prod">🟢'+prod+'</div>':'')+'</div>';
   });
-  var h=portOf(here);
-  body+='<div class="oship" style="left:'+h.x+'%;top:'+h.y+'%">⛵</div>';
+  // 羅盤
+  body+='<div class="ocompass"><i class="cn">N</i><i class="cs">S</i><i class="ce">E</i><i class="cw">W</i><b>🧭</b></div>';
+  body+='<div class="oship" style="left:'+h.x+'%;top:'+h.y+'%">'+(P.ship.ico||'⛵')+'</div>';
   body+='</div>';
-  if(!P.ship){toast('先到領主城堡領取新手船艦');return;}
   body+='<div class="note" style="text-align:left;margin-top:10px">目前停泊：<b>'+h.ico+' '+h.nm+'</b>　🧭 秘寶線索：'+(P.clues||0)+'　📦 貨艙 '+cargoCountC(P)+'/'+effCargoC(P)+'</div>';
   body+='<div class="note" style="text-align:left">⛵ '+P.ship.name+'　船身 '+P.ship.hull+'/'+P.ship.hullMax+'　💣 '+P.ship.cannon+'　💨 船速 '+(P.ship.speed||6)+'　⚓ '+P.ship.crew+'</div>';
   body+=seaBar('nav');
