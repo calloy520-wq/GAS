@@ -289,7 +289,7 @@ function voyageDays_(a,b){ return Math.max(1, Math.round(portDist_(a,b)/24)); }
 function rollSeaEvent_(pl, haggle){
   // 敵對勢力攔截：與某勢力交惡（敵對/世仇）時，其巡邏艦有機會攔路收買路財
   var hostiles=[]; if (pl.rep) for (var hk in pl.rep){ if (repTier(pl.rep[hk])<=1) hostiles.push(hk); }
-  if (hostiles.length && Math.random()<0.18){ var hf=FACTION_BY[hostiles[rint(0,hostiles.length-1)]]||{}; var loss=Math.min(pl.gold||0, rint(20,50)); pl.gold=(pl.gold||0)-loss; return { ico:hf.ico||'⚔️', t:(hf.nm||'敵對勢力')+'的巡邏艦盯上你，交了 '+loss+'🪙買路財才脫身（改善好感可免）。' }; }
+  if (hostiles.length && Math.random() < Math.min(0.42, 0.12+0.08*hostiles.length)){ var hf=FACTION_BY[hostiles[rint(0,hostiles.length-1)]]||{}; var loss=Math.min(pl.gold||0, rint(20,50)+hostiles.length*10); pl.gold=(pl.gold||0)-loss; return { ico:hf.ico||'⚔️', t:(hf.nm||'敵對勢力')+'的巡邏艦盯上你，交了 '+loss+'🪙買路財才脫身（樹敵越多、越常被攔）。' }; }
   var r = Math.min(0.999, Math.random() + navLuck_(pl));   // 航海術越高，越常遇好事、越少遇災劫
   if (r < 0.20) return { ico:'🌊', t:'風平浪靜，航行順利。' };
   if (r < 0.34) return { ico:'💨', t:'順風相助，船行如飛。' };

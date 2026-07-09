@@ -134,6 +134,7 @@ function ensureShape_(pl){
   if (!pl.chats || typeof pl.chats !== 'object') pl.chats = {};           // 副手對話紀錄（約會窗記憶）
   if (typeof pl.titleTier !== 'number') pl.titleTier = 0;                 // 已受封爵位階
   if (!pl.dateSeen || typeof pl.dateSeen !== 'object') pl.dateSeen = {};  // 已觸發的約會分歧劇情
+  if (!pl.dateEnd || typeof pl.dateEnd !== 'object') pl.dateEnd = {};     // 約會終章結局
   ensureSea_(pl);   // 航海術 / 商業 等級
   pl.roster.forEach(function(c){
     if (!c) return;

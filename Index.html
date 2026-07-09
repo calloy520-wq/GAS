@@ -358,7 +358,7 @@ function srv(action,payload){
 function mock(action,p){return new Promise(function(res,rej){
   var DB=JSON.parse(localStorage.getItem('merc_db')||'{}');
   function put(pl){DB[pl.nick]=pl;localStorage.setItem('merc_db',JSON.stringify(DB));}
-  function ensureC(pl){if(!pl.port)pl.port='merc';if(!pl.cargo)pl.cargo={};if(typeof pl.clues!=='number')pl.clues=0;if(pl.ship){if(typeof pl.ship.hull!=='number')pl.ship.hull=pl.ship.hullMax;if(typeof pl.ship.speed!=='number')pl.ship.speed=6;if(typeof pl.ship.gunTier!=='number')pl.ship.gunTier=1;if(typeof pl.ship.tier!=='number')pl.ship.tier=1;}if(typeof pl.invest!=='number')pl.invest=0;if(!pl.holdings)pl.holdings={};if(!pl.posts)pl.posts={};if(!pl.rep)pl.rep={};if(!pl.chats)pl.chats={};if(typeof pl.titleTier!=='number')pl.titleTier=0;if(!pl.dateSeen)pl.dateSeen={};if(!pl.bag)pl.bag=[];if(!pl.roster)pl.roster=[];if(!pl.team)pl.team={battle:[],support:[]};ensureSeaC(pl);}
+  function ensureC(pl){if(!pl.port)pl.port='merc';if(!pl.cargo)pl.cargo={};if(typeof pl.clues!=='number')pl.clues=0;if(pl.ship){if(typeof pl.ship.hull!=='number')pl.ship.hull=pl.ship.hullMax;if(typeof pl.ship.speed!=='number')pl.ship.speed=6;if(typeof pl.ship.gunTier!=='number')pl.ship.gunTier=1;if(typeof pl.ship.tier!=='number')pl.ship.tier=1;}if(typeof pl.invest!=='number')pl.invest=0;if(!pl.holdings)pl.holdings={};if(!pl.posts)pl.posts={};if(!pl.rep)pl.rep={};if(!pl.chats)pl.chats={};if(typeof pl.titleTier!=='number')pl.titleTier=0;if(!pl.dateSeen)pl.dateSeen={};if(!pl.dateEnd)pl.dateEnd={};if(!pl.bag)pl.bag=[];if(!pl.roster)pl.roster=[];if(!pl.team)pl.team={battle:[],support:[]};ensureSeaC(pl);}
   function roll(){var a=[d6(),d6(),d6(),d6()].sort(function(x,y){return x-y;});return a[1]+a[2]+a[3];}
   function d6(){return 1+Math.floor(Math.random()*6);}
   function mk(name,job,portrait,seed,pbase,race){var base={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){base[a]=Math.min(20,((pbase&&pbase[a])||roll())+(g[a]||0));});var c={id:'c'+Math.random().toString(36).slice(2,9),name:name,job:job,race:race||'human',support:isSup(job),portrait:portrait||'',seed:seed||0,level:1,xp:0,base:base,equip:{weapon:null,armor:null,trinket:null},hp:0,maxhp:0};c.maxhp=cMaxHp(c);c.hp=c.maxhp;return c;}
@@ -383,7 +383,7 @@ function mock(action,p){return new Promise(function(res,rej){
     if(action==='voyage'){var pl=DB[p.nick.trim()];ensureC(pl);if(!pl.ship)return rej(new Error('你還沒有船艦，先到領主城堡領取新手船艦'));if(!pl.port||!MARKET_BYC[pl.port])pl.port='merc';if(!pl.cargo)pl.cargo={};if(!MARKET_BYC[p.to])return rej(new Error('未知港口'));if(p.to===pl.port)return rej(new Error('你已在此港'));
       function pd(a,b){var A=MARKET_BYC[a],B=MARKET_BYC[b];return Math.sqrt(Math.pow(A.x-B.x,2)+Math.pow(A.y-B.y,2));}
       var from=pl.port,baseDays=Math.max(1,Math.round(pd(from,p.to)/24)),days=Math.max(1,Math.round(baseDays*navDaysMulC(pl))),hag=(pl.roster||[]).some(function(c){return charSkills(c.job,c.race).indexOf('persuasion')>=0;});
-      function sea(){var host=[];if(pl.rep)for(var hk in pl.rep){if(repTierC(pl.rep[hk])<=1)host.push(hk);}if(host.length&&Math.random()<0.18){var hf=FACTION_BY_C[host[Math.floor(Math.random()*host.length)]]||{};var hl=Math.min(pl.gold||0,20+Math.floor(Math.random()*31));pl.gold-=hl;return{ico:hf.ico||'⚔️',t:(hf.nm||'敵對勢力')+'的巡邏艦盯上你，交了 '+hl+'🪙買路財才脫身（改善好感可免）。'};}var r=Math.min(0.999,Math.random()+navLuckC(pl));if(r<0.2)return{ico:'🌊',t:'風平浪靜。'};if(r<0.34)return{ico:'💨',t:'順風相助。'};
+      function sea(){var host=[];if(pl.rep)for(var hk in pl.rep){if(repTierC(pl.rep[hk])<=1)host.push(hk);}if(host.length&&Math.random()<Math.min(0.42,0.12+0.08*host.length)){var hf=FACTION_BY_C[host[Math.floor(Math.random()*host.length)]]||{};var hl=Math.min(pl.gold||0,20+Math.floor(Math.random()*31)+host.length*10);pl.gold-=hl;return{ico:hf.ico||'⚔️',t:(hf.nm||'敵對勢力')+'的巡邏艦盯上你，交了 '+hl+'🪙買路財才脫身（樹敵越多、越常被攔）。'};}var r=Math.min(0.999,Math.random()+navLuckC(pl));if(r<0.2)return{ico:'🌊',t:'風平浪靜。'};if(r<0.34)return{ico:'💨',t:'順風相助。'};
         if(r<0.5){var gs=Object.keys(pl.cargo);if(gs.length){var g=gs[Math.floor(Math.random()*gs.length)];var l=Math.min(pl.cargo[g],1+Math.floor(Math.random()*2));pl.cargo[g]-=l;if(pl.cargo[g]<=0)delete pl.cargo[g];return{ico:'⛈️',t:'暴風雨，'+l+' 箱'+GOOD_BYC[g].nm+'落海！'};}var gl=Math.min(pl.gold,10+Math.floor(Math.random()*30));pl.gold-=gl;return{ico:'⛈️',t:'暴風雨修船 -'+gl+'🪙。'};}
         if(r<0.64){var g2=GOODS_C[Math.floor(Math.random()*GOODS_C.length)],q=1+Math.floor(Math.random()*2);if(cargoCountC(pl)+q<=CARGO_MAX_C){pl.cargo[g2.id]=(pl.cargo[g2.id]||0)+q;return{ico:'📦',t:'撈到漂流貨 +'+q+' 箱'+g2.nm+'！'};}return{ico:'🌊',t:'漂流物，但貨艙滿了。'};}
         if(r<0.76){var gg=15+Math.floor(Math.random()*40);pl.gold+=gg;return{ico:'💰',t:'友善商船交易 +'+gg+'🪙。'};}
@@ -825,6 +825,7 @@ function openMate(){
   var body='<div class="pbox" id="csp" style="width:min(40vw,140px)">'+(m.portrait?'<img loading="lazy" src="'+pthumb(m.portrait,384)+'" onerror="this.onerror=null;this.outerHTML=&#39;'+ci.ico+'&#39;">':'<div class="ph" style="font-size:36px">'+ci.ico+'</div>')+'</div>';
   body+='<div class="note" style="text-align:center;margin:6px 0 2px">'+(ri?ri.ico+ri.nm+' ':'')+ci.ico+ci.nm+' ・ Lv'+m.level+'</div>';
   body+='<div class="note" style="text-align:center;font-size:15px">'+affHearts(m.id)+'<br><small style="color:var(--gold)">'+AFF_NM[affLevel(m.id)]+'</small></div>';
+  if(P.dateEnd&&P.dateEnd[m.id])body+='<div class="note" style="text-align:center;color:#ff9ec7;font-weight:800">'+(P.dateEnd[m.id]==='wed'?'💍':'🤝')+' '+(P.loveTitle||'摯愛')+'</div>';
   body+='<div class="card" style="border-color:#8a6fd0;margin-top:8px"><b>👩‍✈️ '+m.name+'</b><div class="note" id="matesay" style="text-align:left;margin-top:6px;line-height:1.75;color:#f0d6ad;min-height:44px">「'+(m.bio||'…（想聽聽她的想法嗎？）')+'」</div></div>';
   body+='<button class="btn" id="mdate" style="margin-top:10px;background:linear-gradient(180deg,#c86fb0,#a04f88);color:#fff">💗 約會 · 專屬對話</button>';
   body+='<div class="rowbtns" style="margin-top:8px"><button class="btn re" id="mchat">💬 閒聊</button><button class="btn ok" id="madvice">💡 給建議</button></div>';
@@ -985,7 +986,7 @@ function renderDate(c){
   inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();go();}});
   inp.focus();
   window._dateEv=null;
-  setTimeout(function(){maybeDateEvent(c);},500);   // 開場若達新里程碑→分歧劇情
+  setTimeout(function(){dateStory(c);},500);   // 開場若達新里程碑→分歧劇情／終章
 }
 function dateRenderLog(c){
   var el=document.getElementById('dlog');if(!el)return;
@@ -1086,9 +1087,48 @@ function renderDateChoices(c,m){
     var di=document.querySelector('.dhead .di small');if(di)di.innerHTML=affHearts(c.id)+' ・ '+AFF_NM[affLevel(c.id)];
     var s=document.getElementById('dsend');if(s)s.disabled=false;var ip=document.getElementById('dinput');if(ip)ip.disabled=false;
     dateRenderChips(c);
-    setTimeout(function(){maybeDateEvent(c);},300);   // 連鎖：一次升多階也逐一觸發
+    setTimeout(function(){dateStory(c);},300);   // 連鎖：一次升多階、或接終章
   };});
 }
+function dateStory(c){ if(maybeDateEvent(c))return true; return maybeDateFinale(c); }
+// 💍 終章：好感滿(Lv5)＋看完 Lv5 分歧 → 多結局告白（一次）
+var DATE_FINALE={setup:'（她深吸一口氣，眼神從未如此認真）我想問你最後一件事——這輩子，你願不願意和我一起，走到最後？',
+  choices:[
+    {t:'我願意，此生不渝。',end:'wed',title:'航海終生伴侶',reply:'…好。從今天起，你我同舟，此生不渝。'},
+    {t:'做我一生的搭檔，並肩闖蕩。',end:'partner',title:'生死與共的搭檔',reply:'一言為定。這條命，往後就和你綁在一起了。'},
+    {t:'再…再讓我想想。',end:'',reply:'…嗯，我等你。不急，我哪也不去。'}
+  ]};
+function maybeDateFinale(c){
+  if(window._dateEv)return false;
+  if(affLevel(c.id)<5||((P.dateSeen&&P.dateSeen[c.id])||0)<5)return false;
+  if(P.dateEnd&&P.dateEnd[c.id])return false;
+  window._dateEv='finale';
+  pushChat(c.id,1,DATE_FINALE.setup);saveP();dateRenderLog(c);
+  var el=document.getElementById('dchips');if(!el)return true;var ev=DATE_FINALE;
+  el.innerHTML='<div style="width:100%;font-size:11px;color:#ffb8d8;padding:0 4px 2px">💍 終章…</div>'+ev.choices.map(function(ch,i){return '<span class="dchip" style="white-space:normal;max-width:100%" data-fin="'+i+'">'+esc(ch.t)+'</span>';}).join('');
+  var snd=document.getElementById('dsend');if(snd)snd.disabled=true;var inp=document.getElementById('dinput');if(inp)inp.disabled=true;
+  Array.prototype.forEach.call(document.querySelectorAll('#dchips [data-fin]'),function(elm){elm.onclick=function(){
+    var ch=ev.choices[+elm.dataset.fin];
+    pushChat(c.id,0,ch.t);pushChat(c.id,1,ch.reply);window._dateEv=null;
+    var s=document.getElementById('dsend');if(s)s.disabled=false;var ip=document.getElementById('dinput');if(ip)ip.disabled=false;
+    if(ch.end){
+      if(!P.dateEnd)P.dateEnd={};P.dateEnd[c.id]=ch.end;P.loveTitle=ch.title;if(ch.end==='wed')P.spouse=c.id;
+      P.gold=(P.gold||0)+800;
+      pushChat(c.id,2,'💞 你與 '+c.name+' 締結「'+ch.title+'」');
+      saveP();refreshTopbar();dateRenderLog(c);dateFinaleScene(c,ch);
+    } else { saveP();dateRenderLog(c);dateRenderChips(c); }
+  };});
+  return true;
+}
+function dateFinaleScene(c,ch){
+  var body='<div class="note" style="text-align:center;font-size:52px">💞</div><div class="card" style="border-color:#c86fb0"><div class="note" style="text-align:left;line-height:1.9">你與 <b>'+c.name+'</b> 締結為 <b style="color:#ff9ec7">'+ch.title+'</b>。<br>🎁 賀禮 +800🪙<br><small style="color:var(--soft)">（副手面板可見你們的關係；情義天長地久。）</small></div><div class="note" id="ftale" style="text-align:left;margin-top:8px;color:#f0d6ad;line-height:1.85">✨ …</div></div>';
+  openSheet('💍 '+ch.title,'你與 '+c.name+' 的終章',body);
+  var prompt='用繁體中文寫一段 50 字內、溫柔動人的場景：大航海世界裡，傭兵團長與摯愛副手'+c.name+'締結「'+ch.title+'」的那一刻。第三人稱、只回那段話、不要引號或說明。';
+  var done=false,tm=setTimeout(function(){if(!done){done=true;cb(finaleTpl(c,ch));}},9000);
+  function cb(t){var e=document.getElementById('ftale');if(e)e.textContent=t;}
+  fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){if(done)return;done=true;clearTimeout(tm);t=(t||'').trim().replace(/^["「『]+|["」』]+$/g,'').slice(0,100);cb(t&&!/error|unable|sorry|api/i.test(t)?t:finaleTpl(c,ch));}).catch(function(){if(done)return;done=true;clearTimeout(tm);cb(finaleTpl(c,ch));});
+}
+function finaleTpl(c,ch){return ch.end==='wed'?('夕陽為海面鍍上金光，'+c.name+'倚在你肩上輕聲說：「這片海，往後就是我們的家了。」'):('甲板上，'+c.name+'與你擊掌相笑：「生死與共，往後海角天涯，我都跟定你了。」');}
 function dateSend(c,text){
   pushChat(c.id,0,text); dateRenderLog(c);
   var snd=document.getElementById('dsend');if(snd)snd.disabled=true;
@@ -1108,7 +1148,7 @@ function dateSend(c,text){
     var di=document.querySelector('.dhead .di small');if(di)di.innerHTML=affHearts(c.id)+' ・ '+AFF_NM[affLevel(c.id)];
     if(snd)snd.disabled=false;
     var inp=document.getElementById('dinput');if(inp)inp.focus();
-    if(aft>bef)setTimeout(function(){maybeDateEvent(c);},400);   // 聊到升階→觸發分歧劇情
+    if(aft>bef)setTimeout(function(){dateStory(c);},400);   // 聊到升階→觸發分歧劇情／終章
   });
 }
 // 免費 AI 回覆（帶最近對話＋關係＋近況＝連續記憶），逾時/失敗用模板
@@ -2030,6 +2070,9 @@ function renderVoyage(v){
 var PEERAGE_C=[{t:0,nm:'無名浪人',ico:'🚶'},{t:300,nm:'見習船長',ico:'⛵'},{t:800,nm:'名聞商賈',ico:'💰'},{t:1600,nm:'海域騎士',ico:'🗡️'},{t:2800,nm:'男爵',ico:'🎖️'},{t:4500,nm:'子爵',ico:'🏅'},{t:7000,nm:'伯爵',ico:'👑'},{t:10000,nm:'侯爵',ico:'💠'},{t:15000,nm:'海洋霸主',ico:'🌊'}];
 function fameOfC(pl){var f=0;f+=(pl.deepest||0)*40;f+=Math.floor((pl.gold||0)/120)+Math.floor((pl.invest||0)/120);if(pl.holdings)Object.keys(pl.holdings).forEach(function(k){f+=50+(pl.holdings[k].lv||1)*50;});f+=(pl.fleet||[]).length*40;f+=(((pl.nav&&pl.nav.lv)||1)+((pl.com&&pl.com.lv)||1))*18;f+=(pl.questsDone||0)*12;(pl.roster||[]).forEach(function(c){f+=(c.level||1)*3;});if(pl.uniques)f+=Object.keys(pl.uniques).length*80;return Math.round(f);}
 function peerageOfC(f){var ix=0;for(var i=0;i<PEERAGE_C.length;i++){if(f>=PEERAGE_C[i].t)ix=i;}return ix;}
+// ☠️ 叛徒路線：與體制多數勢力交惡、卻受海盜擁戴 → 走無冕之王/黑帆之王的自封路
+var OUTLAW_TITLES=['浪人','亡命之徒','黑旗船長','劫掠首領','私掠艦長','海賊頭目','海賊將','無冕之王','黑帆之王'];
+function isOutlawC(){if(repTierC(repOfC(P,'pirate'))<3)return false;var hostiles=['guild','navy','league'].filter(function(f){return repTierC(repOfC(P,f))<=1;}).length;return hostiles>=2;}
 function fameBreakdownC(pl){return [['⚔️ 地城深度',(pl.deepest||0)*40],['💰 財富',Math.floor((pl.gold||0)/120)+Math.floor((pl.invest||0)/120)],['🚩 領地',(pl.holdings?Object.keys(pl.holdings).reduce(function(a,k){return a+50+(pl.holdings[k].lv||1)*50;},0):0)],['🚢 艦隊',(pl.fleet||[]).length*40],['⚓ 海事',(((pl.nav&&pl.nav.lv)||1)+((pl.com&&pl.com.lv)||1))*18],['📜 委託',(pl.questsDone||0)*12],['👥 夥伴',(pl.roster||[]).reduce(function(a,c){return a+(c.level||1)*3;},0)],['✦ 頭目戰利',(pl.uniques?Object.keys(pl.uniques).length*80:0)]];}
 // ============ 🎖️ 授勳大典 / 反骨褫奪 ============
 // 名聲跨階＋有友好勢力當靠山→受封爵位；冊封勢力若翻臉（敵對/世仇）→褫奪、視為叛徒
@@ -2037,25 +2080,27 @@ function bestAllyC(){var best=null,bv=199;FACTIONS_C.forEach(function(f){var v=r
 function checkPeerage(){
   if(!P||(modal&&modal.classList.contains('show')))return false;
   var fame=fameOfC(P),tier=peerageOfC(fame);
-  if(P.titleFrom&&repTierC(repOfC(P,P.titleFrom))<=1){   // 反骨：靠山翻臉→褫奪
+  if(P.titleFrom&&P.titleFrom!=='pirate'&&repTierC(repOfC(P,P.titleFrom))<=1){   // 反骨：貴族靠山翻臉→褫奪（海盜擁立不會褫奪）
     var f=FACTION_BY_C[P.titleFrom]||{},old=P.title;
-    P.title=null;P.titleFrom=null;P.titleTier=0;saveP();refreshTopbar();
+    P.title=null;P.titleFrom=null;P.titleTier=0;P.outlaw=false;saveP();refreshTopbar();
     peerageEvent('revoke',{facNm:f.nm||'',facIco:f.ico||'',title:old||'爵位'});return true;
   }
-  if(tier>(P.titleTier||0)){   // 授勳：跨階＋有靠山
+  if(tier>(P.titleTier||0)){   // 授勳：跨階＋有靠山（海盜擁立＝叛徒路，用海賊稱號）
     var sp=bestAllyC();if(!sp)return false;
-    var pe=PEERAGE_C[tier],reward=200+tier*180,f2=FACTION_BY_C[sp]||{};
-    P.title=pe.nm;P.titleFrom=sp;P.titleTier=tier;P.gold=(P.gold||0)+reward;applyRepC(P,sp,40);saveP();refreshTopbar();
-    peerageEvent('confer',{facNm:f2.nm||'',facIco:f2.ico||'',title:pe.nm,ico:pe.ico,reward:reward});return true;
+    var outlaw=(sp==='pirate'&&isOutlawC());
+    var nm=outlaw?OUTLAW_TITLES[tier]:PEERAGE_C[tier].nm,reward=200+tier*180,f2=FACTION_BY_C[sp]||{};
+    P.title=nm;P.titleFrom=sp;P.titleTier=tier;P.outlaw=outlaw;P.gold=(P.gold||0)+reward;applyRepC(P,sp,40);saveP();refreshTopbar();
+    peerageEvent('confer',{facNm:f2.nm||'',facIco:f2.ico||'',title:nm,ico:outlaw?'☠️':PEERAGE_C[tier].ico,reward:reward,outlaw:outlaw});return true;
   }
   return false;
 }
 function peerageEvent(mode,d){
   var body;
   if(mode==='confer'){
+    var oc=d.outlaw;
     body='<div class="note" style="text-align:center;font-size:52px">'+(d.ico||'🎖️')+'</div>'+
-      '<div class="card" style="border-color:var(--gold-d)"><div class="note" style="text-align:left;line-height:1.9">在 '+d.facIco+'<b>'+d.facNm+'</b> 的見證下，你被授予爵位<br><b style="color:var(--gold);font-size:17px">'+d.title+'</b><br>🪙 賞金 +'+d.reward+'　🤝 '+d.facNm+' 好感 +40</div><div class="note" id="ptale" style="text-align:left;margin-top:8px;color:#f0d6ad;line-height:1.8">✨ 典禮進行中…</div></div>';
-    openSheet('🎖️ 授勳大典',d.facIco+d.facNm+' 冊封',body);
+      '<div class="card" style="border-color:'+(oc?'#7a3b3b':'var(--gold-d)')+'"><div class="note" style="text-align:left;line-height:1.9">'+(oc?'☠️ 在 '+d.facIco+'<b>'+d.facNm+'</b> 的擁戴下，眾海盜奉你為':'在 '+d.facIco+'<b>'+d.facNm+'</b> 的見證下，你被授予爵位')+'<br><b style="color:'+(oc?'#ff9ec7':'var(--gold)')+';font-size:17px">'+d.title+'</b><br>🪙 '+(oc?'分贓':'賞金')+' +'+d.reward+'　🤝 '+d.facNm+' 好感 +40</div><div class="note" id="ptale" style="text-align:left;margin-top:8px;color:#f0d6ad;line-height:1.8">✨ 典禮進行中…</div></div>';
+    openSheet(oc?'☠️ 海盜擁立':'🎖️ 授勳大典',(oc?'黑帆之下・':'')+d.facIco+d.facNm+(oc?' 擁戴':' 冊封'),body);
   }else{
     body='<div class="note" style="text-align:center;font-size:52px">💢</div>'+
       '<div class="card" style="border-color:#7a3b3b"><div class="note" style="text-align:left;line-height:1.9">'+d.facIco+'<b>'+d.facNm+'</b> 宣布褫奪你的「'+d.title+'」爵位，視你為<b style="color:var(--hp)">叛徒</b>！<br><small style="color:var(--soft)">（他們的巡邏艦會找你麻煩；若與其宿敵交好，或可另受冊封。）</small></div><div class="note" id="ptale" style="text-align:left;margin-top:8px;color:#f0d6ad;line-height:1.8">✨ …</div></div>';
@@ -2063,10 +2108,11 @@ function peerageEvent(mode,d){
   }
   peerageTale(mode,d,function(t){var e=document.getElementById('ptale');if(e)e.textContent=t;});
 }
-function peerageTaleTpl(mode,d){return mode==='confer'?('號角齊鳴，'+d.facNm+'的旗幟下，眾人見證你受封「'+d.title+'」，掌聲如潮水般湧起。'):(d.facNm+'當眾撕下你的爵位徽記：「叛徒！這片海，不再有你的容身之處。」');}
+function peerageTaleTpl(mode,d){return mode==='confer'?(d.outlaw?('黑帆升起，甲板上眾海盜齊聲怒吼你的名號——「'+d.title+'」！這片海，從此無人敢攖其鋒。'):('號角齊鳴，'+d.facNm+'的旗幟下，眾人見證你受封「'+d.title+'」，掌聲如潮水般湧起。')):(d.facNm+'當眾撕下你的爵位徽記：「叛徒！這片海，不再有你的容身之處。」');}
 function peerageTale(mode,d,cb){
   var prompt=mode==='confer'
-    ?'用繁體中文寫一段 45 字內、莊嚴有畫面感的授勳場景：大航海世界裡「'+d.facNm+'」為傭兵團長冊封「'+d.title+'」爵位的那一刻。第三人稱、只回那段話、不要引號或說明。'
+    ?(d.outlaw?'用繁體中文寫一段 45 字內、狂野豪邁的場景：大航海世界裡黑帆海盜團在甲板上擁立某傭兵團長為「'+d.title+'」的那一刻。第三人稱、只回那段話、不要引號或說明。'
+              :'用繁體中文寫一段 45 字內、莊嚴有畫面感的授勳場景：大航海世界裡「'+d.facNm+'」為傭兵團長冊封「'+d.title+'」爵位的那一刻。第三人稱、只回那段話、不要引號或說明。')
     :'用繁體中文寫一段 45 字內、有戲劇張力的場景：大航海世界裡「'+d.facNm+'」當眾宣布褫奪某傭兵團長爵位、斥其為叛徒的那一刻。第三人稱、只回那段話、不要引號或說明。';
   var done=false,tm=setTimeout(function(){if(!done){done=true;cb(peerageTaleTpl(mode,d));}},9000);
   fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){if(done)return;done=true;clearTimeout(tm);t=(t||'').trim().replace(/^["「『]+|["」』]+$/g,'').slice(0,90);cb(t&&!/error|unable|sorry|api/i.test(t)?t:peerageTaleTpl(mode,d));}).catch(function(){if(done)return;done=true;clearTimeout(tm);cb(peerageTaleTpl(mode,d));});
@@ -2089,8 +2135,8 @@ function openCastle(){
     }
   }
   body+='<div class="card" style="border-color:var(--gold);background:linear-gradient(180deg,rgba(200,151,31,.14),transparent)"><b style="font-size:15px">'+pr.ico+' 爵位：'+pr.nm+'</b> <span class="tag">威名 '+fame+'</span>';
-  if(P.title&&P.titleFrom){var tf=FACTION_BY_C[P.titleFrom]||{};body+='<div class="note" style="text-align:left;margin-top:4px;color:var(--gold)">👑 受封稱號「'+P.title+'」 · 冊封：'+(tf.ico||'')+(tf.nm||'')+'</div>';}
-  else if(!P.title&&bestAllyC()===null&&pix>=1)body+='<div class="note" style="text-align:left;margin-top:4px;color:var(--soft)">🏴 目前無勢力為你冊封（與某勢力交好即可受封爵位）</div>';
+  if(P.title&&P.titleFrom){var tf=FACTION_BY_C[P.titleFrom]||{};body+='<div class="note" style="text-align:left;margin-top:4px;color:'+(P.outlaw?'#ff9ec7':'var(--gold)')+'">'+(P.outlaw?'☠️ 海賊名號':'👑 受封稱號')+'「'+P.title+'」 · '+(P.outlaw?'黑帆擁立':'冊封')+'：'+(tf.ico||'')+(tf.nm||'')+'</div>'+(P.outlaw?'<div class="note" style="text-align:left;color:var(--soft);font-size:11px">你是體制眼中的叛徒、海盜眼中的王——貴族勢力不再冊封你，除非回頭。</div>':'');}
+  else if(!P.title&&bestAllyC()===null&&pix>=1)body+='<div class="note" style="text-align:left;margin-top:4px;color:var(--soft)">🏴 目前無勢力為你冊封（與某勢力交好即可受封爵位；若與海盜稱兄道弟、與體制為敵，則另有一條海賊稱王路）</div>';
   if(pn){var fp=Math.min(100,Math.round((fame-pr.t)/(pn.t-pr.t)*100));body+='<div class="note" style="text-align:left;margin-top:4px">距離晉爵「'+pn.ico+pn.nm+'」還差 <b>'+(pn.t-fame)+'</b> 威名</div><div class="hpbar" style="height:9px;margin-top:6px"><i style="background:linear-gradient(90deg,#f4c34e,#c8971f);width:'+fp+'%"></i></div>';}
   else body+='<div class="note" style="text-align:left;margin-top:4px">🏆 你已受封『海洋霸主』—— 這片海域的傳說，登峰造極！</div>';
   body+='<div class="glab" style="margin-top:8px">威名來源</div>';
