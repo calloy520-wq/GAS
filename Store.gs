@@ -136,6 +136,9 @@ function ensureShape_(pl){
   if (!pl.dateSeen || typeof pl.dateSeen !== 'object') pl.dateSeen = {};  // 已觸發的約會分歧劇情
   if (!pl.dateEnd || typeof pl.dateEnd !== 'object') pl.dateEnd = {};     // 約會終章結局
   if (!pl.jealous || typeof pl.jealous !== 'object') pl.jealous = {};     // 吃醋心情值（純劇情）
+  if (!pl.dex || typeof pl.dex !== 'object') pl.dex = { titles:{}, romance:{} };  // 結局圖鑑
+  if (!pl.dex.titles) pl.dex.titles = {}; if (!pl.dex.romance) pl.dex.romance = {};
+  if (pl.lair && typeof pl.lairLv !== 'number') pl.lairLv = 1;            // 巢穴等級
   ensureSea_(pl);   // 航海術 / 商業 等級
   pl.roster.forEach(function(c){
     if (!c) return;

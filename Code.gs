@@ -40,6 +40,7 @@ function route_(action, p){
     case 'captive': return apiCaptive_(p);
     case 'captain': return apiCaptain_(p);
     case 'faction': return apiFaction_(p);
+    case 'lair':    return apiLair_(p);
     case 'raid':    return apiRaidPlayer_(p);
     case 'shipbuy': return apiShipBuy_(p);
     case 'fleet':   return apiFleet_(p);
@@ -445,6 +446,58 @@ function apiCaptive_(p){
   cleanPlayer_(player); savePlayer(player);
   return { player:player, kept:out };
 }
+// ☠️ 海盜巢穴：升級／領分贓／迎擊賞金獵人
+var LAIR_LV_MAX = 3;
+function lairUpCost_(lv){ return Math.round(500*Math.pow(2, lv-1)); }   // 1→2:500, 2→3:1000
+function apiLair_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (!player.lair) throw new Error('你還沒有海盜巢穴');
+  if (typeof player.lairLv !== 'number') player.lairLv = 1;
+  var now = Date.now();
+  if (p.op === 'upgrade'){
+    if (player.lairLv >= LAIR_LV_MAX) throw new Error('巢穴已達最高等級');
+    var cost = lairUpCost_(player.lairLv);
+    if ((player.gold||0) < cost) throw new Error('金幣不足（升級需 '+cost+'🪙）');
+    player.gold -= cost; player.lairLv++;
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player, lv:player.lairLv };
+  }
+  if (p.op === 'collect'){
+    if (!player.lairAt) player.lairAt = now;
+    var cycles = Math.min(24, Math.floor((now - player.lairAt)/HOLD_CYCLE_MS));
+    if (cycles <= 0){ cleanPlayer_(player); savePlayer(player); return { player:player, report:{ earned:0 } }; }
+    var repMul = 1 + Math.max(0, repTier((player.rep&&player.rep.pirate)||0)-2)*0.15;
+    var per = Math.round(45 * player.lairLv * repMul);
+    var got = per * cycles; player.gold += got; player.lairAt += cycles*HOLD_CYCLE_MS;
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player, report:{ earned:got, cycles:cycles, per:per } };
+  }
+  if (p.op === 'defend'){
+    if ((player.lairLv||1) < 3) throw new Error('巢穴須升到 Lv3（賊窩要塞）才能設防迎擊賞金獵人');
+    if (player.ship && player.ship.hull <= 0) throw new Error('船身破損，請先到船塢修理');
+    var day = Math.floor(now/(1000*60*60*24));
+    if (player.lairDefDay === day) throw new Error('今日已擊退一波賞金獵人，明天再來');
+    var lvl = player.deepest||0;
+    var enemy = { nm:'賞金獵人艦隊', ico:'🎯', hull:120+lvl*6, cannon:14+Math.floor(lvl/2), speed:6, gold:[200+lvl*10, 420+lvl*22], loot:5, fac:'', tier:2 };
+    var byId={}; (player.roster||[]).forEach(function(c){ byId[c.id]=c; });
+    var party = (player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
+    var ship = player.ship || { hull:120, hullMax:120, cannon:12, crew:10, speed:6 };
+    var fleetGun = (player.fleet||[]).reduce(function(a,s){ return a + Math.floor((s.cannon||0)/2); }, 0);
+    var defShip = { hull:ship.hull, hullMax:ship.hullMax, cannon:(ship.cannon||10)+fleetGun+(player.lairLv*3), crew:ship.crew, speed:ship.speed };
+    var r = resolveNaval_(defShip, party, enemy, navalGun_(player), 'sink', enemy.speed, 4, 'round');   // 主場優勢：奇襲先手 +4
+    if (player.ship) player.ship.hull = r.playerHull;
+    var report = { enemy:{nm:enemy.nm, ico:enemy.ico}, win:r.win, mode:r.mode, fled:r.fled, log:r.log, gold:0, loot:[], hull:(player.ship||defShip).hull, hullMax:(player.ship||defShip).hullMax, nev:r.nev, snap:r.snap, defend:true };
+    if (r.win){ var g=rint(enemy.gold[0],enemy.gold[1]); player.gold+=g; report.gold=g; player.lairDefDay=day; applyRep_(player,'pirate',30); report.repHit={ fac:'pirate', ico:'☠️', nm:'黑帆海盜團', delta:30 }; }
+    else { var pen=Math.min(player.gold||0, rint(30,70)); player.gold-=pen; report.lostGold=pen; }
+    report.sea = grantSea_(player, 'nav', r.win?14:4);
+    player.gold = Math.max(0, player.gold);
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player, report:report };
+  }
+  cleanPlayer_(player); savePlayer(player);
+  return { player:player };
+}
 // 勢力懸賞：接受／領獎／放棄
 function apiFaction_(p){
   var player = loadPlayer((p.nick||'').trim());
@@ -622,7 +675,8 @@ function apiFleet_(p){
       var cycles = Math.min(8, Math.floor((now - (s.lastAt||now))/TRADE_CYCLE_MS));
       if (cycles<=0) return;
       var sp = routeSpread_(s.route.from, s.route.to, day);
-      var perCycle = Math.max(0, Math.round(sp.spread * s.cargoBonus * 0.7 * (haggle?1.1:1)));
+      var lairSupply = (player.lairLv>=2) ? 1.15 : 1;   // 巢穴 Lv2 艦隊補給站
+      var perCycle = Math.max(0, Math.round(sp.spread * s.cargoBonus * 0.7 * (haggle?1.1:1) * lairSupply));
       var got=0, lost=0;
       for (var i=0;i<cycles;i++){
         var lossChance = s.escort?0.08:0.25;
