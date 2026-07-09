@@ -2326,10 +2326,10 @@ function openDungeon(){
   var battle=P.team.battle.length, sup=P.team.support.length;
   var body='<div class="note" style="text-align:left">目前隊伍：戰鬥 '+battle+'/'+BATTLE_MAX+' ・ 後勤 '+sup+'/'+SUPPORT_MAX+'　'+(battle?'':'<b style="color:var(--hp)">（至少要 1 名戰鬥位！）</b>')+'</div>';
   body+='<div class="card"><div class="glab">起始樓層（可從已解鎖的第 1～'+maxStart+' 層出發）</div>'+
-    '<input class="inp" id="sf" type="number" min="1" max="'+maxStart+'" value="1">'+
+    '<input class="inp" id="sf" type="number" min="1" max="'+maxStart+'" value="'+maxStart+'">'+
     '<div class="glab" style="margin-top:10px">目標樓層（最深已達 '+deep+'）</div>'+
     '<input class="inp" id="tf" type="number" min="1" max="'+MAX_FLOOR+'" value="'+suggest+'">'+
-    '<div class="note" style="text-align:left;margin-top:8px">每 5 層有頭目。中途全滅會撤退失敗，但撿到的都帶得走。從深層出發可省去重打前段。</div></div>';
+    '<div class="note" style="text-align:left;margin-top:8px">💡 建議<b>短程穩推</b>：從checkpoint（最深層）出發、一次只推 1～3 層。一次跨太多層，傷害會累積、容易全滅。每 5 層有頭目；中途全滅撤退失敗，但撿到的都帶得走。</div></div>';
   body+='<button class="btn ok" id="dive"'+(battle?'':' disabled')+'>⚔️ 自動探索出發</button>';
   openSheet('⬇️ 地下城','GAS 會擲骰跑完整場，回你戰報',body);
   var dv=document.getElementById('dive');if(dv)dv.onclick=function(){

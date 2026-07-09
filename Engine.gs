@@ -224,7 +224,10 @@ function runDungeon(team, startFloor, targetFloor){
       if (g){ report.loot.push(g.id); floorLog.loot.push(g); if(deft.pass && Math.random()<0.4) floorLog.skills.push('🔓 '+deft.by.name+' 巧手開鎖，多拿了戰利品'); }
     }
 
-    // 醫者增益 ＋ 醫療技能：每層自動治療
+    // 每清完一層喘口氣：全員小幅回血（讓穩紮穩打的長征可行，避免血量單向遞減的死循環）
+    // 早期血池小，用「固定值 + 比例」讓新手也有感；不復活陣亡者（仍須旅館救治）
+    heroes.forEach(function(h){ if (h.hp>0){ var rest=Math.max(5, Math.round(h.maxhp*0.14)); h.hp=Math.min(h.maxhp, h.hp+rest); } });
+    // 醫者增益 ＋ 醫療技能：每層自動治療（疊加在喘息之上，醫者仍明顯更持久）
     if (buff.heal > 0){
       heroes.forEach(function(h){ if (h.hp>0){ var heal=Math.round(h.maxhp*buff.heal); h.hp=Math.min(h.maxhp,h.hp+heal); } });
     }
@@ -261,7 +264,7 @@ function spawnEnemies(floor, isBoss){
   if (isBoss){
     var b = BOSSES[Math.min(BOSSES.length-1, Math.floor((floor-1)/5))];
     list.push(mkMonster(b, floor, true));
-    var adds = Math.min(2, Math.floor(floor/8));
+    var adds = Math.min(2, Math.floor(floor/11));           // 魔王小怪放少（原 /8 讓深層魔王戰火力過載）
     for (var i=0;i<adds;i++) list.push(mkMonster(pick(MONSTERS), floor, false));
   } else {
     // 前 3 層固定單體、4~5 層偶爾兩隻，之後才變多（新手友善）
@@ -271,12 +274,14 @@ function spawnEnemies(floor, isBoss){
   return list;
 }
 function mkMonster(m, floor, boss){
-  var scale = 1 + (floor-1)*0.19 + Math.max(0,floor-15)*0.05;   // 深層(>15)額外變硬
+  var scale = 1 + (floor-1)*0.15 + Math.max(0,floor-15)*0.03;   // HP 成長放緩（原 0.19/0.05 讓深層魔王無法擊殺）
   var soft = floor<=5 ? 0.7 : 1;                                 // 前 5 層敵人整體弱化（新手友善）
   var goldScale = 1 + (floor-1)*0.15;                            // 金幣隨樓層成長：深潛更值錢（修正中期太窮）
-  var maxhp = Math.max(1, Math.round((m.hd*6 + m.hd) * scale * soft));
+  var hpMul = boss ? 4.8 : 7;                                    // 魔王血池另外收斂（原 hd*7 過肥，配深層 scale 直接無敵）
+  var maxhp = Math.max(1, Math.round(m.hd * hpMul * scale * soft));
+  var atkGrow = boss ? Math.floor(floor/5) : Math.floor(floor/4); // 魔王命中成長更緩，讓高等隊伍的護甲擋得住
   return { nm:m.nm, ico:m.ico, ac:m.ac + Math.floor(floor/5), maxhp:maxhp, hp:maxhp,
-    atkBonus:m.atk + Math.floor(floor/3), dmg:m.dmg,
+    atkBonus:m.atk + atkGrow, dmg:m.dmg,                        // 命中成長放緩，讓 AC/護甲有意義
     xp:Math.round(m.xp*scale), gold:Math.round(rint(m.gold[0],m.gold[1])*goldScale), boss:!!boss };
 }
 
@@ -313,7 +318,7 @@ function resolveCombat(heroes, enemies, buff, floor, surprise){
       var atk = natural + e.atkBonus;
       var cs = t._cs || combatStats(t);
       if (atk >= cs.ac || natural === 20){
-        var dmg = rollDice(e.dmg[0], e.dmg[1]) + Math.floor(floor/3);
+        var dmg = rollDice(e.dmg[0], e.dmg[1]) + Math.floor(floor/4);
         t.hp = Math.max(0, t.hp - dmg);
         if (t.hp<=0) t._downed = true;
         log.lines.push('🩸 '+e.ico+e.nm+' 打中 '+t.name+' −'+dmg+(t.hp<=0?' 💀 倒下':''));
