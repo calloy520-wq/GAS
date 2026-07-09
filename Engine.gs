@@ -271,10 +271,11 @@ function spawnEnemies(floor, isBoss){
 }
 function mkMonster(m, floor, boss){
   var scale = 1 + (floor-1)*0.19 + Math.max(0,floor-15)*0.05;   // 深層(>15)額外變硬
+  var goldScale = 1 + (floor-1)*0.15;                            // 金幣隨樓層成長：深潛更值錢（修正中期太窮）
   var maxhp = Math.round((m.hd*6 + m.hd) * scale);
   return { nm:m.nm, ico:m.ico, ac:m.ac + Math.floor(floor/5), maxhp:maxhp, hp:maxhp,
     atkBonus:m.atk + Math.floor(floor/3), dmg:m.dmg,
-    xp:Math.round(m.xp*scale), gold:rint(m.gold[0],m.gold[1]), boss:!!boss };
+    xp:Math.round(m.xp*scale), gold:Math.round(rint(m.gold[0],m.gold[1])*goldScale), boss:!!boss };
 }
 
 // ---------- 一場遭遇戰（回合制、GAS 擲骰）----------

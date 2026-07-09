@@ -465,7 +465,7 @@ function apiLair_(p){
   }
   if (p.op === 'collect'){
     if (!player.lairAt) player.lairAt = now;
-    var cycles = Math.min(24, Math.floor((now - player.lairAt)/HOLD_CYCLE_MS));
+    var cycles = Math.min(16, Math.floor((now - player.lairAt)/HOLD_CYCLE_MS));
     if (cycles <= 0){ cleanPlayer_(player); savePlayer(player); return { player:player, report:{ earned:0 } }; }
     var repMul = 1 + Math.max(0, repTier((player.rep&&player.rep.pirate)||0)-2)*0.15;
     var per = Math.round(45 * player.lairLv * repMul);
@@ -672,7 +672,7 @@ function apiFleet_(p){
     var haggle = (player.roster||[]).some(function(c){ return charSkills(c).indexOf('persuasion')>=0; });
     player.fleet.forEach(function(s){
       if (s.role!=='trade' || !s.route) return;
-      var cycles = Math.min(8, Math.floor((now - (s.lastAt||now))/TRADE_CYCLE_MS));
+      var cycles = Math.min(6, Math.floor((now - (s.lastAt||now))/TRADE_CYCLE_MS));
       if (cycles<=0) return;
       var sp = routeSpread_(s.route.from, s.route.to, day);
       var lairSupply = (player.lairLv>=2) ? 1.15 : 1;   // 巢穴 Lv2 艦隊補給站
@@ -828,7 +828,7 @@ function apiHold_(p){
     var qmBonus = officerRank_(player,'quartermaster')*0.06;   // 總管職務加成
     Object.keys(player.holdings).forEach(function(pid){
       var h = player.holdings[pid], mk = MARKET_BY[pid]; if (!mk) return;
-      var cycles = Math.min(24, Math.floor((now - (h.lastAt||now))/HOLD_CYCLE_MS));
+      var cycles = Math.min(16, Math.floor((now - (h.lastAt||now))/HOLD_CYCLE_MS));
       if (cycles<=0) return;
       var per = Math.round(HOLD_TAX_BASE * h.lv * (1+mateBonus+comBonus+qmBonus));
       var got = per * cycles;
