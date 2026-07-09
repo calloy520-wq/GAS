@@ -918,17 +918,39 @@ function tabsHTML(){return '<div class="tabbar" id="tabbar">'+TABS.filter(functi
 function bindTabs(){Array.prototype.forEach.call(document.querySelectorAll('#tabbar .tab'),function(el){el.onclick=function(){var t=el.dataset.tab;
   if(t==='town')renderTown();else if(t==='help')showTutorial();else if(t==='dungeon')openDungeon();else openBldg(t);};});}
 function showTutorial(){
-  var body='<div class="note" style="text-align:left;line-height:1.9">歡迎來到傭兵之城！你是一名傭兵兼冒險商人，這裡能打、能商、能航海。跟著做一遍就上手：'+
-    '<br><br>1️⃣ <b>🍺 酒館</b> 招募夥伴（有稀有度，抽到強的很賺）'+
-    '<br>2️⃣ <b>🛡️ 商店</b> 買裝備，<b>🎒 裝備</b> 穿上'+
-    '<br>3️⃣ <b>🧭 隊伍編成</b> 把戰鬥位排好（出戰 4＋後勤 2）'+
-    '<br>4️⃣ <b>🗡️ 公會</b> 接委託 → <b>⚔️ 地下城</b> 自動探索（設起始/目標層）'+
-    '<br>5️⃣ <b>🏪 貿易所</b> 產地買 → <b>🗺️ 出航</b> 到需求地賣，賺價差'+
-    '<br>6️⃣ 航海會遇到<b>海盜/暴風/秘寶線索</b>；<b>🏴‍☠️ 巡弋掠奪</b> 主動打船搶貨'+
-    '<br>7️⃣ <b>⚓ 船塢</b> 修船、升級、投資商會領分紅'+
-    '<br>8️⃣ <b>🏰 領主城堡</b> 看主線 —— 目標：討伐地下城第 20 層魔王'+
-    '<br><br>💡 死亡/海戰失利會有損失，量力而為、穩紮穩打！</div>';
-  openSheet('❓ 新手教學','大航海傭兵的第一天',body);
+  var sea=seaOpen(), fleet=fleetOpen(), sub, body;
+  // 第一章：陸地（所有人）
+  if(!sea){
+    sub='第一章 · 陸地篇';
+    body='<div class="note" style="text-align:left;line-height:1.9">歡迎來到傭兵之城！先在陸地站穩腳步：'+
+      '<br><br>1️⃣ <b>🍺 酒館</b> 招募夥伴（有稀有度，抽到強的很賺）'+
+      '<br>2️⃣ <b>🛡️ 商店</b> 買裝備 → <b>🎒 背包/倉庫</b> 穿上'+
+      '<br>3️⃣ <b>👥 人員/隊伍</b> 排好出戰位（點頭像看詳情）'+
+      '<br>4️⃣ <b>🗡️ 公會</b> 接委託 → <b>⚔️ 地下城</b> 自動探索（設起始/目標層）'+
+      '<br>5️⃣ <b>🛏️ 旅館</b> 回血、<b>🏰 領主城堡</b> 看主線'+
+      '<br><br>🎯 <b>目標：下地下城探到第 5 層</b>，領主就會賜你一艘船，解鎖<b>航海與貿易</b>！'+
+      '<br><br>💡 死亡會有損失，量力而為、穩紮穩打。</div>';
+  } else if(!fleet){
+    sub='第二章 · 海洋篇（已解鎖）';
+    body='<div class="note" style="text-align:left;line-height:1.9">🎉 你有船了！大海為你敞開：'+
+      '<br><br>1️⃣ <b>🏪 貿易所</b> 在產地買便宜貨'+
+      '<br>2️⃣ <b>🗺️ 出航</b> 開到需求地賣掉，賺價差（航程有海盜/暴風/秘寶事件）'+
+      '<br>3️⃣ <b>🏴‍☠️ 巡弋掠奪 / 🌊 海域商船</b>：先<b>🔭 偵查</b>抓弱點 → 選<b>砲彈</b>與<b>戰術</b>（砲擊/接舷/打帶跑）'+
+      '<br>4️⃣ <b>⚓ 船塢</b> 修船、升砲管、船體擴建、投資商會'+
+      '<br>5️⃣ <b>👩‍✈️ 副手</b>（城鎮橫幅）給建議、可閒聊送禮培養情義'+
+      '<br>6️⃣ 港口可<b>圍城攻佔</b>→變領地收<b>被動稅金</b>'+
+      '<br><br>🎯 <b>下一關：探到第 10 層</b>，解鎖<b>船商／艦隊</b>——養一整支自動商隊當甩手掌櫃！</div>';
+  } else {
+    sub='第三章 · 艦隊篇（已解鎖）';
+    body='<div class="note" style="text-align:left;line-height:1.9">⚓ 你已是一方之霸，經營艦隊帝國：'+
+      '<br><br>1️⃣ <b>🛳️ 船商</b> 買船擴充艦隊'+
+      '<br>2️⃣ <b>🚢 艦隊</b> 派自動商隊跑商、配護衛、回來領收益'+
+      '<br>3️⃣ <b>⚓ 船上職務</b>（人員面板）：航海長/砲術長/總管/瞭望手，每個夥伴都有用'+
+      '<br>4️⃣ <b>🏛️ 領地稅收</b>：一鍵收稅、升級治理，後期躺著賺'+
+      '<br>5️⃣ <b>🌊 威名/爵位</b>（城堡）：綜合實力衝上「海洋霸主」'+
+      '<br><br>🏆 終極目標：討伐地城第 20 層魔王 ＋ 威名達 15000 受封海洋霸主！</div>';
+  }
+  openSheet('❓ 教學 · '+sub, '跟著做就上手', body);
 }
 function openSheet(title,sub,body){sheet.innerHTML='<button class="close" onclick="closeSheet()">✕</button><h2>'+title+'</h2>'+(sub?'<p class="sub">'+sub+'</p>':'')+body;modal.classList.add('show');}
 // 樂觀更新：先畫面立即反應（cb），存檔在背景去抖動寫入，不卡手
