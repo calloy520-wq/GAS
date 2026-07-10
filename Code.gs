@@ -822,6 +822,11 @@ function apiRaidPlayer_(p){
   if (!target || target.nick === me.nick) throw new Error('目標無效');
   if ((target.deepest||0) < 3) throw new Error('對方是新手，受保護不可掠奪');
   if (!target.ship) throw new Error('對方還沒有船艦，無法海上掠奪');
+  // 每個目標每日限掠奪一次（防止先手必勝 + 無冷卻反覆 farm 同一人）
+  var pvpDay = tradeDayBucket();
+  if (!me.raided) me.raided = {};
+  var pvpKey = 'pvp_'+pvpDay+'_'+target.nick;
+  if (me.raided[pvpKey]) throw new Error('你今天已經掠奪過 '+target.nick+' 了，換個目標或明天再來');
   var byId={}; (me.roster||[]).forEach(function(c){ byId[c.id]=c; });
   var party = (me.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
   var tById={}; (target.roster||[]).forEach(function(c){ tById[c.id]=c; });
@@ -832,6 +837,7 @@ function apiRaidPlayer_(p){
   var r = resolveNaval_(me.ship, party, enemy, navalGun_(me), p.stance, espeed, surpP, p.ammo);
   injectMateLine_(me, r);
   me.ship.hull = r.playerHull;
+  if (!r.fled) me.raided[pvpKey] = true;   // 有實際交戰（勝或敗）就用掉今日對此目標的掠奪機會；乾脆逃跑不算
   var report = { target:target.nick, win:r.win, mode:r.mode, fled:r.fled, log:r.log, gold:0, loot:[], hull:me.ship.hull, hullMax:me.ship.hullMax };
   report.sea = grantSea_(me, 'nav', r.fled?4:(r.win ? (8 + Math.floor(enemy.hull/6)) : 3));
   report.nev = r.nev; report.snap = r.snap;
