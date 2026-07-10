@@ -139,6 +139,7 @@ function ensureShape_(pl){
   if (!pl.dex || typeof pl.dex !== 'object') pl.dex = { titles:{}, romance:{}, ships:{} };  // 結局圖鑑
   if (!pl.dex.titles) pl.dex.titles = {}; if (!pl.dex.romance) pl.dex.romance = {}; if (!pl.dex.ships) pl.dex.ships = {};
   if (!pl.legends || typeof pl.legends !== 'object') pl.legends = {};      // 已取得的傳說船艦
+  if (!pl.legends_seen || typeof pl.legends_seen !== 'object') pl.legends_seen = {};  // 已打聽到（現身）的傳說船
   if (pl.lair && typeof pl.lairLv !== 'number') pl.lairLv = 1;            // 巢穴等級
   if (typeof pl.fameBonus !== 'number') pl.fameBonus = 0;                 // 獻金換取的威名
   if (!pl.portTasks || typeof pl.portTasks !== 'object') pl.portTasks = {}; // 在地任務每日紀錄

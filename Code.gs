@@ -1054,8 +1054,8 @@ function apiShip_(p){
 
 // ===== 秘寶：線索集滿 → 挖寶 =====
 // ===== 🏴‍☠️ 傳說船艦・海圖奇譚 =====
-function legendEligible_(player, L){
-  var n = L.need||{};
+function legendCondMet_(player, n){
+  n = n||{};
   if (n.nav && ((player.nav&&player.nav.lv)||1) < n.nav) return false;
   if (n.com && ((player.com&&player.com.lv)||1) < n.com) return false;
   if (n.clues && (player.clues||0) < n.clues) return false;
@@ -1064,17 +1064,40 @@ function legendEligible_(player, L){
   if (n.fame && fameOf(player) < n.fame) return false;
   return true;
 }
+function legendEligible_(player, L){ return legendCondMet_(player, L.need); }
+function legendHintMet_(player, L){ return legendCondMet_(player, L.hint||L.need); }
+function legendSeen_(player, L){ return !!(player.legends_seen&&player.legends_seen[L.id]) || !!(player.legends&&player.legends[L.id]); }
 function apiLegend_(p){
   var player = loadPlayer((p.nick||'').trim());
   if (!player) throw new Error('找不到存檔');
   if (!player.legends) player.legends = {};
+  if (!player.legends_seen) player.legends_seen = {};
   if (p.op === 'list' || !p.op){
+    var hidden = 0, canInquire = 0;
     var list = LEGEND_SHIPS.map(function(L){
-      return { id:L.id, nm:L.nm, ico:L.ico, perk:L.perk, perkDesc:L.perkDesc, lore:L.lore,
+      var seen = legendSeen_(player, L);
+      if (!seen){ hidden++; if (legendHintMet_(player,L)) canInquire++;
+        return { id:L.id, seen:false };   // 未打聽＝隱藏，只回一個問號位
+      }
+      return { id:L.id, seen:true, nm:L.nm, ico:L.ico, perk:L.perk, perkDesc:L.perkDesc, lore:L.lore,
         needTxt:L.needTxt, hullMax:L.hullMax, cannon:L.cannon, speed:L.speed, cargoBonus:L.cargoBonus, gunTier:L.gunTier,
         owned:!!player.legends[L.id], eligible:legendEligible_(player,L), guardian:L.guardian, intro:L.intro };
     });
-    return { player:player, legends:list, hasShip:!!player.ship };
+    return { player:player, legends:list, hasShip:!!player.ship, hidden:hidden, canInquire:canInquire, inquireCost:LEGEND_INQUIRE_COST };
+  }
+  if (p.op === 'inquire'){
+    var cost = LEGEND_INQUIRE_COST;
+    if ((player.gold||0) < cost) throw new Error('打聽傳聞需要 '+cost+'🪙（請老水手喝一杯）');
+    var avail = LEGEND_SHIPS.filter(function(L){ return !legendSeen_(player,L) && legendHintMet_(player,L); });
+    if (!avail.length){
+      var anyHidden = LEGEND_SHIPS.some(function(L){ return !legendSeen_(player,L); });
+      throw new Error(anyHidden ? '暫時沒聽到新的傳聞——再多闖蕩四海（練航海/商業、深潛、闖出名號），傳說才會浮現。' : '四海的傳說你都已聽遍了。');
+    }
+    player.gold -= cost;
+    var L2 = avail[0];   // 依 LEGEND_SHIPS 順序揭露最早符合的一則
+    player.legends_seen[L2.id] = true;
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player, revealed:{ id:L2.id, nm:L2.nm, ico:L2.ico, rumor:L2.rumor, needTxt:L2.needTxt } };
   }
   if (p.op === 'pursue'){
     var L = legendShipById(p.id); if (!L) throw new Error('未知的傳說船艦');
