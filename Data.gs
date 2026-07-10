@@ -338,6 +338,45 @@ var SHIP_CLASSES = [
   { cls:'galleon', nm:'大帆船', ico:'🚢', hullMax:160, cannon:12, cargoBonus:26, speed:4,  price:2400 }
 ];
 var SHIP_CLASS_BY = {}; SHIP_CLASSES.forEach(function(s){ SHIP_CLASS_BY[s.cls]=s; });
+
+// ============================================================
+//  🏴‍☠️ 傳說船艦・海圖奇譚（一生一次的特殊船艦，各有專屬劇情與守護者）
+//  取得＝滿足條件 → 出資追尋 → 打贏守護者海戰 → 收為旗艦。
+//  數值高於一般旗艦、另帶專屬特效（perk），並登入結局圖鑑。
+// ============================================================
+var LEGEND_SHIPS = [
+  { id:'ghost', nm:'亡者迴響', ico:'👻', tier:4, gunTier:5,
+    hullMax:260, cannon:32, speed:14, cargoBonus:14, crew:34,
+    perk:'夜霧幽襲', perkDesc:'幽靈之速冠絕四海——打帶跑幾乎必定脫離，夜襲先手兇狠。',
+    lore:'終年迷霧的死亡海域，一艘沒有活人的船逆風而行。船員早已化作亡魂，唯有詛咒還在掌舵。',
+    need:{ nav:6, clues:6 }, needTxt:'航海術 Lv6 ＋ 秘寶線索 ≥6（要在夜霧海域追它）',
+    guardian:{ nm:'亡者船長', ico:'☠️', hull:210, cannon:24, speed:12 },
+    intro:['濃霧裡浮出一片破帆——傳說中的幽靈船「亡者迴響」。','甲板上的亡魂緩緩轉頭，空洞的眼窩鎖定了你：「活人…也想加入我們的航程嗎？」','（要奪下這艘船，得先讓亡者船長重歸安息。）'],
+    win:['最後一輪齊射轟碎了詛咒的鎖鏈，亡者船長化作霧氣消散：「自由了…她是你的了。」','幽藍的鬼火沿著桅杆亮起，「亡者迴響」認你為新的船長。'] },
+  { id:'golden', nm:'大金鹿號', ico:'🪙', tier:4, gunTier:3,
+    hullMax:320, cannon:20, speed:6, cargoBonus:46, crew:44,
+    perk:'富甲天下', perkDesc:'傳說級的巨大貨艙，售貨價再 +8%——跑商發財神器。',
+    lore:'百年前滿載黃金沉沒的商船隊旗艦，據說船艙塞滿了半個王國的財富。',
+    need:{ com:6, gold:5000 }, needTxt:'商業 Lv6 ＋ 5000🪙（雇打撈隊）',
+    guardian:{ nm:'打撈海盜團', ico:'🏴‍☠️', hull:240, cannon:20, speed:7 },
+    intro:['海圖殘片拼出了沉船座標——你雇來打撈隊，卻發現一群海盜也聞風而至。','「金子是我們的！」海盜船逼近，只有打退他們，寶船才屬於你。'],
+    win:['海盜狼狽退去，打撈索緩緩拉起這艘塞滿黃金的巨舟。','「大金鹿號」重見天日——光是艙裡的舊財寶就夠你笑好幾天。'] },
+  { id:'dragon', nm:'海龍王', ico:'🐉', tier:4, gunTier:6,
+    hullMax:420, cannon:48, speed:7, cargoBonus:16, crew:56,
+    perk:'龍息齊射', perkDesc:'以古龍骸骨為龍骨，砲擊威能碾壓一切（海戰砲擊 +6）。',
+    lore:'遠古海龍的巨大骸骨沉睡在最深的海溝，被古文明打造成不沉的戰艦。',
+    need:{ deepest:15, fame:2800 }, needTxt:'地城深潛 ≥15 層 ＋ 威名 ≥2800（男爵以上）',
+    guardian:{ nm:'深淵守衛獸', ico:'🐙', hull:330, cannon:32, speed:8 },
+    intro:['循著古老海圖潛入最深海溝，龍骨戰艦「海龍王」靜臥其中——','一頭巨大的深淵守衛獸盤據其上，向你噴出墨黑的潮水。要它的船，先過牠這關。'],
+    win:['守衛獸發出最後的哀鳴，沉入黑暗。龍骨深處亮起古老的符文——','「海龍王」承認了你的膽識，古龍之力自此為你所用。'] }
+];
+var LEGEND_BY = {}; LEGEND_SHIPS.forEach(function(s){ LEGEND_BY[s.id]=s; });
+function legendShipById(id){ return LEGEND_BY[id]||null; }
+// 由傳說定義生成一艘可用旗艦
+function makeLegendFlagship_(L){ return { name:L.nm, ico:L.ico, hullMax:L.hullMax, hull:L.hullMax,
+  cannon:L.cannon, cargoBonus:L.cargoBonus, crew:L.crew, speed:L.speed, gunTier:L.gunTier, tier:L.tier,
+  legend:L.id, perk:L.perk }; }
+
 var FLEET_MAX = 5;
 var TRADE_CYCLE_MS = 5*60*1000;   // 每「航海日」約 5 分鐘一趟
 

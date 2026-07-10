@@ -25,6 +25,7 @@
 2. **新增港口** → 同步 `MARKETS`＋`MARKETS_C`、`GARRISONS`＋`GARRISONS_C`、`MARKET_FACTION`＋`MARKET_FACTION_C`（勢力歸屬）。
    **改勢力/好感規則** → 同步 `FACTIONS`/`applyRep_`（Code.gs）與 `FACTIONS_C`/`applyRepC`（Index.html）。
 3. **改 player 欄位** → 同步 `ensureShape_`（Store.gs）與 `ensureC`（Index.html mock）補洞。
+   **傳說船艦** → 同步 `LEGEND_SHIPS`＋`apiLegend_`＋perk 掛勾 `navalGun_`/`tradeDisc_`（Code.gs/Data.gs）與 `LEGEND_SHIPS_C`＋mock `action==='legend'`＋`navalGunC`/`tradeDiscC`（Index.html）。詳見說明書 §5.10。
 4. **頭像 `pthumb` 永遠回傳原網址**（`return url`）；靠 CSS `object-fit:cover` 裁切＋瀏覽器快取。
    **絕不**改請求別的尺寸——會逼 Pollinations 重新生成（慢＋常破圖＋失快取）。載入失敗 `onerror` 退回職業圖示。
 5. **樂觀更新**：改狀態用 `saveP(cb)`（先改畫面、300ms 去抖存檔）；重讀伺服器前先 `flushSave()`。

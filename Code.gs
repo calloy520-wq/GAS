@@ -52,6 +52,7 @@ function route_(action, p){
     case 'rumor':   return apiRumor_(p);
     case 'scout':   return apiScout_(p);
     case 'ship':    return apiShip_(p);
+    case 'legend':  return apiLegend_(p);
     case 'treasure':return apiTreasure_(p);
     case 'dungeon': return apiDungeon_(p);
     case 'roster':  return { players: listPlayers() };
@@ -224,7 +225,7 @@ function navGunBonus_(pl){ ensureSea_(pl); return Math.floor((pl.nav.lv-1)/3); }
 function navLuck_(pl){ ensureSea_(pl); return Math.min(0.2, 0.011*(pl.nav.lv-1) + 0.008*officerRank_(pl,'navigator')); }  // 航海長更好運
 function comBuyMul_(pl){ ensureSea_(pl); return Math.max(0.72, 1 - 0.0075*(pl.com.lv-1)); }  // 進貨更便宜
 function comSellMul_(pl){ ensureSea_(pl); return Math.min(1.30, 1 + 0.011*(pl.com.lv-1)); }  // 賣貨更高價
-function tradeDisc_(pl){ ensureSea_(pl); var has=teamHasSkill_(pl,'persuasion'); var home=(pl.holdings&&pl.holdings[pl.port])?0.03:0; var qm=officerRank_(pl,'quartermaster')*0.008; var pf=marketFac_(pl.port); var fav=(pf&&repTier((pl.rep&&pl.rep[pf])||0)>=3)?0.04:0; return { buyMul:comBuyMul_(pl)*(has?0.97:1)*(1-home)*(1-qm)*(1-fav), sellMul:comSellMul_(pl)*(has?1.03:1)*(1+home)*(1+qm)*(1+fav), haggle:has, home:home>0, fav:fav>0 }; }
+function tradeDisc_(pl){ ensureSea_(pl); var has=teamHasSkill_(pl,'persuasion'); var home=(pl.holdings&&pl.holdings[pl.port])?0.03:0; var qm=officerRank_(pl,'quartermaster')*0.008; var pf=marketFac_(pl.port); var fav=(pf&&repTier((pl.rep&&pl.rep[pf])||0)>=3)?0.04:0; var gold=(pl.ship&&pl.ship.legend==='golden')?0.08:0; return { buyMul:comBuyMul_(pl)*(has?0.97:1)*(1-home)*(1-qm)*(1-fav), sellMul:comSellMul_(pl)*(has?1.03:1)*(1+home)*(1+qm)*(1+fav)*(1+gold), haggle:has, home:home>0, fav:fav>0, legendGold:gold>0 }; }   // 🪙 大金鹿號「富甲天下」售價 +8%
 // 里程碑效果
 function fleetCap_(pl){ ensureSea_(pl); return FLEET_MAX + (pl.nav.lv>=4?1:0) + (pl.nav.lv>=8?1:0); }   // 5→7
 function dividendRate_(pl){ ensureSea_(pl); return 0.05 + (pl.com.lv>=4?0.02:0) + (pl.com.lv>=10?0.03:0); }
@@ -239,7 +240,8 @@ var POSTS = { navigator:{nm:'航海長',ico:'🧭',ab:'wis',skill:'survival'}, g
 function officerOf_(pl,key){ if(!pl.posts) return null; var id=pl.posts[key]; if(!id) return null; return (pl.roster||[]).filter(function(c){ return c&&c.id===id; })[0]||null; }
 function officerRank_(pl,key){ var c=officerOf_(pl,key); if(!c) return 0; var meta=POSTS[key]; var m=mod(abilityOf(c,meta.ab)); var sk=(meta.skill&&charSkills(c).indexOf(meta.skill)>=0)?1:0; return Math.max(0, Math.min(8, Math.floor((c.level||1)/4)+Math.max(0,m)+sk)); }
 function mateLoyalty_(pl){ return pl.mate ? affLevel_(pl,pl.mate) : 0; }   // 副手情義（0~5）
-function navalGun_(pl){ return navGunBonus_(pl)+mateNavalGun_(pl)+officerRank_(pl,'gunner')+Math.floor(mateLoyalty_(pl)/3); }  // 情義隨行支援（永久小加成）
+function legendGun_(pl){ return (pl.ship&&pl.ship.legend==='dragon')?6:0; }   // 🐉 海龍王「龍息齊射」砲擊 +6
+function navalGun_(pl){ return navGunBonus_(pl)+mateNavalGun_(pl)+officerRank_(pl,'gunner')+Math.floor(mateLoyalty_(pl)/3)+legendGun_(pl); }  // 情義隨行支援（永久小加成）
 function tradeHaggle_(pl){ var has=(pl.roster||[]).some(function(c){ return charSkills(c).indexOf('persuasion')>=0; }); return has?{buyMul:0.95,sellMul:1.05}:{buyMul:1,sellMul:1}; }
 function tradeView_(pl, day, disc){
   ensureSea_(pl);
@@ -1051,6 +1053,66 @@ function apiShip_(p){
 }
 
 // ===== 秘寶：線索集滿 → 挖寶 =====
+// ===== 🏴‍☠️ 傳說船艦・海圖奇譚 =====
+function legendEligible_(player, L){
+  var n = L.need||{};
+  if (n.nav && ((player.nav&&player.nav.lv)||1) < n.nav) return false;
+  if (n.com && ((player.com&&player.com.lv)||1) < n.com) return false;
+  if (n.clues && (player.clues||0) < n.clues) return false;
+  if (n.gold && (player.gold||0) < n.gold) return false;
+  if (n.deepest && (player.deepest||0) < n.deepest) return false;
+  if (n.fame && fameOf(player) < n.fame) return false;
+  return true;
+}
+function apiLegend_(p){
+  var player = loadPlayer((p.nick||'').trim());
+  if (!player) throw new Error('找不到存檔');
+  if (!player.legends) player.legends = {};
+  if (p.op === 'list' || !p.op){
+    var list = LEGEND_SHIPS.map(function(L){
+      return { id:L.id, nm:L.nm, ico:L.ico, perk:L.perk, perkDesc:L.perkDesc, lore:L.lore,
+        needTxt:L.needTxt, hullMax:L.hullMax, cannon:L.cannon, speed:L.speed, cargoBonus:L.cargoBonus, gunTier:L.gunTier,
+        owned:!!player.legends[L.id], eligible:legendEligible_(player,L), guardian:L.guardian, intro:L.intro };
+    });
+    return { player:player, legends:list, hasShip:!!player.ship };
+  }
+  if (p.op === 'pursue'){
+    var L = legendShipById(p.id); if (!L) throw new Error('未知的傳說船艦');
+    if (player.legends[L.id]) throw new Error('你已經擁有「'+L.nm+'」了');
+    if (!player.ship) throw new Error('得先有船才能出海追尋（先到領主城堡領新手船艦）');
+    if (player.ship.hull <= 0) throw new Error('船身破損，請先到船塢修理');
+    if (!legendEligible_(player, L)) throw new Error('尚未滿足條件：'+L.needTxt);
+    if (L.need && L.need.gold){ player.gold -= L.need.gold; }   // 出資追尋（打撈/雇船）
+    // 守護者海戰（沿用真海戰引擎）
+    var byId={}; (player.roster||[]).forEach(function(c){ byId[c.id]=c; });
+    var party = (player.team.battle||[]).map(function(id){ return byId[id]; }).filter(Boolean);
+    var g = L.guardian;
+    var enemy = { nm:g.nm, ico:g.ico, hull:g.hull, cannon:g.cannon, speed:g.speed };
+    var r = resolveNaval_(player.ship, party, enemy, navalGun_(player), p.stance||'sink', g.speed, 0, p.ammo);
+    injectMateLine_(player, r);
+    player.ship.hull = r.playerHull;
+    var report = { legend:L.id, nm:L.nm, ico:L.ico, win:r.win, fled:r.fled, mode:r.mode, log:r.log,
+      nev:r.nev, snap:r.snap, hull:player.ship.hull, hullMax:player.ship.hullMax,
+      intro:L.intro, winText:L.win, perk:L.perk, perkDesc:L.perkDesc, needGold:(L.need&&L.need.gold)||0 };
+    report.sea = grantSea_(player, 'nav', r.win ? (14 + Math.floor(g.hull/6)) : 4);
+    if (r.win && !r.fled){
+      // 舊旗艦拆解換金（保留玩家投入的價值感），換上傳說旗艦
+      var old = player.ship;
+      report.scrapGold = Math.round(((old.hullMax||60) + (old.cannon||6)*8)/2);
+      player.gold += report.scrapGold; report.oldNm = old.name||'舊船';
+      player.ship = makeLegendFlagship_(L);
+      player.legends[L.id] = true;
+      if (!player.dex) player.dex = { titles:{}, romance:{} };
+      if (!player.dex.ships) player.dex.ships = {};
+      player.dex.ships[L.id] = 1;   // 登入圖鑑
+    }
+    player.gold = Math.max(0, player.gold);
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player, report:report };
+  }
+  throw new Error('未知操作');
+}
+
 function apiTreasure_(p){
   var player = loadPlayer((p.nick||'').trim());
   if (!player) throw new Error('找不到存檔');
