@@ -427,6 +427,7 @@ function mock(action,p){return new Promise(function(res,rej){
       var rich=Object.keys(DB).map(function(k){return DB[k];}).filter(function(x){return x.nick!==pl.nick&&(x.deepest||0)>=3;}).sort(function(a,b){return b.gold-a.gold;})[0];if(rich){var rm=MARKET_BYC[rich.port||'merc']||{};rumors.push({ico:'🏴‍☠️',t:'酒客壓低聲音：'+rich.nick+' 最近賺翻了（約 '+rich.gold+'🪙），船停在 '+(rm.nm||'某港')+'…要不要去「拜訪」一下？'});}
       rumors.push({ico:'🌊',t:'這幾天海象平穩，正是出海跑商的好時機。'});
       if(persuade&&Math.random()<0.5){pl.clues=(pl.clues||0)+1;rumors.push({ico:'🗺️',t:'一名醉醺醺的老水手塞給你一張海圖碎片…秘寶線索 +1！'});}
+      if(!pl.legends_seen)pl.legends_seen={};var legAvail=LEGEND_SHIPS_C.filter(function(L){return !legendSeenC(pl,L)&&legendHintMetC(pl,L);});if(legAvail.length&&Math.random()<0.5){var LL=legAvail[0];pl.legends_seen[LL.id]=true;rumors.push({ico:LL.ico,t:'【傳說】'+LL.rumor+'　（世界地圖 →「🏴‍☠️ 傳說船艦」查看）',legend:LL.id});}
       put(pl);return res({player:pl,rumors:rumors,cost:cost,persuade:persuade});}
     if(action==='scout'){var pl=DB[p.nick.trim()];ensureC(pl);if(!pl.ship)return rej(new Error('你還沒有船艦，先到領主城堡領取新手船艦'));var day=tradeDayC(),perceive=teamHasSkillC(pl,'perception')||teamHasSkillC(pl,'stealth')||officerRankC(pl,'lookout')>0;var myGun=myGunC(pl),enemy,key,extra={};
       if(p.kind==='sea'){var ES=[{nm:'小商船',ico:'⛵',hull:45,cannon:4,speed:8,gold:[30,70],loot:2},{nm:'武裝商船',ico:'🚢',hull:80,cannon:7,speed:6,gold:[70,150],loot:3},{nm:'海盜船',ico:'🏴‍☠️',hull:120,cannon:11,speed:7,gold:[120,240],loot:4},{nm:'私掠艦',ico:'⚓',hull:185,cannon:16,speed:5,gold:[220,420],loot:6}],NP=['信天翁號','黑珍珠號','晨曦號','海燕號','金鹿號','南風號','翡翠號','浪花號','北極星號','女王復仇號'];var idx=parseInt((p.id||'npc0').replace('npc',''),10)||0;var seed=day*97+idx*31,es=ES[seed%ES.length];enemy={nm:NP[seed%NP.length],ico:es.ico,hull:es.hull,cannon:es.cannon,speed:es.speed};key='sea:'+p.id;extra.loot=es.loot;extra.gold=es.gold;}
@@ -2293,6 +2294,10 @@ function openDex(){
   body+='<div class="glab" style="margin-top:8px">💞 戀愛結局</div>';
   if(!rk.length)body+='<div class="note" style="text-align:left;color:var(--soft)">🔒 尚無戀愛結局（把某位夥伴的情義練到滿、走完約會終章）</div>';
   else rk.forEach(function(k){var pr=k.split('｜');body+='<div class="note" style="text-align:left;color:#ff9ec7">💗 '+pr[0]+' —— '+(pr[1]||'')+'</div>';});
+  // 🏴‍☠️ 傳說船艦收藏
+  var ships=(P.dex&&P.dex.ships)||{},sgot=Object.keys(ships).length;
+  body+='<div class="glab" style="margin-top:8px">🏴‍☠️ 傳說船艦（'+sgot+'/'+(typeof LEGEND_SHIPS_C!=='undefined'?LEGEND_SHIPS_C.length:3)+'）</div>';
+  if(typeof LEGEND_SHIPS_C!=='undefined')LEGEND_SHIPS_C.forEach(function(L){var g=ships[L.id];body+='<div class="note" style="text-align:left;color:'+(g?'#c9a6ff':'var(--soft)')+'">'+(g?'✅ '+L.ico+' '+L.nm+'（'+L.perk+'）':'🔒 ？？？（打聽並奪取傳說船艦）')+'</div>';});
   openSheet('📖 結局圖鑑','你的傳奇收藏',body);
 }
 var LAIR_LV_NM=['','🏚️ 藏身港','🏴‍☠️ 走私據點','🏰 賊王要塞'];

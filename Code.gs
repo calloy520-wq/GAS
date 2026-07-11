@@ -966,6 +966,11 @@ function apiRumor_(p){
   var npcs = npcTradersForDay(day), strong = npcs.filter(function(n){ return n.cannon>=11; }).length;
   rumors.push({ ico: strong>=2?'⚠️':'🌊', t: strong>=2 ? '最近私掠艦橫行，落單商船小心為上；想掠奪先偵查再動手。' : '這幾天海象平穩，正是出海跑商的好時機。' });
   if (persuade && Math.random()<0.5){ player.clues=(player.clues||0)+1; rumors.push({ ico:'🗺️', t:'一名醉醺醺的老水手塞給你一張海圖碎片…秘寶線索 +1！' }); }
+  // 🏴‍☠️ 傳說船傳聞：偶爾在酒館聽到你已接近的傳說船消息（免費揭露，另可到船塢花錢直接打聽）
+  if (!player.legends_seen) player.legends_seen = {};
+  var legAvail = LEGEND_SHIPS.filter(function(L){ return !legendSeen_(player,L) && legendHintMet_(player,L); });
+  if (legAvail.length && Math.random()<0.5){ var LL = legAvail[0]; player.legends_seen[LL.id]=true;
+    rumors.push({ ico:LL.ico, t:'【傳說】'+LL.rumor+'　（世界地圖 →「🏴‍☠️ 傳說船艦」查看）', legend:LL.id }); }
   cleanPlayer_(player); savePlayer(player);
   return { player:player, rumors:rumors, cost:cost, persuade:persuade };
 }
