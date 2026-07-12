@@ -2424,7 +2424,7 @@ function openDungeon(){
   }
   body+='<div class="glab" style="margin-top:10px">這趟潛到第 <b id="tflab">'+defT+'</b> 層（最深已達 '+deep+'）</div>'+
     '<input class="inp" id="tf" type="number" min="1" max="'+MAX_FLOOR+'" value="'+defT+'">'+
-    '<div class="note" style="text-align:left;margin-top:8px">💡 <b>短程穩推</b>：一次只推 1～3 層。'+(P.lastDive?'（已帶入上次設定）':'')+' 每 5 層有頭目；中途全滅撤退失敗，但撿到的都帶得走。</div></div>';
+    '<div class="note" style="text-align:left;margin-top:8px">💡 打贏一層就<b>紮營回滿血</b>，可以安心連續深潛、不用一層一趟跑回城補血。'+(P.lastDive?'（已帶入上次設定）':'')+' 每 5 層的<b>頭目</b>才是硬仗；中途全滅會失去這趟戰利品，量力而為。</div></div>';
   body+='<button class="btn ok" id="dive"'+(battle?'':' disabled')+'>⚔️ 自動探索出發</button>';
   openSheet('⬇️ 地下城','GAS 會擲骰跑完整場，回你戰報',body);
   var et=document.getElementById('editteam');if(et)et.onclick=openTeam;

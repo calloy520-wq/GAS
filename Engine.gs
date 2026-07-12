@@ -224,15 +224,14 @@ function runDungeon(team, startFloor, targetFloor){
       if (g){ report.loot.push(g.id); floorLog.loot.push(g); if(deft.pass && Math.random()<0.4) floorLog.skills.push('🔓 '+deft.by.name+' 巧手開鎖，多拿了戰利品'); }
     }
 
-    // 每清完一層喘口氣：全員小幅回血（讓穩紮穩打的長征可行，避免血量單向遞減的死循環）
-    // 早期血池小，用「固定值 + 比例」讓新手也有感；不復活陣亡者（仍須旅館救治）
-    heroes.forEach(function(h){ if (h.hp>0){ var rest=Math.max(5, Math.round(h.maxhp*0.14)); h.hp=Math.min(h.maxhp, h.hp+rest); } });
-    // 醫者增益 ＋ 醫療技能：每層自動治療（疊加在喘息之上，醫者仍明顯更持久）
-    if (buff.heal > 0){
-      heroes.forEach(function(h){ if (h.hp>0){ var heal=Math.round(h.maxhp*buff.heal); h.hp=Math.min(h.maxhp,h.hp+heal); } });
+    // 打贏一層＝紮營整補：存活的戰鬥位「回滿血」，不必回城補血、也不用一層一趟來回跑。
+    // 陣亡者維持倒地（不白白復活）——除非隊上有醫者（後勤），可就地救回一名繼續作戰。
+    heroes.forEach(function(h){ if (h.hp>0) h.hp = h.maxhp; });
+    if (buff.heal > 0){                                   // 醫者：每層就地救回一名倒下的夥伴
+      var downed = heroes.filter(function(h){ return h.hp<=0; });
+      if (downed.length){ var rev=downed[0]; rev.hp = Math.max(1, Math.round(rev.maxhp*Math.min(1, buff.heal*4)));
+        floorLog.skills.push('⛑️ 醫者就地救回 '+rev.name+'（回 '+rev.hp+' 血繼續作戰）'); }
     }
-    var med = skillCheck(party,'medicine',dc);
-    if (med.pass){ heroes.forEach(function(h){ if (h.hp>0){ h.hp=Math.min(h.maxhp, h.hp+Math.round(h.maxhp*0.05)); } }); floorLog.skills.push('⛑️ '+med.by.name+' 施以急救，全隊小幅回復'); }
 
     report.reached = f;
     report.floors.push(floorLog);
