@@ -2395,25 +2395,46 @@ function openRoster(){
 }
 
 // ============ 地下城 ============
+// 🧭 編隊一覽（前排戰鬥＋後勤，看得到誰在陣中）
+function partyChipHTML(id){var c=byId(id);if(!c)return '';var st=isSup(c.job)?null:cStats(c);
+  var hpb=st?'<div class="hpbar" style="height:5px;margin-top:2px"><i style="width:'+Math.max(0,c.hp/c.maxhp*100)+'%"></i></div>':'';
+  return '<div style="width:58px;text-align:center;margin:2px"><div style="width:46px;height:46px;border-radius:11px;overflow:hidden;background:#241d14;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto;border:1px solid #4a3a52">'+avatarHTML(c)+'</div><div style="font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+c.name+'</div><div style="font-size:10px;color:var(--soft)">'+cinfo(c.job).ico+'Lv'+c.level+'</div>'+hpb+'</div>';}
+function partyStripHTML(){
+  var bat=(P.team.battle||[]).map(partyChipHTML).join('');
+  var sup=(P.team.support||[]).map(partyChipHTML).join('');
+  var h='<div class="card" style="border-color:#8a6fd0"><div class="glab" style="margin:0 0 4px">⚔️ 前排戰鬥（'+(P.team.battle||[]).length+'/'+BATTLE_MAX+'）— 會下場打</div><div style="display:flex;flex-wrap:wrap;justify-content:flex-start">'+(bat||'<span class="note" style="color:var(--hp)">⚠️ 尚未安排戰鬥位！點下方「調整編隊」派人上場</span>')+'</div>';
+  h+='<div class="glab" style="margin:8px 0 4px">🎒 後勤增益（'+(P.team.support||[]).length+'/'+SUPPORT_MAX+'）— 不下場、給全隊 buff</div><div style="display:flex;flex-wrap:wrap;justify-content:flex-start">'+(sup||'<span class="note" style="color:var(--soft)">（無後勤・招募 吟遊/商人/學者/醫者/占卜 可掛增益）</span>')+'</div>';
+  h+='<button class="btn ok sm" id="editteam" style="margin-top:8px;width:100%">🧭 調整編隊（上場／後勤／副手）</button></div>';
+  return h;
+}
 function openDungeon(){
   var deep=P.deepest||0, maxStart=Math.max(1,deep);
-  var suggest=Math.min(MAX_FLOOR,deep+1);
-  var battle=P.team.battle.length, sup=P.team.support.length;
-  var body='<div class="note" style="text-align:left">目前隊伍：戰鬥 '+battle+'/'+BATTLE_MAX+' ・ 後勤 '+sup+'/'+SUPPORT_MAX+'　'+(battle?'':'<b style="color:var(--hp)">（至少要 1 名戰鬥位！）</b>')+'</div>';
+  var ld=P.lastDive||{};
+  var defS=Math.max(1,Math.min(maxStart, ld.start||maxStart));
+  var defT=Math.max(defS,Math.min(MAX_FLOOR, ld.target||Math.min(MAX_FLOOR,deep+1)));
+  var battle=P.team.battle.length;
+  var body=partyStripHTML();
   body+='<div class="card"><div class="glab">起始樓層（可從已解鎖的第 1～'+maxStart+' 層出發）</div>'+
-    '<input class="inp" id="sf" type="number" min="1" max="'+maxStart+'" value="'+maxStart+'">'+
+    '<input class="inp" id="sf" type="number" min="1" max="'+maxStart+'" value="'+defS+'">'+
     '<div class="glab" style="margin-top:10px">目標樓層（最深已達 '+deep+'）</div>'+
-    '<input class="inp" id="tf" type="number" min="1" max="'+MAX_FLOOR+'" value="'+suggest+'">'+
-    '<div class="note" style="text-align:left;margin-top:8px">💡 建議<b>短程穩推</b>：從checkpoint（最深層）出發、一次只推 1～3 層。一次跨太多層，傷害會累積、容易全滅。每 5 層有頭目；中途全滅撤退失敗，但撿到的都帶得走。</div></div>';
+    '<input class="inp" id="tf" type="number" min="1" max="'+MAX_FLOOR+'" value="'+defT+'">'+
+    '<div class="note" style="text-align:left;margin-top:8px">💡 建議<b>短程穩推</b>：從checkpoint（最深層）出發、一次只推 1～3 層。'+(P.lastDive?'（已帶入上次的設定）':'')+' 每 5 層有頭目；中途全滅撤退失敗，但撿到的都帶得走。</div></div>';
   body+='<button class="btn ok" id="dive"'+(battle?'':' disabled')+'>⚔️ 自動探索出發</button>';
   openSheet('⬇️ 地下城','GAS 會擲骰跑完整場，回你戰報',body);
+  var et=document.getElementById('editteam');if(et)et.onclick=openTeam;
   var dv=document.getElementById('dive');if(dv)dv.onclick=function(){
     var s=Math.max(1,Math.min(maxStart,parseInt(document.getElementById('sf').value,10)||1));
     var t=Math.max(s,Math.min(MAX_FLOOR,parseInt(document.getElementById('tf').value,10)||s));
-    dv.disabled=true;dv.textContent='探索中…擲骰計算';
-    flushSave().then(function(){return srv('dungeon',{nick:P.nick,start:s,target:t});}).then(function(res){P=res.player;modal.classList.remove('show');renderReport(res.report);})
-      .catch(function(e){dv.disabled=false;dv.textContent='⚔️ 自動探索出發';toast('錯誤：'+e.message);});
+    doDive(s,t,dv);
   };
+}
+// 統一的下城流程（給地城面板與「再掃一次」共用），會記住設定
+function doDive(s,t,btn){
+  P.lastDive={start:s,target:t};
+  var lbl=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='探索中…擲骰計算';}
+  flushSave().then(function(){return srv('dungeon',{nick:P.nick,start:s,target:t});}).then(function(res){P=res.player;P.lastDive={start:s,target:t};modal.classList.remove('show');renderReport(res.report);saveP();})
+    .catch(function(e){if(btn){btn.disabled=false;btn.textContent=lbl;}toast('錯誤：'+e.message);});
 }
 function fmtLog(lines){return lines.map(function(l){var m=/^R(\d+)$/.exec(l);return m?'<div style="color:var(--soft);font-size:11px;margin-top:6px;font-weight:700;border-top:1px dashed var(--d-line);padding-top:4px">— 第 '+m[1]+' 回合 —</div>':'<div style="font-size:12px;line-height:1.6">'+l+'</div>';}).join('');}
 // 離線 mock 用：產生一場有結構事件的簡化戰鬥（真實 GAS 用伺服器 resolveCombat）
@@ -2544,9 +2565,14 @@ function renderReport(rep){
   h+='</div></details>';
   h+='<div class="card" style="margin-top:10px"><button class="btn re sm" id="aitale" style="width:auto">📜 生成 AI 戰記（免費）</button>'+
     '<div class="note" id="aitalebox" style="display:none;text-align:left;margin-top:8px;line-height:1.85;color:#f0d6ad;white-space:pre-line"></div></div>';
-  h+='<button class="btn gold" id="back" style="margin-top:12px">🏰 回到城鎮</button></div>';
+  var swS=rep.start||1, swT=rep.target||swS;
+  var anyHurt=(P.roster||[]).some(function(c){return !isSup(c.job)&&c.hp<c.maxhp;});
+  h+='<div class="rowbtns" style="margin-top:12px"><button class="btn re" id="resweep">🔁 再掃一次（第 '+swS+'→'+swT+' 層）</button>'+(anyHurt?'<button class="btn sm" id="restheal" style="background:linear-gradient(180deg,#2f6b4a,#1d4230)">🏨 療傷再戰</button>':'')+'</div>';
+  h+='<button class="btn gold" id="back" style="margin-top:8px">🏰 回到城鎮</button></div>';
   app.innerHTML=h;
   document.getElementById('back').onclick=renderTown;
+  var rsw=document.getElementById('resweep');if(rsw)rsw.onclick=function(){doDive(swS,swT,rsw);};
+  var rh=document.getElementById('restheal');if(rh)rh.onclick=function(){var base=15+(P.deepest||0)*2,broke=(P.gold||0)<base,cost=broke?0:base;P.gold-=cost;(P.roster||[]).forEach(function(c){c.hp=c.maxhp;});saveP(function(){toast(broke?'🏨 老闆讓你賒帳歇一晚，全隊回滿！':'🏨 全隊療傷回滿！ -'+cost+'🪙');renderReport(rep);});};
   var wb=document.getElementById('watchbtl');if(wb&&featured)wb.onclick=function(){renderBattle(featured.encounters[0],function(){renderReport(rep);});};
   Array.prototype.forEach.call(document.querySelectorAll('[data-wbtl]'),function(el){el.onclick=function(){var f=rep.floors[+el.dataset.wbtl];if(f&&f.encounters&&f.encounters[0])renderBattle(f.encounters[0],function(){renderReport(rep);});};});
   var at=document.getElementById('aitale');
