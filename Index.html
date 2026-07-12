@@ -2410,20 +2410,32 @@ function partyStripHTML(){
 function openDungeon(){
   var deep=P.deepest||0, maxStart=Math.max(1,deep);
   var ld=P.lastDive||{};
-  var defS=Math.max(1,Math.min(maxStart, ld.start||maxStart));
-  var defT=Math.max(defS,Math.min(MAX_FLOOR, ld.target||Math.min(MAX_FLOOR,deep+1)));
+  var mode={top:false};   // 預設垂降到最深 checkpoint（推薦短推）；可切「從入口」練級。重複farm用戰報的🔁再掃（保留原設定）
+  var defT=Math.max(1,Math.min(MAX_FLOOR, ld.target||Math.min(MAX_FLOOR,deep+1)));
   var battle=P.team.battle.length;
   var body=partyStripHTML();
-  body+='<div class="card"><div class="glab">起始樓層（可從已解鎖的第 1～'+maxStart+' 層出發）</div>'+
-    '<input class="inp" id="sf" type="number" min="1" max="'+maxStart+'" value="'+defS+'">'+
-    '<div class="glab" style="margin-top:10px">目標樓層（最深已達 '+deep+'）</div>'+
+  body+='<div class="card">';
+  if(deep>=1){
+    body+='<div class="glab">出發點</div>';
+    body+='<div class="rowbtns"><button class="btn sm" id="mCheck">🪜 垂降到最深第 '+maxStart+' 層</button><button class="btn sm" id="mTop">🏛️ 從入口第 1 層</button></div>';
+    body+='<div class="note" style="text-align:left;margin-top:4px;color:var(--soft)">你在探索過的樓層留了繩索與記號，可直接<b>垂降到最深處</b>續探，不必從頭重爬。想穩紮練級或回頭清淺層，就選從入口。</div>';
+  }else{
+    body+='<div class="note" style="text-align:left;color:var(--soft)">首次探索：從地下城入口（第 1 層）出發。</div>';
+  }
+  body+='<div class="glab" style="margin-top:10px">這趟潛到第 <b id="tflab">'+defT+'</b> 層（最深已達 '+deep+'）</div>'+
     '<input class="inp" id="tf" type="number" min="1" max="'+MAX_FLOOR+'" value="'+defT+'">'+
-    '<div class="note" style="text-align:left;margin-top:8px">💡 建議<b>短程穩推</b>：從checkpoint（最深層）出發、一次只推 1～3 層。'+(P.lastDive?'（已帶入上次的設定）':'')+' 每 5 層有頭目；中途全滅撤退失敗，但撿到的都帶得走。</div></div>';
+    '<div class="note" style="text-align:left;margin-top:8px">💡 <b>短程穩推</b>：一次只推 1～3 層。'+(P.lastDive?'（已帶入上次設定）':'')+' 每 5 層有頭目；中途全滅撤退失敗，但撿到的都帶得走。</div></div>';
   body+='<button class="btn ok" id="dive"'+(battle?'':' disabled')+'>⚔️ 自動探索出發</button>';
   openSheet('⬇️ 地下城','GAS 會擲骰跑完整場，回你戰報',body);
   var et=document.getElementById('editteam');if(et)et.onclick=openTeam;
+  var mc=document.getElementById('mCheck'),mt=document.getElementById('mTop');
+  function paintMode(){if(mc)mc.className='btn sm '+(mode.top?'dim':'ok');if(mt)mt.className='btn sm '+(mode.top?'ok':'dim');}
+  paintMode();
+  if(mc)mc.onclick=function(){mode.top=false;paintMode();};
+  if(mt)mt.onclick=function(){mode.top=true;paintMode();};
+  var tfEl=document.getElementById('tf');if(tfEl)tfEl.oninput=function(){var lab=document.getElementById('tflab');if(lab)lab.textContent=tfEl.value;};
   var dv=document.getElementById('dive');if(dv)dv.onclick=function(){
-    var s=Math.max(1,Math.min(maxStart,parseInt(document.getElementById('sf').value,10)||1));
+    var s=mode.top?1:maxStart;
     var t=Math.max(s,Math.min(MAX_FLOOR,parseInt(document.getElementById('tf').value,10)||s));
     doDive(s,t,dv);
   };
