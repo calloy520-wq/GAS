@@ -1504,24 +1504,53 @@ function crewRoles(c){
   if(P.posts)POST_KEYS.forEach(function(k){if(P.posts[k]===c.id)b.push(POSTS_C[k].ico+POSTS_C[k].nm);});
   return b;
 }
+// 一列夥伴卡：頭像＋名字/等級＋種族職業＋關鍵數值＋身分標記＋該分組的動作鈕
+function crewCard(c,group){
+  var st=isSup(c.job)?null:cStats(c),ci=cinfo(c.job);
+  var rc=RACES[c.race]?RACES[c.race].ico+RACES[c.race].nm+' ':'';
+  var rr=c.rarity&&RARITY_C[c.rarity]?'<span style="color:'+rarC(c.rarity).color+'">'+rarC(c.rarity).star+'</span> ':'';
+  var aff=affLevel(c.id),hearts=aff>0?' '+'❤️'.repeat(aff):'';
+  var marks=[];
+  if(c.id===P.heroId)marks.push('<span class="tag" style="background:#4a3a52;color:#f0d6ad">👑主角</span>');
+  if(c.id===P.mate)marks.push('<span class="tag" style="background:#5a3452;color:#ffbfe0">👩‍✈️副手</span>');
+  if(P.posts)POST_KEYS.forEach(function(k){if(P.posts[k]===c.id)marks.push('<span class="tag">'+POSTS_C[k].ico+POSTS_C[k].nm+'</span>');});
+  var sub=isSup(c.job)?('🎒 '+SUPPORT[c.job].desc):('HP '+c.hp+'/'+c.maxhp+' ・ 攻+'+st.atk+' ・ AC '+st.ac);
+  var hpbar=isSup(c.job)?'':'<div class="hpbar" style="margin-top:3px"><i style="width:'+Math.max(0,c.hp/c.maxhp*100)+'%"></i></div>';
+  var act='';
+  if(group==='battle')act='<button class="btn ok sm" data-rm="'+c.id+'">下場</button>';
+  else if(group==='support')act='<button class="btn ok sm" data-rms="'+c.id+'">撤下</button>';
+  else act=isSup(c.job)?'<button class="btn dim sm" data-adds="'+c.id+'">上後勤</button>':'<button class="btn dim sm" data-addb="'+c.id+'">上前排</button>';
+  return '<div class="u"><div class="av" data-detail="'+c.id+'" style="cursor:pointer">'+avatarHTML(c)+'</div><div class="info"><b>'+rr+c.name+' <span class="tag">Lv'+c.level+'</span>'+hearts+'</b><small>'+rc+ci.ico+ci.nm+' ・ '+sub+'</small>'+(marks.length?'<div style="margin-top:3px">'+marks.join(' ')+'</div>':'')+hpbar+'</div>'+act+'</div>';
+}
 function openCrew(){
-  var body='<div class="rowbtns"><button class="btn ok sm" id="cwteam">🧭 編隊</button><button class="btn ok sm" id="cwposts">⚓ 職務</button><button class="btn re sm" id="cwmate">👩‍✈️ 副手</button></div>';
-  body+='<div class="note" style="text-align:left">小隊 '+P.roster.length+'/'+ROSTER_MAX+' 人。點頭像看詳情；徽章＝目前擔任的角色。</div>';
-  var rs=P.roster.slice().sort(function(a,b){return (a.id===P.heroId?-1:0)-(b.id===P.heroId?-1:0)||(b.level-a.level);});
-  rs.forEach(function(c){
-    var badges=crewRoles(c).map(function(x){return '<span class="tag" style="margin:1px 3px 0 0">'+x+'</span>';}).join('');
-    var st=isSup(c.job)?null:cStats(c);
-    var rc=RACES[c.race]?RACES[c.race].ico:'';
-    var rr=c.rarity&&RARITY_C[c.rarity]?'<span style="color:'+rarC(c.rarity).color+'">'+rarC(c.rarity).star+'</span> ':'';
-    var aff=affLevel(c.id),hearts=aff>0?' '+'❤️'.repeat(aff):'';
-    var hpbar=st?'<div class="hpbar"><i style="width:'+Math.max(0,c.hp/c.maxhp*100)+'%"></i></div>':'';
-    body+='<div class="u"><div class="av" data-detail="'+c.id+'" style="cursor:pointer">'+avatarHTML(c)+'</div><div class="info"><b>'+rr+c.name+' <span class="tag">Lv'+c.level+'</span></b><small>'+rc+cinfo(c.job).ico+cinfo(c.job).nm+(st?' ・ HP '+c.hp+'/'+c.maxhp+' ・ 攻+'+st.atk:' ・ 後勤增益')+hearts+'</small><div style="margin-top:3px">'+(badges||'<span style="font-size:11px;color:var(--soft)">💤 待命中</span>')+'</div>'+hpbar+'</div></div>';
-  });
-  openSheet('👥 人員清單','全體夥伴・角色分配一覽',body);
-  document.getElementById('cwteam').onclick=openTeam;
-  document.getElementById('cwposts').onclick=openPosts;
-  document.getElementById('cwmate').onclick=openMate;
+  var bt=P.team.battle||[], sp=P.team.support||[], inT={};
+  bt.concat(sp).forEach(function(id){inT[id]=1;});
+  var bench=P.roster.filter(function(c){return !inT[c.id];}).sort(function(a,b){return b.level-a.level;});
+  var body='<div class="note" style="text-align:left;margin-bottom:6px">小隊 '+P.roster.length+'/'+ROSTER_MAX+' 人 ・ ⚔️前排會下場打、🎒後勤給全隊增益、💤待命的先歇著。點頭像看詳細能力。</div>';
+  // ⚔️ 前排戰鬥
+  body+='<div class="glab">⚔️ 前排戰鬥（'+bt.length+'/'+BATTLE_MAX+'）— 會下場</div>';
+  if(!bt.length)body+='<div class="note" style="text-align:left;color:var(--hp)">⚠️ 還沒安排前排！至少要 1 名才能下地城。</div>';
+  bt.forEach(function(id){var c=byId(id);if(c)body+=crewCard(c,'battle');});
+  // 🎒 後勤
+  body+='<div class="glab" style="margin-top:10px">🎒 後勤增益（'+sp.length+'/'+SUPPORT_MAX+'）— 不下場、給全隊 buff</div>';
+  if(!sp.length)body+='<div class="note" style="text-align:left;color:var(--soft)">（無後勤・招募 吟遊/商人/學者/醫者/占卜 可掛全隊增益）</div>';
+  sp.forEach(function(id){var c=byId(id);if(c)body+=crewCard(c,'support');});
+  // 💤 待命
+  body+='<div class="glab" style="margin-top:10px">💤 待命（'+bench.length+'）</div>';
+  if(!bench.length)body+='<div class="note" style="text-align:left;color:var(--soft)">全員都上陣了。</div>';
+  bench.forEach(function(c){body+=crewCard(c,'bench');});
+  // 進階入口
+  body+='<div class="rowbtns" style="margin-top:12px"><button class="btn re sm" id="cwmate">👩‍✈️ 指定副手</button><button class="btn ok sm" id="cwposts">⚓ 船上職務</button><button class="btn dim sm" id="cwteam">💞 羈絆／遣散</button></div>';
+  openSheet('👥 隊伍人員','⚔️前排 · 🎒後勤 · 💤待命 一目了然',body);
+  var m=document.getElementById('cwmate');if(m)m.onclick=openMate;
+  var ps=document.getElementById('cwposts');if(ps)ps.onclick=openPosts;
+  var tm=document.getElementById('cwteam');if(tm)tm.onclick=openTeam;
   q('[data-detail]',function(el){charSheet(el.dataset.detail);});
+  function toggle(arr,id,max,add){var i=arr.indexOf(id);if(add){if(arr.length>=max){toast('位置已滿（先撤下一位）');return;}if(i<0)arr.push(id);}else{if(i>=0)arr.splice(i,1);}saveP(openCrew);}
+  q('[data-addb]',function(el){toggle(P.team.battle,el.dataset.addb,BATTLE_MAX,true);});
+  q('[data-rm]',function(el){toggle(P.team.battle,el.dataset.rm,BATTLE_MAX,false);});
+  q('[data-adds]',function(el){toggle(P.team.support,el.dataset.adds,SUPPORT_MAX,true);});
+  q('[data-rms]',function(el){toggle(P.team.support,el.dataset.rms,SUPPORT_MAX,false);});
 }
 // ---- 隊伍編成 ----
 function openTeam(){
