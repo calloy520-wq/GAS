@@ -1664,10 +1664,19 @@ function bioTemplate(c){
 var equipSel=null;
 function openEquip(){
   equipSel=equipSel||heroOf().id;
+  var slotico={weapon:'🗡️',armor:'🛡️',trinket:'💍'};
   var body='<div class="glab">選擇角色</div><div class="chips" id="ec">';
-  P.roster.forEach(function(c){body+='<span class="chip'+(equipSel===c.id?' on':'')+'" data-c="'+c.id+'">'+cinfo(c.job).ico+' '+c.name+'</span>';});
+  P.roster.forEach(function(c){var gaps=['weapon','armor','trinket'].filter(function(s){return !c.equip[s];}).length;
+    body+='<span class="chip'+(equipSel===c.id?' on':'')+'" data-c="'+c.id+'">'+cinfo(c.job).ico+' '+c.name+(gaps?' <small style="opacity:.7">('+gaps+'空)</small>':'')+'</span>';});
   body+='</div>';
   var c=byId(equipSel);
+  var st=isSup(c.job)?null:cStats(c);
+  // 角色摘要卡：頭像＋等級＋當下能力值＋三個裝備槽狀態一眼看清
+  body+='<div class="card" style="border-color:#8a6fd0;margin-top:8px"><div style="display:flex;align-items:center;gap:10px">'+
+    '<div style="width:52px;height:52px;border-radius:12px;overflow:hidden;background:#241d14;display:flex;align-items:center;justify-content:center;font-size:26px">'+avatarHTML(c)+'</div>'+
+    '<div><b>'+c.name+' <span class="tag">Lv'+c.level+'</span></b><br><small style="color:var(--soft)">'+(st?('HP '+c.hp+'/'+c.maxhp+' ・ AC '+st.ac+' ・ 攻+'+st.atk+' ・ 傷'+st.dmg):'後勤職業不下場戰鬥')+'</small></div></div>'+
+    '<div style="display:flex;gap:8px;margin-top:8px">'+['weapon','armor','trinket'].map(function(slot){var eq=c.equip[slot]?gById(c.equip[slot]):null;
+      return '<div style="flex:1;text-align:center;padding:6px;border-radius:8px;background:'+(eq?'rgba(138,111,208,.18)':'rgba(255,255,255,.04)')+'"><div style="font-size:20px">'+(eq?eq.ico:slotico[slot])+'</div><small style="color:'+(eq?'var(--gold)':'var(--soft)')+'">'+(eq?eq.nm:'（空）')+'</small></div>';}).join('')+'</div></div>';
   ['weapon','armor','trinket'].forEach(function(slot){
     var label={weapon:'🗡️ 武器',armor:'🛡️ 防具',trinket:'💍 飾品'}[slot];
     var eq=c.equip[slot]?gById(c.equip[slot]):null;
@@ -1678,8 +1687,6 @@ function openEquip(){
     owned.forEach(function(g,idx){body+='<div class="u"><div class="av">'+g.ico+'</div><div class="info"><b>'+g.nm+'</b><small>'+gearDesc(g)+'</small></div><button class="btn ok sm" data-eq="'+slot+'" data-gid="'+g.id+'">裝上</button></div>';});
     body+='</div>';
   });
-  var st=isSup(c.job)?null:cStats(c);
-  body+='<div class="note" style="text-align:left">'+(st?('生命 '+cMaxHp(c)+' ・ AC '+st.ac+' ・ 攻擊 +'+st.atk+' ・ 傷害 '+st.dmg):'後勤職業不下場戰鬥')+'</div>';
   openSheet('🎒 裝備','裝備會即時反映到能力值',body);
   q('[data-c]',function(el){equipSel=el.dataset.c;openEquip();});
   q('[data-un]',function(el){var slot=el.dataset.un;var c=byId(equipSel);P.bag.push(c.equip[slot]);c.equip[slot]=null;c.maxhp=cMaxHp(c);if(c.hp>c.maxhp)c.hp=c.maxhp;saveP(openEquip);});
@@ -1791,9 +1798,10 @@ function renderTavern(){
   (P.tavern||[]).forEach(function(cand){
     var ci=cinfo(cand.job),rc=rarC(cand.rarity),r=RACES[cand.race],pc=candStats(cand);
     var top=AB.slice().sort(function(a,b){return cand.base[b]-cand.base[a];}).slice(0,2).map(function(a){return ABI[a]+cand.base[a];}).join(' ');
-    var afford=P.gold>=cand.cost&&P.roster.length<ROSTER_MAX;
-    body+='<div class="u" style="border-color:'+rc.color+'"><div class="av">'+ci.ico+'</div><div class="info">'+
-      '<b style="color:'+rc.color+'">'+rc.star+' '+rc.nm+'</b> <span class="tag">'+r.ico+r.nm+'・'+ci.nm+'</span>'+
+    var full=P.roster.length>=ROSTER_MAX, afford=P.gold>=cand.cost&&!full;
+    var status=full?'<span class="tag" style="color:var(--hp)">隊伍已滿</span>':(afford?'':'<span class="tag" style="color:var(--hp)">金幣不足</span>');
+    body+='<div class="u" style="border-color:'+rc.color+';'+(afford?'':'opacity:.7')+'"><div class="av" style="background:'+rc.color+'22">'+ci.ico+'</div><div class="info">'+
+      '<b style="color:'+rc.color+'">'+rc.star+' '+rc.nm+'</b> <span class="tag">'+r.ico+r.nm+'・'+ci.nm+'</span>'+(status?' '+status:'')+
       '<small>'+top+' ・ HP '+cMaxHp(pc)+(isSup(cand.job)?'':' ・ AC '+cStats(pc).ac)+'</small>'+
       '<small>'+(isSup(cand.job)?SUPPORT[cand.job].desc:('技「'+COMBAT[cand.job].skill+'」'))+'</small></div>'+
       '<button class="btn ok sm" data-cand="'+cand.cid+'"'+(afford?'':' disabled')+'>雇 '+cand.cost+'🪙</button></div>';
