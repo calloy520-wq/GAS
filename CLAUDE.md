@@ -26,6 +26,7 @@
    **改勢力/好感規則** → 同步 `FACTIONS`/`applyRep_`（Code.gs）與 `FACTIONS_C`/`applyRepC`（Index.html）。
 3. **改 player 欄位** → 同步 `ensureShape_`（Store.gs）與 `ensureC`（Index.html mock）補洞。
    **傳說船艦** → 同步 `LEGEND_SHIPS`＋`apiLegend_`＋perk 掛勾 `navalGun_`/`tradeDisc_`（Code.gs/Data.gs）與 `LEGEND_SHIPS_C`＋mock `action==='legend'`＋`navalGunC`/`tradeDiscC`（Index.html）。詳見說明書 §5.10。
+   **領地內政（兵營/太守/兵糧）** → 同步 `HOLD_BARRACKS_*`/`HOLD_TROOP_*`/`governorBonus_`（Data.gs）與 `_C` 常數/`governorBonusC`（Index.html）；`apiHold_` 新 op（barracks/recruit/governor）↔ mock `action==='holdings'`。詳見說明書 §5.6.1。這是「內政生資源→養兵→出征打仗」大戰略玩法的第一階段（駐軍是打「戰事/出征」用的抽象兵力，跟夥伴角色完全分開，打輸只損耗兵力不動角色）；後續戰事系統會消耗這裡的駐軍。
 4. **頭像 `pthumb` 永遠回傳原網址**（`return url`）；靠 CSS `object-fit:cover` 裁切＋瀏覽器快取。
    **絕不**改請求別的尺寸——會逼 Pollinations 重新生成（慢＋常破圖＋失快取）。載入失敗 `onerror` 退回職業圖示。
 5. **樂觀更新**：改狀態用 `saveP(cb)`（先改畫面、300ms 去抖存檔）；重讀伺服器前先 `flushSave()`。

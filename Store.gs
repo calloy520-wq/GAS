@@ -129,6 +129,13 @@ function ensureShape_(pl){
   if (typeof pl.invest !== 'number') pl.invest = 0;
   if (!Array.isArray(pl.fleet)) pl.fleet = [];
   if (!pl.holdings || typeof pl.holdings !== 'object') pl.holdings = {};   // 領地
+  if (typeof pl.supply !== 'number' || isNaN(pl.supply)) pl.supply = 0;    // 兵糧（內政資源，養兵用）
+  for (var hpid in pl.holdings){ var hh = pl.holdings[hpid]; if (!hh) continue;
+    if (typeof hh.barracks !== 'number') hh.barracks = 0;                 // 兵營等級
+    if (typeof hh.troops !== 'number') hh.troops = 0;                     // 駐軍兵力
+    if (hh.governor){ var gok=false; pl.roster.forEach(function(rc){ if (rc && rc.id===hh.governor) gok=true; }); if (!gok) hh.governor=null; }
+    else hh.governor = null;                                              // 指派太守（角色 id，可空）
+  }
   if (!pl.posts || typeof pl.posts !== 'object') pl.posts = {};           // 船上職務
   if (!pl.rep || typeof pl.rep !== 'object') pl.rep = {};                 // 勢力好感度
   if (!pl.chats || typeof pl.chats !== 'object') pl.chats = {};           // 副手對話紀錄（約會窗記憶）

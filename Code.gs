@@ -914,7 +914,7 @@ function apiHold_(p){
   if (!player.holdings) player.holdings = {};
   var now = Date.now();
   if (p.op === 'collect'){
-    var report = { earned:0, lines:[] };
+    var report = { earned:0, supply:0, lines:[] };
     var mateBonus = (mateInBattle_(player)||player.mate) ? affLevel_(player, player.mate)*0.05 : 0;   // 副手當總管加成
     var comBonus = ((player.com&&player.com.lv>=10)?0.5:0);
     var qmBonus = officerRank_(player,'quartermaster')*0.06;   // 總管職務加成
@@ -922,11 +922,18 @@ function apiHold_(p){
       var h = player.holdings[pid], mk = MARKET_BY[pid]; if (!mk) return;
       var cycles = Math.min(16, Math.floor((now - (h.lastAt||now))/HOLD_CYCLE_MS));
       if (cycles<=0) return;
-      var per = Math.round(HOLD_TAX_BASE * h.lv * (1+mateBonus+comBonus+qmBonus));
+      var govB = governorBonus_(player, h);
+      var per = Math.round(HOLD_TAX_BASE * h.lv * (1+mateBonus+comBonus+qmBonus+govB));
       var got = per * cycles;
       h.lastAt = (h.lastAt||now) + cycles*HOLD_CYCLE_MS;
       player.gold += got; report.earned += got;
-      report.lines.push(mk.ico+mk.nm+'（治理 Lv'+h.lv+'）稅收 '+cycles+' 期 → +'+got+'🪙');
+      var line = mk.ico+mk.nm+'（治理 Lv'+h.lv+'）稅收 '+cycles+' 期 → +'+got+'🪙';
+      if (h.barracks > 0){                                    // 兵營：連帶產出兵糧
+        var sup = Math.round(HOLD_SUPPLY_BASE * h.barracks * (1+govB)) * cycles;
+        player.supply = (player.supply||0) + sup; report.supply += sup;
+        line += '　🌾兵糧 +'+sup;
+      }
+      report.lines.push(line);
     });
     cleanPlayer_(player); savePlayer(player);
     return { player:player, report:report };
@@ -938,6 +945,37 @@ function apiHold_(p){
     player.gold -= cost; h2.lv++;
     cleanPlayer_(player); savePlayer(player);
     return { player:player, lv:h2.lv };
+  }
+  if (p.op === 'barracks'){                                   // 蓋/升級兵營
+    var h3 = player.holdings[p.port]; if (!h3) throw new Error('這不是你的領地');
+    if (h3.barracks >= HOLD_BARRACKS_MAX) throw new Error('兵營已達上限');
+    var bc = holdBarracksCost_(h3.barracks); if ((player.gold||0) < bc) throw new Error('金幣不足（需 '+bc+'🪙）');
+    player.gold -= bc; h3.barracks++;
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player, barracks:h3.barracks };
+  }
+  if (p.op === 'recruit'){                                    // 徵兵：花金幣+兵糧，換駐軍兵力
+    var h4 = player.holdings[p.port]; if (!h4) throw new Error('這不是你的領地');
+    if (!h4.barracks) throw new Error('先蓋兵營才能徵兵');
+    var cap = holdTroopCap_(h4.barracks);
+    var room = cap - (h4.troops||0); if (room <= 0) throw new Error('駐軍已達兵營上限（'+cap+'），升級兵營才能養更多兵');
+    var qty = Math.max(1, Math.min(HOLD_RECRUIT_BATCH, room));
+    var needGold = qty*HOLD_TROOP_GOLD, needSupply = qty*HOLD_TROOP_SUPPLY;
+    if ((player.gold||0) < needGold) throw new Error('金幣不足（需 '+needGold+'🪙）');
+    if ((player.supply||0) < needSupply) throw new Error('兵糧不足（需 '+needSupply+'🌾，回領地收稅可累積）');
+    player.gold -= needGold; player.supply -= needSupply; h4.troops = (h4.troops||0) + qty;
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player, qty:qty, troops:h4.troops, cap:cap };
+  }
+  if (p.op === 'governor'){                                   // 指派/更換/卸任太守
+    var h5 = player.holdings[p.port]; if (!h5) throw new Error('這不是你的領地');
+    if (p.charId){
+      var ok = (player.roster||[]).some(function(c){ return c && c.id===p.charId; });
+      if (!ok) throw new Error('找不到這位夥伴');
+      h5.governor = p.charId;
+    } else h5.governor = null;
+    cleanPlayer_(player); savePlayer(player);
+    return { player:player };
   }
   if (p.op === 'abandon'){ delete player.holdings[p.port]; cleanPlayer_(player); savePlayer(player); return { player:player }; }
   return { player:player };

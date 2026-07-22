@@ -358,7 +358,7 @@ function srv(action,payload){
 function mock(action,p){return new Promise(function(res,rej){
   var DB=JSON.parse(localStorage.getItem('merc_db')||'{}');
   function put(pl){DB[pl.nick]=pl;localStorage.setItem('merc_db',JSON.stringify(DB));}
-  function ensureC(pl){if(!pl.port)pl.port='merc';if(!pl.cargo)pl.cargo={};if(typeof pl.clues!=='number')pl.clues=0;if(pl.ship){if(typeof pl.ship.hull!=='number')pl.ship.hull=pl.ship.hullMax;if(typeof pl.ship.speed!=='number')pl.ship.speed=6;if(typeof pl.ship.gunTier!=='number')pl.ship.gunTier=1;if(typeof pl.ship.tier!=='number')pl.ship.tier=1;}if(typeof pl.invest!=='number')pl.invest=0;if(!pl.holdings)pl.holdings={};if(!pl.posts)pl.posts={};if(!pl.rep)pl.rep={};if(!pl.chats)pl.chats={};if(typeof pl.titleTier!=='number')pl.titleTier=0;if(!pl.dateSeen)pl.dateSeen={};if(!pl.dateEnd)pl.dateEnd={};if(!pl.jealous)pl.jealous={};if(!pl.dex||!pl.dex.titles)pl.dex={titles:(pl.dex&&pl.dex.titles)||{},romance:(pl.dex&&pl.dex.romance)||{},ships:(pl.dex&&pl.dex.ships)||{}};if(!pl.dex.ships)pl.dex.ships={};if(!pl.legends)pl.legends={};if(!pl.legends_seen)pl.legends_seen={};if(pl.lair&&typeof pl.lairLv!=='number')pl.lairLv=1;if(typeof pl.fameBonus!=='number')pl.fameBonus=0;if(!pl.portTasks)pl.portTasks={};if(!pl.bag)pl.bag=[];if(!pl.roster)pl.roster=[];if(!pl.team)pl.team={battle:[],support:[]};ensureSeaC(pl);}
+  function ensureC(pl){if(!pl.port)pl.port='merc';if(!pl.cargo)pl.cargo={};if(typeof pl.clues!=='number')pl.clues=0;if(pl.ship){if(typeof pl.ship.hull!=='number')pl.ship.hull=pl.ship.hullMax;if(typeof pl.ship.speed!=='number')pl.ship.speed=6;if(typeof pl.ship.gunTier!=='number')pl.ship.gunTier=1;if(typeof pl.ship.tier!=='number')pl.ship.tier=1;}if(typeof pl.invest!=='number')pl.invest=0;if(!pl.holdings)pl.holdings={};if(typeof pl.supply!=='number')pl.supply=0;for(var _hp in pl.holdings){var _hh=pl.holdings[_hp];if(!_hh)continue;if(typeof _hh.barracks!=='number')_hh.barracks=0;if(typeof _hh.troops!=='number')_hh.troops=0;if(_hh.governor){var _gok=false;pl.roster.forEach(function(_rc){if(_rc&&_rc.id===_hh.governor)_gok=true;});if(!_gok)_hh.governor=null;}else _hh.governor=null;}if(!pl.posts)pl.posts={};if(!pl.rep)pl.rep={};if(!pl.chats)pl.chats={};if(typeof pl.titleTier!=='number')pl.titleTier=0;if(!pl.dateSeen)pl.dateSeen={};if(!pl.dateEnd)pl.dateEnd={};if(!pl.jealous)pl.jealous={};if(!pl.dex||!pl.dex.titles)pl.dex={titles:(pl.dex&&pl.dex.titles)||{},romance:(pl.dex&&pl.dex.romance)||{},ships:(pl.dex&&pl.dex.ships)||{}};if(!pl.dex.ships)pl.dex.ships={};if(!pl.legends)pl.legends={};if(!pl.legends_seen)pl.legends_seen={};if(pl.lair&&typeof pl.lairLv!=='number')pl.lairLv=1;if(typeof pl.fameBonus!=='number')pl.fameBonus=0;if(!pl.portTasks)pl.portTasks={};if(!pl.bag)pl.bag=[];if(!pl.roster)pl.roster=[];if(!pl.team)pl.team={battle:[],support:[]};ensureSeaC(pl);}
   function rollC(){var a=[d6(),d6(),d6(),d6()].sort(function(x,y){return x-y;});return a[1]+a[2]+a[3];}
   function d6(){return 1+Math.floor(Math.random()*6);}
   function mkChar(name,job,portrait,seed,pbase,race){var base={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){base[a]=Math.min(20,((pbase&&pbase[a])||rollC())+(g[a]||0));});var c={id:'c'+Math.random().toString(36).slice(2,9),name:name,job:job,race:race||'human',support:isSup(job),portrait:portrait||'',seed:seed||0,level:1,xp:0,base:base,equip:{weapon:null,armor:null,trinket:null},hp:0,maxhp:0};c.maxhp=cMaxHp(c);c.hp=c.maxhp;return c;}
@@ -417,8 +417,11 @@ function mock(action,p){return new Promise(function(res,rej){
       return res({player:pl});}
     if(action==='conquer'){var pl=DB[p.nick.trim()];ensureC(pl);if(!pl.ship)return rej(new Error('你還沒有船艦，先到領主城堡領取新手船艦'));if(pl.ship.hull<=0)return rej(new Error('船身破損，請先到船塢修理'));var mk=MARKET_BYC[p.port];if(!mk)return rej(new Error('未知港口'));if(pl.holdings[p.port])return rej(new Error('這座港口已是你的領地'));var gar=GARRISONS_C[p.port]||GARRISONS_C.merc;var by={};pl.roster.forEach(function(c){by[c.id]=c;});var party=(pl.team.battle||[]).map(function(id){return by[id];}).filter(Boolean);var fg=(pl.fleet||[]).reduce(function(a,s){return a+Math.floor((s.cannon||0)/2);},0);var ownerFac=marketFacC(p.port),allyGun=0,allyNm='';if(ownerFac){FACTIONS_C.forEach(function(f){if(f.foe===ownerFac){var tt=repTierC((pl.rep&&pl.rep[f.id])||0);if(tt>=3){allyGun+=(tt-2)*6;allyNm=f.ico+f.nm;}}});}var siege={hull:pl.ship.hull,hullMax:pl.ship.hullMax,cannon:(pl.ship.cannon||6)+fg+allyGun,crew:pl.ship.crew,speed:pl.ship.speed};var enemy={nm:gar.nm,ico:'🛡️',hull:gar.hull,cannon:gar.cannon,gold:gar.gold,loot:0,speed:99};var surpC=consumeScoutC(pl,'port:'+p.port);var r=resolveNavalC(siege,party,enemy,navalGunC(pl),'board',99,surpC,p.ammo);injectMateLineC(pl,r);pl.ship.hull=r.playerHull;var rep={port:p.port,portNm:mk.nm,portIco:mk.ico,garrison:gar.nm,win:r.win,log:r.log,hull:pl.ship.hull,hullMax:pl.ship.hullMax,gold:0,fleetGun:fg,allyGun:allyGun,allyNm:allyNm};rep.sea=grantSeaC(pl,'nav',r.win?(12+Math.floor(gar.hull/6)):4);rep.nev=r.nev;rep.snap=r.snap;if(r.win){var g=gar.gold[0]+Math.floor(Math.random()*(gar.gold[1]-gar.gold[0]+1));pl.gold+=g;rep.gold=g;pl.holdings[p.port]={lv:1,since:Date.now(),lastAt:Date.now()};rep.captured=true;var cfac=marketFacC(p.port);if(cfac){applyRepC(pl,cfac,-150);var cf=FACTION_BY_C[cfac]||{};rep.repHit={fac:cfac,ico:cf.ico||'',nm:cf.nm||'',delta:-150};}}else{var pen=Math.min(pl.gold,30+Math.floor(Math.random()*50));pl.gold-=pen;rep.lostGold=pen;}pl.gold=Math.max(0,pl.gold);put(pl);return res({player:pl,report:rep});}
     if(action==='holdings'){var pl=DB[p.nick.trim()];ensureC(pl);var now=Date.now();
-      if(p.op==='collect'){var rep={earned:0,lines:[]};var mb=pl.mate?affLevelP(pl,pl.mate)*0.05:0,cb=(pl.com&&pl.com.lv>=10)?0.5:0,qm=officerRankC(pl,'quartermaster')*0.06;Object.keys(pl.holdings).forEach(function(pid){var h=pl.holdings[pid],mk=MARKET_BYC[pid];if(!mk)return;var cy=Math.min(16,Math.floor((now-(h.lastAt||now))/HOLD_CYCLE_MS_C));if(cy<=0)return;var per=Math.round(HOLD_TAX_BASE_C*h.lv*(1+mb+cb+qm)),got=per*cy;h.lastAt=(h.lastAt||now)+cy*HOLD_CYCLE_MS_C;pl.gold+=got;rep.earned+=got;rep.lines.push(mk.ico+mk.nm+'（治理 Lv'+h.lv+'）稅收 '+cy+' 期 → +'+got+'🪙');});put(pl);return res({player:pl,report:rep});}
+      if(p.op==='collect'){var rep={earned:0,supply:0,lines:[]};var mb=pl.mate?affLevelP(pl,pl.mate)*0.05:0,cb=(pl.com&&pl.com.lv>=10)?0.5:0,qm=officerRankC(pl,'quartermaster')*0.06;Object.keys(pl.holdings).forEach(function(pid){var h=pl.holdings[pid],mk=MARKET_BYC[pid];if(!mk)return;var cy=Math.min(16,Math.floor((now-(h.lastAt||now))/HOLD_CYCLE_MS_C));if(cy<=0)return;var gb=governorBonusC(pl,h);var per=Math.round(HOLD_TAX_BASE_C*h.lv*(1+mb+cb+qm+gb)),got=per*cy;h.lastAt=(h.lastAt||now)+cy*HOLD_CYCLE_MS_C;pl.gold+=got;rep.earned+=got;var line=mk.ico+mk.nm+'（治理 Lv'+h.lv+'）稅收 '+cy+' 期 → +'+got+'🪙';if(h.barracks>0){var sup=Math.round(HOLD_SUPPLY_BASE_C*h.barracks*(1+gb))*cy;pl.supply=(pl.supply||0)+sup;rep.supply+=sup;line+='　🌾兵糧 +'+sup;}rep.lines.push(line);});put(pl);return res({player:pl,report:rep});}
       if(p.op==='upgrade'){var h2=pl.holdings[p.port];if(!h2)return rej(new Error('這不是你的領地'));if(h2.lv>=HOLD_LV_MAX_C)return rej(new Error('治理已達上限'));var cost=holdUpCostC(h2.lv);if(pl.gold<cost)return rej(new Error('金幣不足（需 '+cost+'🪙）'));pl.gold-=cost;h2.lv++;put(pl);return res({player:pl,lv:h2.lv});}
+      if(p.op==='barracks'){var h3=pl.holdings[p.port];if(!h3)return rej(new Error('這不是你的領地'));if(h3.barracks>=HOLD_BARRACKS_MAX_C)return rej(new Error('兵營已達上限'));var bc=holdBarracksCostC(h3.barracks);if(pl.gold<bc)return rej(new Error('金幣不足（需 '+bc+'🪙）'));pl.gold-=bc;h3.barracks++;put(pl);return res({player:pl,barracks:h3.barracks});}
+      if(p.op==='recruit'){var h4=pl.holdings[p.port];if(!h4)return rej(new Error('這不是你的領地'));if(!h4.barracks)return rej(new Error('先蓋兵營才能徵兵'));var cap=holdTroopCapC(h4.barracks);var room=cap-(h4.troops||0);if(room<=0)return rej(new Error('駐軍已達兵營上限（'+cap+'），升級兵營才能養更多兵'));var qty=Math.max(1,Math.min(HOLD_RECRUIT_BATCH_C,room));var needGold=qty*HOLD_TROOP_GOLD_C,needSupply=qty*HOLD_TROOP_SUPPLY_C;if(pl.gold<needGold)return rej(new Error('金幣不足（需 '+needGold+'🪙）'));if((pl.supply||0)<needSupply)return rej(new Error('兵糧不足（需 '+needSupply+'🌾，回領地收稅可累積）'));pl.gold-=needGold;pl.supply-=needSupply;h4.troops=(h4.troops||0)+qty;put(pl);return res({player:pl,qty:qty,troops:h4.troops,cap:cap});}
+      if(p.op==='governor'){var h5=pl.holdings[p.port];if(!h5)return rej(new Error('這不是你的領地'));if(p.charId){var ok=(pl.roster||[]).some(function(c){return c&&c.id===p.charId;});if(!ok)return rej(new Error('找不到這位夥伴'));h5.governor=p.charId;}else h5.governor=null;put(pl);return res({player:pl});}
       if(p.op==='abandon'){delete pl.holdings[p.port];put(pl);return res({player:pl});}
       return res({player:pl});}
     if(action==='rumor'){var pl=DB[p.nick.trim()];ensureC(pl);var persuade=teamHasSkillC(pl,'persuasion'),cost=persuade?8:15;if(pl.gold<cost)return rej(new Error('金幣不足（打聽要 '+cost+'🪙 請杯酒）'));pl.gold-=cost;var day=tradeDayC(),rumors=[];
@@ -722,6 +725,12 @@ function injectMateLineC(pl,r){var ln=mateNavalLineP(pl);if(ln&&r.log)r.log.spli
 var GARRISONS_C={merc:{nm:'傭兵城衛隊',hull:90,cannon:9,gold:[80,160]},whale:{nm:'捕鯨鎮民兵',hull:120,cannon:11,gold:[120,240]},port:{nm:'港都巡防隊',hull:130,cannon:12,gold:[140,260]},gold:{nm:'黃金港衛兵',hull:200,cannon:18,gold:[260,480]},bean:{nm:'咖啡島守衛',hull:150,cannon:14,gold:[190,350]},oasis:{nm:'綠洲傭騎團',hull:160,cannon:15,gold:[200,360]},volcano:{nm:'鍛造島鐵衛',hull:210,cannon:19,gold:[270,500]},temple:{nm:'神廟守墓者',hull:230,cannon:20,gold:[300,560]},snow:{nm:'雪山邊防軍',hull:150,cannon:14,gold:[180,340]},coral:{nm:'礁島海防軍',hull:180,cannon:16,gold:[230,420]}};
 var HOLD_TAX_BASE_C=26, HOLD_CYCLE_MS_C=5*60*1000, HOLD_LV_MAX_C=5;
 function holdUpCostC(lv){return Math.round(300*Math.pow(1.7,lv-1));}
+// 🏯 內政經營鏡像（Data.gs 兵營／太守／兵糧）
+var HOLD_BARRACKS_MAX_C=3, HOLD_BARRACKS_COST_C=[0,260,700,1600], HOLD_TROOP_CAP_C=[0,60,140,260];
+var HOLD_SUPPLY_BASE_C=8, HOLD_TROOP_GOLD_C=6, HOLD_TROOP_SUPPLY_C=3, HOLD_RECRUIT_BATCH_C=10;
+function holdBarracksCostC(lv){return HOLD_BARRACKS_COST_C[Math.min(HOLD_BARRACKS_MAX_C,lv+1)]||0;}
+function holdTroopCapC(lv){return HOLD_TROOP_CAP_C[Math.min(HOLD_BARRACKS_MAX_C,lv)]||0;}
+function governorBonusC(pl,hold){if(!hold||!hold.governor)return 0;var c=(pl.roster||[]).filter(function(x){return x&&x.id===hold.governor;})[0];return c?Math.min(0.30,(c.level||1)*0.02):0;}
 // ---- NPC 勢力 / 好感度（客戶端鏡像）----
 var FACTIONS_C=[
   {id:'guild',nm:'黃金商會',ico:'🏛️',kind:'trade',foe:'league',jobs:['merchant','scholar','bard'],blurb:'壟斷大洋航路的商人聯盟'},
@@ -1514,6 +1523,7 @@ function crewCard(c,group){
   if(c.id===P.heroId)marks.push('<span class="tag" style="background:#4a3a52;color:#f0d6ad">👑主角</span>');
   if(c.id===P.mate)marks.push('<span class="tag" style="background:#5a3452;color:#ffbfe0">👩‍✈️副手</span>');
   if(P.posts)POST_KEYS.forEach(function(k){if(P.posts[k]===c.id)marks.push('<span class="tag">'+POSTS_C[k].ico+POSTS_C[k].nm+'</span>');});
+  if(P.holdings)Object.keys(P.holdings).forEach(function(pid){if(P.holdings[pid].governor===c.id)marks.push('<span class="tag" style="background:#3a5a3a;color:#bfe4bf">🏯'+(MARKET_BYC[pid]||{}).nm+'太守</span>');});
   var sub=isSup(c.job)?('🎒 '+SUPPORT[c.job].desc):('HP '+c.hp+'/'+c.maxhp+' ・ 攻+'+st.atk+' ・ AC '+st.ac);
   var hpbar=isSup(c.job)?'':'<div class="hpbar" style="margin-top:3px"><i style="width:'+Math.max(0,c.hp/c.maxhp*100)+'%"></i></div>';
   var act='';
@@ -2226,21 +2236,55 @@ function openFactions(){
   q('[data-claimb]',function(el){flushSave().then(function(){return srv('faction',{nick:P.nick,op:'claim'});}).then(function(r){P=r.player;refreshTopbar();var c=r.claimed;toast('🎉 懸賞完成！+'+c.gold+'🪙・'+c.facNm+'好感 +'+c.rep);openFactions();}).catch(function(e){toast(e.message);});});
   q('[data-abandonb]',function(el){if(!confirm('放棄目前的懸賞？'))return;flushSave().then(function(){return srv('faction',{nick:P.nick,op:'abandon'});}).then(function(r){P=r.player;openFactions();}).catch(function(e){toast(e.message);});});
 }
-// 領地稅收（甩手掌櫃：一鍵收稅、升級治理）
+// 領地稅收（甩手掌櫃：一鍵收稅、升級治理）＋ 內政經營（兵營／太守／徵兵）
 function openHoldings(){
   var ids=P.holdings?Object.keys(P.holdings):[];
-  var body='<div class="rowbtns"><button class="btn gold" id="collectAll">💰 一鍵收全部稅金</button></div>';
+  var body='<div class="rowbtns"><button class="btn gold" id="collectAll">💰 一鍵收全部稅金＋兵糧</button></div>';
   if(!ids.length)body+='<div class="note">還沒有領地。到世界地圖揚帆去某個港口，發動「⚔️ 圍城攻佔」把它變成你的。</div>';
   var mateB=P.mate?affLevel(P.mate)*5:0;
-  if(ids.length)body+='<div class="note" style="text-align:left">副手總管加成：+'+mateB+'%（副手好感越高、稅收越多）'+((P.com&&P.com.lv>=10)?'　商業帝國：+50%':'')+'</div>';
-  ids.forEach(function(pid){var h=P.holdings[pid],mk=MARKET_BYC[pid];if(!mk)return;var perCycle=Math.round(HOLD_TAX_BASE_C*h.lv*(1+mateB/100+((P.com&&P.com.lv>=10)?0.5:0)));var up=h.lv<HOLD_LV_MAX_C?holdUpCostC(h.lv):0;
-    body+='<div class="card"><b>'+mk.ico+' '+mk.nm+'</b> <span class="tag">治理 Lv'+h.lv+'</span><div class="note" style="text-align:left;margin-top:2px">約 '+perCycle+'🪙／稅收期（每 5 分鐘一期，回來領即可）</div><div class="rowbtns">'+(h.lv<HOLD_LV_MAX_C?'<button class="btn ok sm" data-up="'+pid+'" data-cost="'+up+'"'+(P.gold<up?' disabled':'')+'>升級治理 '+up+'🪙</button>':'<button class="btn dim sm" disabled>治理已滿</button>')+'<button class="btn dim sm" data-abandon="'+pid+'">放棄</button></div></div>';
+  if(ids.length)body+='<div class="note" style="text-align:left">🌾 兵糧 <b style="color:var(--gold)">'+(P.supply||0)+'</b>（蓋兵營才會產出，養兵用）　副手總管加成：+'+mateB+'%'+((P.com&&P.com.lv>=10)?'　商業帝國：+50%':'')+'</div>';
+  ids.forEach(function(pid){var h=P.holdings[pid],mk=MARKET_BYC[pid];if(!mk)return;
+    var gb=governorBonusC(P,h),perCycle=Math.round(HOLD_TAX_BASE_C*h.lv*(1+mateB/100+((P.com&&P.com.lv>=10)?0.5:0)+gb));
+    var up=h.lv<HOLD_LV_MAX_C?holdUpCostC(h.lv):0;
+    var gov=h.governor?byId(h.governor):null;
+    var bc=h.barracks<HOLD_BARRACKS_MAX_C?holdBarracksCostC(h.barracks):0;
+    var cap=holdTroopCapC(h.barracks);
+    body+='<div class="card"><b>'+mk.ico+' '+mk.nm+'</b> <span class="tag">治理 Lv'+h.lv+'</span>'+(h.barracks?' <span class="tag">🏯 兵營Lv'+h.barracks+'</span>':'')+
+      '<div class="note" style="text-align:left;margin-top:2px">約 '+perCycle+'🪙／期'+(gb>0?'（含太守加成 +'+Math.round(gb*100)+'%）':'')+(h.barracks?'　🌾 +'+Math.round(HOLD_SUPPLY_BASE_C*h.barracks*(1+gb))+'/期':'')+'</div>'+
+      '<div class="rowbtns">'+(h.lv<HOLD_LV_MAX_C?'<button class="btn ok sm" data-up="'+pid+'" data-cost="'+up+'"'+(P.gold<up?' disabled':'')+'>升級治理 '+up+'🪙</button>':'<button class="btn dim sm" disabled>治理已滿</button>')+'<button class="btn dim sm" data-abandon="'+pid+'">放棄</button></div>'+
+      // 太守
+      '<div class="note" style="text-align:left;margin-top:8px;border-top:1px dashed var(--d-line);padding-top:6px">👤 太守：'+(gov?('<b>'+gov.name+'</b>（Lv'+gov.level+'，+'+Math.round(gb*100)+'%加成）'):'（未指派——找位夥伴來經營，穩定加成）')+'</div>'+
+      '<div class="rowbtns"><button class="btn ok sm" data-gov="'+pid+'">'+(gov?'更換太守':'指派太守')+'</button>'+(gov?'<button class="btn dim sm" data-ungov="'+pid+'">卸任</button>':'')+'</div>'+
+      // 兵營／徵兵
+      '<div class="note" style="text-align:left;margin-top:8px;border-top:1px dashed var(--d-line);padding-top:6px">🏯 兵營：'+(h.barracks?('Lv'+h.barracks+'／'+HOLD_BARRACKS_MAX_C+'　駐軍 '+(h.troops||0)+'／'+cap):'尚未建造（先蓋兵營才能養兵、打大型戰事）')+'</div>'+
+      '<div class="rowbtns">'+(h.barracks<HOLD_BARRACKS_MAX_C?'<button class="btn re sm" data-bar="'+pid+'" data-cost="'+bc+'"'+(P.gold<bc?' disabled':'')+'>'+(h.barracks?'升級兵營':'建造兵營')+' '+bc+'🪙</button>':'<button class="btn dim sm" disabled>兵營已滿</button>')+
+      (h.barracks?'<button class="btn gold sm" data-recruit="'+pid+'"'+((h.troops||0)>=cap?' disabled':'')+'>徵兵 +'+Math.min(HOLD_RECRUIT_BATCH_C,cap-(h.troops||0))+'（'+HOLD_TROOP_GOLD_C+'🪙+'+HOLD_TROOP_SUPPLY_C+'🌾／人)</button>':'')+
+      '</div></div>';
   });
-  body+='<div class="note">🏛️ 領地稅金隨時間累積，是後期「甩手掌櫃」的被動收入來源。升級治理可提高稅金。在自己領地買賣有價格優惠。</div>';
-  openSheet('🏛️ 領地稅收','攻佔的港口・被動稅金・治理升級',body);
-  document.getElementById('collectAll').onclick=function(){flushSave().then(function(){return srv('holdings',{nick:P.nick,op:'collect'});}).then(function(r){P=r.player;refreshTopbar();var rp=r.report;if(rp.earned>0){openSheet('💰 稅金入庫','',rp.lines.map(function(l){return '<div class="note" style="text-align:left">'+l+'</div>';}).join('')+'<div class="note" style="text-align:left;color:var(--gold);margin-top:6px">合計 +'+rp.earned+'🪙</div>');}else{toast('稅金還在累積中…（每 5 分鐘一期）');openHoldings();}}).catch(function(e){toast(e.message);});};
+  body+='<div class="note">🏛️ 領地稅金隨時間累積，是後期「甩手掌櫃」的被動收入。蓋兵營產兵糧、徵兵養駐軍——駐軍是打大型戰事（宣戰／出征）用的兵力，跟夥伴角色完全分開，安心經營不怕角色受影響。</div>';
+  openSheet('🏛️ 領地經營','稅收・兵營・太守・徵兵',body);
+  document.getElementById('collectAll').onclick=function(){flushSave().then(function(){return srv('holdings',{nick:P.nick,op:'collect'});}).then(function(r){P=r.player;refreshTopbar();var rp=r.report;if(rp.earned>0||rp.supply>0){openSheet('💰 稅金入庫','',rp.lines.map(function(l){return '<div class="note" style="text-align:left">'+l+'</div>';}).join('')+'<div class="note" style="text-align:left;color:var(--gold);margin-top:6px">合計 +'+rp.earned+'🪙'+(rp.supply?'　+'+rp.supply+'🌾':'')+'</div>');}else{toast('稅金還在累積中…（每 5 分鐘一期）');openHoldings();}}).catch(function(e){toast(e.message);});};
   q('[data-up]',function(el){var pid=el.dataset.up;flushSave().then(function(){return srv('holdings',{nick:P.nick,op:'upgrade',port:pid});}).then(function(r){P=r.player;refreshTopbar();toast('治理升到 Lv'+r.lv+'！');openHoldings();}).catch(function(e){toast(e.message);});});
   q('[data-abandon]',function(el){var pid=el.dataset.abandon;if(!confirm('放棄 '+(MARKET_BYC[pid]||{}).nm+'？將失去這塊領地與其稅收。'))return;flushSave().then(function(){return srv('holdings',{nick:P.nick,op:'abandon',port:pid});}).then(function(r){P=r.player;openHoldings();}).catch(function(e){toast(e.message);});});
+  q('[data-bar]',function(el){var pid=el.dataset.bar;flushSave().then(function(){return srv('holdings',{nick:P.nick,op:'barracks',port:pid});}).then(function(r){P=r.player;refreshTopbar();toast('🏯 兵營升到 Lv'+r.barracks+'！');openHoldings();}).catch(function(e){toast(e.message);});});
+  q('[data-recruit]',function(el){var pid=el.dataset.recruit;flushSave().then(function(){return srv('holdings',{nick:P.nick,op:'recruit',port:pid});}).then(function(r){P=r.player;refreshTopbar();toast('⚔️ 徵得 '+r.qty+' 兵，駐軍 '+r.troops+'/'+r.cap+'！');openHoldings();}).catch(function(e){toast(e.message);});});
+  q('[data-ungov]',function(el){var pid=el.dataset.ungov;flushSave().then(function(){return srv('holdings',{nick:P.nick,op:'governor',port:pid});}).then(function(r){P=r.player;toast('已卸任太守。');openHoldings();}).catch(function(e){toast(e.message);});});
+  q('[data-gov]',function(el){pickGovernor(el.dataset.gov);});
+}
+// 指派太守：挑一位夥伴來經營領地（純被動頭銜，不佔戰鬥/後勤位）
+function pickGovernor(pid){
+  var mk=MARKET_BYC[pid]||{};
+  var body='<div class="note" style="text-align:left">選一位夥伴擔任 '+(mk.ico||'')+(mk.nm||'')+' 太守——等級越高加成越好（稅收／兵糧 +等級×2%，上限30%）。純頭銜，不影響出戰/後勤安排。</div>';
+  var rs=P.roster.slice().sort(function(a,b){return b.level-a.level;});
+  var curGov=(P.holdings[pid]||{}).governor;
+  rs.forEach(function(c){
+    var bonus=Math.min(30,Math.round(c.level*2));
+    var already=null;Object.keys(P.holdings).forEach(function(k){if(P.holdings[k].governor===c.id)already=k;});
+    var btn=curGov===c.id?'<button class="btn ok sm" disabled>在任</button>':(already?'<button class="btn dim sm" data-pickgov="'+c.id+'">'+(MARKET_BYC[already]||{}).nm+'→改派（+'+bonus+'%）</button>':'<button class="btn ok sm" data-pickgov="'+c.id+'">指派（+'+bonus+'%）</button>');
+    body+=uRow(c,btn);
+  });
+  openSheet('指派太守',mk.nm||'',body);
+  q('[data-pickgov]',function(el){var cid=el.dataset.pickgov;flushSave().then(function(){return srv('holdings',{nick:P.nick,op:'governor',port:pid,charId:cid});}).then(function(r){P=r.player;toast('已指派太守！');openHoldings();}).catch(function(e){toast(e.message);});});
 }
 // 海事手冊（航海術/商業里程碑）
 function openCodex(){
