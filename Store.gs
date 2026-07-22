@@ -1,5 +1,5 @@
 // ============================================================
-// 傭兵之城 · D&D 版 — 資料層（Google Sheet 當資料庫）
+// 戰國海與劍之歌 · D&D 版 — 資料層（Google Sheet 當資料庫）
 // 目標：快（快取＋只讀需要的欄）、穩（固定欄位＋schema 補洞＋夾值）。
 // 各玩家獨立存檔（以暱稱為 key）；另提供唯讀名冊給「觀戰」用。
 // ============================================================
@@ -23,7 +23,7 @@ function getSS_(){
   var id = props.getProperty(PROP_SHEET_ID);
   if (id){ try { return SpreadsheetApp.openById(id); } catch(e){} }
   // 3) 兩者都沒有才自動新建一張（獨立腳本的退路）
-  var ss = SpreadsheetApp.create('傭兵之城 - 玩家存檔');
+  var ss = SpreadsheetApp.create('戰國海與劍之歌 - 玩家存檔');
   props.setProperty(PROP_SHEET_ID, ss.getId());
   return ss;
 }

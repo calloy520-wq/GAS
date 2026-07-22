@@ -264,29 +264,29 @@
 <script>
 // ============ 前端資料（顯示用；戰鬥仍以後端為準）============
 var COMBAT={
-  fighter:{nm:'戰士',ico:'⚔️',atk:'str',hd:10,dmg:[1,8],grow:{str:2,con:1},skill:'猛擊',blurb:'血厚攻高的前線支柱'},
-  paladin:{nm:'聖騎士',ico:'🛡️',atk:'str',hd:10,dmg:[1,8],grow:{str:1,con:1,cha:1},skill:'神聖斬',blurb:'能扛能奶的重甲騎士'},
-  rogue:{nm:'盜賊',ico:'🗡️',atk:'dex',hd:8,dmg:[1,6],grow:{dex:2,cha:1},skill:'偷襲',blurb:'高暴擊高閃避的收割者'},
-  ranger:{nm:'遊俠',ico:'🏹',atk:'dex',hd:10,dmg:[1,8],grow:{dex:2,wis:1},skill:'瞄準連射',blurb:'穩定輸出的遠程獵手'},
-  wizard:{nm:'法師',ico:'🔮',atk:'int',hd:6,dmg:[1,6],grow:{int:2,con:1},skill:'火球術',blurb:'脆皮但一發清場'},
-  cleric:{nm:'牧師',ico:'✨',atk:'wis',hd:8,dmg:[1,6],grow:{wis:2,con:1},skill:'聖光',blurb:'能打能奶的定海神針'}
+  fighter:{nm:'足輕',ico:'⚔️',atk:'str',hd:10,dmg:[1,8],grow:{str:2,con:1},skill:'渾身斬',blurb:'血厚攻高的前線支柱'},
+  paladin:{nm:'武士',ico:'🛡️',atk:'str',hd:10,dmg:[1,8],grow:{str:1,con:1,cha:1},skill:'忠義斬',blurb:'進退有據的重甲武士'},
+  rogue:{nm:'忍者',ico:'🗡️',atk:'dex',hd:8,dmg:[1,6],grow:{dex:2,cha:1},skill:'暗殺',blurb:'高暴擊高閃避的收割者'},
+  ranger:{nm:'弓足輕',ico:'🏹',atk:'dex',hd:10,dmg:[1,8],grow:{dex:2,wis:1},skill:'強弓連射',blurb:'穩定輸出的遠程射手'},
+  wizard:{nm:'陰陽師',ico:'🔮',atk:'int',hd:6,dmg:[1,6],grow:{int:2,con:1},skill:'式神火',blurb:'脆皮但一式清場'},
+  cleric:{nm:'巫女',ico:'✨',atk:'wis',hd:8,dmg:[1,6],grow:{wis:2,con:1},skill:'祓魔祈禱',blurb:'能打能奶的定海神針'}
 };
 var SUPPORT={
-  bard:{nm:'吟遊詩人',ico:'🎵',hd:8,dmg:[1,6],grow:{cha:2,dex:1},desc:'全隊攻擊檢定 +2'},
-  merchant:{nm:'商人',ico:'💰',hd:6,dmg:[1,4],grow:{cha:2,int:1},desc:'金幣與掉落率 +40%'},
-  scholar:{nm:'學者',ico:'📖',hd:6,dmg:[1,4],grow:{int:2,wis:1},desc:'經驗 +35%、自動鑑定'},
-  medic:{nm:'醫者',ico:'⛑️',hd:8,dmg:[1,6],grow:{wis:2,int:1},desc:'每層自動治療全隊 12%'},
-  diviner:{nm:'占卜師',ico:'🍀',hd:6,dmg:[1,4],grow:{wis:1,cha:2},desc:'全隊暴擊+10%、避陷阱'}
+  bard:{nm:'琵琶法師',ico:'🎵',hd:8,dmg:[1,6],grow:{cha:2,dex:1},desc:'全隊攻擊檢定 +2'},
+  merchant:{nm:'豪商',ico:'💰',hd:6,dmg:[1,4],grow:{cha:2,int:1},desc:'金幣與掉落率 +40%'},
+  scholar:{nm:'軍師',ico:'📖',hd:6,dmg:[1,4],grow:{int:2,wis:1},desc:'經驗 +35%、自動鑑定'},
+  medic:{nm:'藥師',ico:'⛑️',hd:8,dmg:[1,6],grow:{wis:2,int:1},desc:'每層自動治療全隊 12%'},
+  diviner:{nm:'卜部',ico:'🍀',hd:6,dmg:[1,4],grow:{wis:1,cha:2},desc:'全隊暴擊+10%、避陷阱'}
 };
 var RACES={
-  human:{nm:'人類',ico:'🧑',grow:{str:1,dex:1,con:1,int:1,wis:1,cha:1},perk:'全屬性 +1'},
-  elf:{nm:'精靈',ico:'🧝',grow:{dex:2,int:1},perk:'敏捷+2 智力+1'},
-  darkelf:{nm:'黑暗精靈',ico:'🌑',grow:{dex:2,cha:1},perk:'敏捷+2 魅力+1'},
-  beast:{nm:'獸耳',ico:'🐾',grow:{str:2,con:1},perk:'力量+2 體質+1'},
-  dragon:{nm:'龍族',ico:'🐲',grow:{str:2,cha:1},perk:'力量+2 魅力+1'},
-  demon:{nm:'魔族',ico:'😈',grow:{cha:2,int:1},perk:'魅力+2 智力+1'},
-  angel:{nm:'天使',ico:'😇',grow:{wis:2,cha:1},perk:'睿知+2 魅力+1'},
-  vampire:{nm:'吸血鬼',ico:'🧛',grow:{cha:2,dex:1},perk:'魅力+2 敏捷+1'}
+  human:{nm:'人間',ico:'🧑',grow:{str:1,dex:1,con:1,int:1,wis:1,cha:1},perk:'全屬性 +1'},
+  elf:{nm:'妖狐',ico:'🦊',grow:{dex:2,int:1},perk:'敏捷+2 智力+1'},
+  darkelf:{nm:'夜叉',ico:'😈',grow:{dex:2,cha:1},perk:'敏捷+2 魅力+1'},
+  beast:{nm:'犬神',ico:'🐺',grow:{str:2,con:1},perk:'力量+2 體質+1'},
+  dragon:{nm:'龍神',ico:'🐉',grow:{str:2,cha:1},perk:'力量+2 魅力+1'},
+  demon:{nm:'鬼',ico:'👹',grow:{cha:2,int:1},perk:'魅力+2 智力+1'},
+  angel:{nm:'天狗',ico:'👺',grow:{wis:2,cha:1},perk:'睿知+2 魅力+1'},
+  vampire:{nm:'鵺',ico:'🧛',grow:{cha:2,dex:1},perk:'魅力+2 敏捷+1'}
 };
 var RACE_KEYS=['human','elf','darkelf','beast','dragon','demon','angel','vampire']; // 與立繪種族選項同序
 var SKILLS={perception:{nm:'察覺',ab:'wis'},stealth:{nm:'隱匿',ab:'dex'},athletics:{nm:'運動',ab:'str'},medicine:{nm:'醫療',ab:'int'},survival:{nm:'求生',ab:'wis'},sleight:{nm:'巧手',ab:'dex'},persuasion:{nm:'交涉',ab:'cha'}};
@@ -294,12 +294,12 @@ var CLASS_SKILLS={fighter:['athletics','survival'],paladin:['athletics','persuas
 var RACE_SKILLS={human:['persuasion'],elf:['perception'],darkelf:['stealth'],beast:['survival'],dragon:['athletics'],demon:['persuasion'],angel:['medicine'],vampire:['stealth']};
 function charSkills(job,race){var s={};(CLASS_SKILLS[job]||[]).forEach(function(k){s[k]=1;});(RACE_SKILLS[race]||[]).forEach(function(k){s[k]=1;});return Object.keys(s);}
 function skillNames(job,race){return charSkills(job,race).map(function(k){return SKILLS[k].nm+'('+ABN[SKILLS[k].ab]+')';}).join('、');}
-var RANKS=[{nm:'見習傭兵',floor:0},{nm:'銅牌傭兵',floor:5},{nm:'銀牌傭兵',floor:10},{nm:'金牌傭兵',floor:15},{nm:'白金傭兵',floor:20},{nm:'傳說傭兵',floor:25}];
+var RANKS=[{nm:'足輕',floor:0},{nm:'郎党',floor:5},{nm:'若武者',floor:10},{nm:'侍大将',floor:15},{nm:'家老',floor:20},{nm:'軍神',floor:25}];
 function rankOf(dp){var ix=0;for(var i=0;i<RANKS.length;i++){if((dp||0)>=RANKS[i].floor)ix=i;}return ix;}
 var STORY={
-  intro:"你是名初來乍到的傭兵，踏進了以地下城聞名的『傭兵之城』。\n\n城牆上張貼著領主的懸賞：地下城最深處盤踞著魔王，攪得四方不寧，至今無人生還歸來。\n\n在酒館招募夥伴、在公會接下委託，備好裝備，一步步向深淵挑戰吧 —— 或許成為傳說的，就是你。",
-  rank:['','領主聽聞你首次深入地下城，親手為你別上銅牌：「初露鋒芒，別鬆懈。」','你的名字開始在酒館被人提起。領主頷首：「銀牌傭兵，名副其實。」','商會與神殿都想結識你。領主：「金牌 —— 這座城已經少不了你了。」','你踏進了從沒人生還過的深度。領主神色凝重：「魔王就在下面……白金傭兵，你準備好了嗎？」','第 20 層的魔王灰飛煙滅，全城為你徹夜歡呼。從今往後，你的名字就是傳說。'],
-  boss:{5:'第 5 層 —— 哥布林王的巢穴。你踏過牠的斷角王座，通往深淵的階梯在腳下敞開。',10:'第 10 層 —— 巨魔領主的咆哮震落塵土。牠倒下時，牆上的古老壁畫指向了更深處。',15:'第 15 層 —— 骨龍盤踞在成山的白骨上。斬斷牠的那一刻，你聽見更深處傳來低語。',20:'第 20 層 —— 魔王【巫妖】現身。一切禍亂的源頭。這一戰，將決定傭兵之城的命運。',25:'比魔王更深的地方……傳說中無人抵達的領域，如今在你眼前。'}
+  intro:"你是名初來乍到的浪人，踏進了以地下城聞名的『尾張・清洲』城下町。\n\n城牆上張貼著城主的懸賞：地下城最深處盤踞著大妖，攪得四方不寧，至今無人生還歸來。\n\n在酒場招募夥伴、在評定所接下委託，備好裝備，一步步向深淵挑戰吧 —— 或許成為軍神的，就是你。",
+  rank:['','城主聽聞你首次深入地下城，親手為你別上木札：「初露鋒芒，別鬆懈。」','你的名字開始在酒場被人提起。城主頷首：「若武者，名副其實。」','豪商與寺社都想結識你。城主：「侍大将 —— 這座城已經少不了你了。」','你踏進了從沒人生還過的深度。城主神色凝重：「大妖就在下面……家老，你準備好了嗎？」','第 20 層的大妖灰飛煙滅，全城為你徹夜歡呼。從今往後，你的名字就是軍神。'],
+  boss:{5:'第 5 層 —— 鬼王的巢穴。你踏過牠的斷角王座，通往深淵的階梯在腳下敞開。',10:'第 10 層 —— 鵺的咆哮震落塵土。牠倒下時，牆上的古老壁畫指向了更深處。',15:'第 15 層 —— 八岐大蛇盤踞在成山的白骨上。斬斷牠的那一刻，你聽見更深處傳來低語。',20:'第 20 層 —— 大妖【酒呑童子】現身。一切禍亂的源頭。這一戰，將決定清洲的命運。',25:'比大妖更深的地方……傳說中無人抵達的領域，如今在你眼前。'}
 };
 function effBase(raw,race){var o={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){o[a]=Math.min(20,(raw[a]||10)+(g[a]||0));});return o;}
 var WEAPONS=[
@@ -363,7 +363,7 @@ function mock(action,p){return new Promise(function(res,rej){
   function d6(){return 1+Math.floor(Math.random()*6);}
   function mkChar(name,job,portrait,seed,pbase,race){var base={},g=(RACES[race]||{}).grow||{};AB.forEach(function(a){base[a]=Math.min(20,((pbase&&pbase[a])||rollC())+(g[a]||0));});var c={id:'c'+Math.random().toString(36).slice(2,9),name:name,job:job,race:race||'human',support:isSup(job),portrait:portrait||'',seed:seed||0,level:1,xp:0,base:base,equip:{weapon:null,armor:null,trinket:null},hp:0,maxhp:0};c.maxhp=cMaxHp(c);c.hp=c.maxhp;return c;}
   function mockCand(pl){var rw=[['common',50],['fine',27],['rare',15],['epic',7],['legend',1]],tot=100,x=Math.random()*tot,rk='common';for(var i=0;i<rw.length;i++){x-=rw[i][1];if(x<0){rk=rw[i][0];break;}}var sup=Math.random()<0.32,pool=sup?Object.keys(SUPPORT):Object.keys(COMBAT);var job=pool[Math.floor(Math.random()*pool.length)],race=RACE_KEYS[Math.floor(Math.random()*RACE_KEYS.length)];var bonus={common:0,fine:0,rare:1,epic:1,legend:2}[rk],base={};AB.forEach(function(a){base[a]=Math.min(20,rollC()+bonus);});var mul={common:1,fine:1.8,rare:3.4,epic:6,legend:11}[rk];var cost=Math.round((48+(pl.deepest||0)*7)*mul*(1+pl.roster.length*0.10));return {cid:'cand'+Math.random().toString(36).slice(2,8),job:job,race:race,rarity:rk,base:base,cost:cost};}
-  var CAPTIVE_NAMES_C=['獨眼傑克','斷手洛','紅鬍子','疤面桑','鐵鉤','小刀','浪人阿蒼','老砲手棠','沉默的西','跛腳阿工','鯊牙','黑手比爾','海狼','斷桅的老楊'];
+  var CAPTIVE_NAMES_C=['独眼の甚八','片腕の六','赤鬚','傷面の三','鉄鉤の八','匕首の丞','流れ者の蒼','老砲術の棠','無口の西','跛の工','鮫牙','黒手の弁','海狼','折れ帆の楊'];
   function rollRarityBoostedC(boost){var rw=[['common',50],['fine',27],['rare',15],['epic',7],['legend',1]],tot=0,w=rw.map(function(r,i){var ww=r[1]*(1+(boost||0)*i*0.6);tot+=ww;return ww;});var t=Math.random()*tot;for(var i=0;i<rw.length;i++){t-=w[i];if(t<0)return rw[i][0];}return 'common';}
   function tryPersuadeC(pl,ammo,rep,enemy){var ch=0.30;if(teamHasSkillC(pl,'persuasion'))ch+=0.35;if(ammo==='grape')ch+=0.10;ch+=officerRankC(pl,'quartermaster')*0.02;ch+=mateLoyaltyC(pl)*0.02;ch=Math.max(0.1,Math.min(0.85,ch));rep.persuadeTried=true;rep.persuadeChance=Math.round(ch*100);if(Math.random()>=ch)return;var facId=(enemy&&enemy.fac)||'pirate',boost=(enemy&&enemy.tier)||0,fac=FACTION_BY_C[facId]||{};var job=(fac.jobs&&fac.jobs[Math.floor(Math.random()*fac.jobs.length)])||Object.keys(COMBAT)[0],rk=rollRarityBoostedC(boost),race=RACE_KEYS[Math.floor(Math.random()*RACE_KEYS.length)];var bonus={common:0,fine:0,rare:1,epic:1,legend:2}[rk],base={};AB.forEach(function(a){base[a]=Math.min(20,rollC()+bonus);});var c=mkChar(CAPTIVE_NAMES_C[Math.floor(Math.random()*CAPTIVE_NAMES_C.length)],job,'',0,base,race);c.rarity=rk;var mul={common:1,fine:1.8,rare:3.4,epic:6,legend:11}[rk]||1;var ransom=40+(c.level||1)*20+Math.round((mul-1)*40);pl.pendingRecruit={char:c,ransom:ransom};var ci=cinfo(c.job)||{},ri=RACES[c.race]||{},star={common:'⭐',fine:'⭐⭐',rare:'⭐⭐⭐',epic:'⭐⭐⭐⭐',legend:'⭐⭐⭐⭐⭐'}[rk]||'⭐';rep.persuaded={name:c.name,job:c.job,ico:ci.ico||'❓',jobNm:ci.nm||'',race:c.race,raceIco:ri.ico||'',raceNm:ri.nm||'',rarity:rk,star:star,level:c.level,ransom:ransom,rosterFull:(pl.roster||[]).length>=10,facIco:fac.ico||'',facNm:fac.nm||''};}
   setTimeout(function(){try{
@@ -391,7 +391,7 @@ function mock(action,p){return new Promise(function(res,rej){
         pl.clues=(pl.clues||0)+1;return{ico:'🗺️',t:'撈到海圖殘片，秘寶線索 +1！'};}
       var evs=[],n=1+Math.floor(Math.random()*Math.min(3,days));for(var vi=0;vi<n;vi++)evs.push(sea());if((pl.invest||0)>0){var div=Math.max(1,Math.round(pl.invest*dividendRateC(pl)));pl.gold+=div;evs.push({ico:'🏦',t:'商會分紅 +'+div+'🪙'});}pl.port=p.to;pl.gold=Math.max(0,pl.gold);var vsea=grantSeaC(pl,'nav',8+baseDays*3);put(pl);return res({player:pl,voyage:{from:from,to:p.to,days:days,baseDays:baseDays,events:evs,sea:vsea}});}
     if(action==='naval'){var pl=DB[p.nick.trim()];ensureC(pl);if(!pl.ship)return rej(new Error('你還沒有船艦，先到領主城堡領取新手船艦'));if(pl.ship.hull<=0)return rej(new Error('船身破損，請先到船塢修理'));
-      var ES=[{nm:'小商船',ico:'⛵',hull:45,cannon:4,speed:8,gold:[30,70],loot:2},{nm:'武裝商船',ico:'🚢',hull:80,cannon:7,speed:6,gold:[70,150],loot:3},{nm:'海盜船',ico:'🏴‍☠️',hull:120,cannon:11,speed:7,gold:[120,240],loot:4},{nm:'私掠艦',ico:'⚓',hull:185,cannon:16,speed:5,gold:[220,420],loot:6}];
+      var ES=[{nm:'廻船',ico:'⛵',hull:45,cannon:4,speed:8,gold:[30,70],loot:2},{nm:'武装廻船',ico:'🚢',hull:80,cannon:7,speed:6,gold:[70,150],loot:3},{nm:'倭寇船',ico:'🏴‍☠️',hull:120,cannon:11,speed:7,gold:[120,240],loot:4},{nm:'南蛮船',ico:'⚓',hull:185,cannon:16,speed:5,gold:[220,420],loot:6}];
       var prog=Math.min(3,Math.floor((pl.deepest||0)/8)),ti=Math.max(0,Math.min(3,prog-1+Math.floor(Math.random()*3))),base=ES[ti];
       var by={};pl.roster.forEach(function(c){by[c.id]=c;});var party=(pl.team.battle||[]).map(function(id){return by[id];}).filter(Boolean);
       var enemy={nm:base.nm,ico:base.ico,hull:base.hull,cannon:base.cannon,speed:base.speed,gold:base.gold,loot:base.loot,fac:shipFactionC(base.nm),tier:ti};
@@ -433,7 +433,7 @@ function mock(action,p){return new Promise(function(res,rej){
       if(!pl.legends_seen)pl.legends_seen={};var legAvail=LEGEND_SHIPS_C.filter(function(L){return !legendSeenC(pl,L)&&legendHintMetC(pl,L);});if(legAvail.length&&Math.random()<0.5){var LL=legAvail[0];pl.legends_seen[LL.id]=true;rumors.push({ico:LL.ico,t:'【傳說】'+LL.rumor+'　（世界地圖 →「🏴‍☠️ 傳說船艦」查看）',legend:LL.id});}
       put(pl);return res({player:pl,rumors:rumors,cost:cost,persuade:persuade});}
     if(action==='scout'){var pl=DB[p.nick.trim()];ensureC(pl);if(!pl.ship)return rej(new Error('你還沒有船艦，先到領主城堡領取新手船艦'));var day=tradeDayC(),perceive=teamHasSkillC(pl,'perception')||teamHasSkillC(pl,'stealth')||officerRankC(pl,'lookout')>0;var myGun=myGunC(pl),enemy,key,extra={};
-      if(p.kind==='sea'){var ES=[{nm:'小商船',ico:'⛵',hull:45,cannon:4,speed:8,gold:[30,70],loot:2},{nm:'武裝商船',ico:'🚢',hull:80,cannon:7,speed:6,gold:[70,150],loot:3},{nm:'海盜船',ico:'🏴‍☠️',hull:120,cannon:11,speed:7,gold:[120,240],loot:4},{nm:'私掠艦',ico:'⚓',hull:185,cannon:16,speed:5,gold:[220,420],loot:6}],NP=['信天翁號','黑珍珠號','晨曦號','海燕號','金鹿號','南風號','翡翠號','浪花號','北極星號','女王復仇號'];var idx=parseInt((p.id||'npc0').replace('npc',''),10)||0;var seed=day*97+idx*31,es=ES[seed%ES.length];enemy={nm:NP[seed%NP.length],ico:es.ico,hull:es.hull,cannon:es.cannon,speed:es.speed};key='sea:'+p.id;extra.loot=es.loot;extra.gold=es.gold;}
+      if(p.kind==='sea'){var ES=[{nm:'廻船',ico:'⛵',hull:45,cannon:4,speed:8,gold:[30,70],loot:2},{nm:'武装廻船',ico:'🚢',hull:80,cannon:7,speed:6,gold:[70,150],loot:3},{nm:'倭寇船',ico:'🏴‍☠️',hull:120,cannon:11,speed:7,gold:[120,240],loot:4},{nm:'南蛮船',ico:'⚓',hull:185,cannon:16,speed:5,gold:[220,420],loot:6}],NP=['千鳥丸','黒富士丸','朝凪丸','早船丸','金鹿丸','南風丸','翡翠丸','浪花丸','北辰丸','将軍丸'];var idx=parseInt((p.id||'npc0').replace('npc',''),10)||0;var seed=day*97+idx*31,es=ES[seed%ES.length];enemy={nm:NP[seed%NP.length],ico:es.ico,hull:es.hull,cannon:es.cannon,speed:es.speed};key='sea:'+p.id;extra.loot=es.loot;extra.gold=es.gold;}
       else if(p.kind==='port'){var gar=GARRISONS_C[p.port];if(!gar)return rej(new Error('未知港口'));var fg=(pl.fleet||[]).reduce(function(a,s){return a+Math.floor((s.cannon||0)/2);},0);myGun+=fg;enemy={nm:gar.nm,ico:'🛡️',hull:gar.hull,cannon:gar.cannon,speed:99};key='port:'+p.port;extra.fleetGun=fg;}
       else if(p.kind==='pvp'){var tg=DB[(p.target||'').trim()];if(!tg)return rej(new Error('目標無效'));ensureC(tg);enemy={nm:tg.nick+'的商船',ico:'⛵',hull:tg.ship.hullMax||60,cannon:tg.ship.cannon||6,speed:tg.ship.speed||6};key='pvp:'+tg.nick;extra.gold=tg.gold;extra.cargo=cargoCountC(tg);}
       else return rej(new Error('未知偵查目標'));
@@ -446,7 +446,7 @@ function mock(action,p){return new Promise(function(res,rej){
       else if(p.op==='escort'){var s3=by[p.id];if(!s3)return rej(new Error('找不到船'));var guard=pl.fleet.some(function(x){return x.id!==s3.id&&x.role==='idle'&&x.cannon>=12;});if(!s3.escort&&!guard)return rej(new Error('需要閒置戰艦(火砲≥12)當護衛'));s3.escort=!s3.escort;}
       else if(p.op==='collect'){var rep={earned:0,lines:[]};pl.fleet.forEach(function(s){if(s.role!=='trade'||!s.route)return;var cy=Math.min(6,Math.floor((now-(s.lastAt||now))/TRADE_CYCLE_MS_C));if(cy<=0)return;var best=0;GOODS_C.forEach(function(g){var bu=tradePriceC(s.route.from,g.id,day),se=Math.round(tradePriceC(s.route.to,g.id,day)*0.92);if(se-bu>best)best=se-bu;});var per=Math.max(0,Math.round(Math.min(70,best)*s.cargoBonus*0.15*(pl.lairLv>=2?1.15:1))),got=0,lost=0;for(var i=0;i<cy;i++){if(Math.random()<(s.escort?0.08:0.25))lost++;else got+=per;}s.lastAt=(s.lastAt||now)+cy*TRADE_CYCLE_MS_C;pl.gold+=got;rep.earned+=got;rep.lines.push(s.ico+s.nm+'（'+MARKET_BYC[s.route.from].nm+'→'+MARKET_BYC[s.route.to].nm+'）跑 '+cy+' 趟'+(lost?('，'+lost+' 趟遭劫'):'')+' → +'+got+'🪙');});if(rep.earned>0)rep.sea=grantSeaC(pl,'com',Math.floor(rep.earned/45));put(pl);return res({player:pl,report:rep});}
       put(pl);return res({player:pl});}
-    if(action==='sea'){var pl=DB[p.nick.trim()];ensureC(pl);if(!pl.ship)return rej(new Error('你還沒有船艦，先到領主城堡領取新手船艦'));var day=tradeDayC();function npcs(){var ES=[{nm:'小商船',ico:'⛵',hull:45,cannon:4,speed:8,gold:[30,70],loot:2},{nm:'武裝商船',ico:'🚢',hull:80,cannon:7,speed:6,gold:[70,150],loot:3},{nm:'海盜船',ico:'🏴‍☠️',hull:120,cannon:11,speed:7,gold:[120,240],loot:4},{nm:'私掠艦',ico:'⚓',hull:185,cannon:16,speed:5,gold:[220,420],loot:6}],NP=['信天翁號','黑珍珠號','晨曦號','海燕號','金鹿號','南風號','翡翠號','浪花號','北極星號','女王復仇號'],out=[];for(var i=0;i<5;i++){var seed=day*97+i*31,ti2=seed%ES.length,es=ES[ti2],port=MARKETS_C[seed%MARKETS_C.length];out.push({id:'npc'+i,nm:NP[seed%NP.length],ico:es.ico,portNm:port.nm,portIco:port.ico,hull:es.hull,cannon:es.cannon,speed:es.speed,gold:es.gold,loot:es.loot,fac:shipFactionC(es.nm),tier:ti2});}return out;}
+    if(action==='sea'){var pl=DB[p.nick.trim()];ensureC(pl);if(!pl.ship)return rej(new Error('你還沒有船艦，先到領主城堡領取新手船艦'));var day=tradeDayC();function npcs(){var ES=[{nm:'廻船',ico:'⛵',hull:45,cannon:4,speed:8,gold:[30,70],loot:2},{nm:'武装廻船',ico:'🚢',hull:80,cannon:7,speed:6,gold:[70,150],loot:3},{nm:'倭寇船',ico:'🏴‍☠️',hull:120,cannon:11,speed:7,gold:[120,240],loot:4},{nm:'南蛮船',ico:'⚓',hull:185,cannon:16,speed:5,gold:[220,420],loot:6}],NP=['千鳥丸','黒富士丸','朝凪丸','早船丸','金鹿丸','南風丸','翡翠丸','浪花丸','北辰丸','将軍丸'],out=[];for(var i=0;i<5;i++){var seed=day*97+i*31,ti2=seed%ES.length,es=ES[ti2],port=MARKETS_C[seed%MARKETS_C.length];out.push({id:'npc'+i,nm:NP[seed%NP.length],ico:es.ico,portNm:port.nm,portIco:port.ico,hull:es.hull,cannon:es.cannon,speed:es.speed,gold:es.gold,loot:es.loot,fac:shipFactionC(es.nm),tier:ti2});}return out;}
       if(p.op==='raid'){if(pl.ship.hull<=0)return rej(new Error('船身破損，先修理'));var n=npcs().filter(function(x){return x.id===p.id;})[0];if(!n)return rej(new Error('已離開海域'));if(!pl.raided)pl.raided={};var rk=day+'_'+p.id;if(pl.raided[rk])return rej(new Error('今天已搶過這艘商船'));var by={};pl.roster.forEach(function(c){by[c.id]=c;});var party=(pl.team.battle||[]).map(function(id){return by[id];}).filter(Boolean);var enemy={nm:n.nm,ico:n.ico,hull:n.hull,cannon:n.cannon,speed:n.speed,gold:n.gold,loot:(worldEventC().type==='pirate'?n.loot+1:n.loot),fac:n.fac,tier:n.tier};var surp=consumeScoutC(pl,'sea:'+p.id);var r=resolveNavalC(pl.ship,party,enemy,navalGunC(pl),p.stance,n.speed,surp,p.ammo);injectMateLineC(pl,r);pl.ship.hull=r.playerHull;var rep={enemy:{nm:n.nm,ico:n.ico},win:r.win,mode:r.mode,fled:r.fled,log:r.log,gold:0,loot:[],hull:pl.ship.hull,hullMax:pl.ship.hullMax};rep.sea=grantSeaC(pl,'nav',r.fled?4:(r.win?(8+Math.floor(n.hull/6)):3));rep.nev=r.nev;rep.snap=r.snap;if(r.win&&!r.fled)pl.raided[rk]=true;applyNavalRewardC(pl,enemy,r,rep);if(r.capture)tryPersuadeC(pl,p.ammo,rep,enemy);pl.gold=Math.max(0,pl.gold);put(pl);return res({player:pl,report:rep});}
       return res({player:pl,npcs:npcs()});}
     if(action==='legend'){var pl=DB[p.nick.trim()];ensureC(pl);if(!pl.legends)pl.legends={};if(!pl.legends_seen)pl.legends_seen={};
@@ -505,7 +505,7 @@ function avatarHTML(c){var ic=(cinfo(c.job)||{}).ico||'❓';return c&&c.portrait
 
 // ============ 登入 ============
 function renderLogin(){
-  app.innerHTML='<div class="pad"><h1>⚔️ 海與劍之歌</h1><p class="lead">傭兵的大航海傳奇 · 地下城、貿易、海戰、爭霸<br><small style="color:var(--soft)">輸入暱稱即可遊玩，每個暱稱一份存檔</small></p>'+
+  app.innerHTML='<div class="pad"><h1>⚔️ 海與劍之歌</h1><p class="lead">戰國的大航海群雄傳 · 地下城、貿易、海戰、爭霸<br><small style="color:var(--soft)">輸入暱稱即可遊玩，每個暱稱一份存檔</small></p>'+
     '<div class="card"><div class="glab">暱稱（＝帳號）</div><input class="inp" id="nick" maxlength="16" placeholder="例：小美"></div>'+
     '<button class="btn gold" id="enter">進入城鎮</button>'+
     '<div class="note">沒有存檔會帶你建立主角；招募夥伴、下地下城都在城裡。</div></div>';
@@ -562,7 +562,7 @@ function renderCreate(){
     if(!createPortrait){toast('請先建立頭像');return;}
     var b=this;b.disabled=true;b.textContent='建立中…';
     srv('create',{nick:newNick,name:name,job:createSel.job,race:createRace,portrait:createPortrait,seed:createSeed,base:createBase}).then(function(pl){
-      P=pl;showIntro(function(){toast('歡迎來到傭兵之城！');renderTown();});
+      P=pl;showIntro(function(){toast('歡迎來到清洲城下！');renderTown();});
     }).catch(function(e){b.disabled=false;b.textContent='✅ 確認建立';toast('錯誤：'+e.message);});
   };
   // 讓創角時的名字輸入框保留值
@@ -585,9 +585,9 @@ var POPTS=[
   ['aura','氛圍光效',[['無',''],['微光','soft glowing light rim lighting'],['聖光','holy radiant glowing aura'],['花瓣','falling flower petals background'],['星塵','sparkling stardust particles'],['暗焰','dark flame aura'],['雷電','crackling lightning aura']]]
 ];
 var PMAP={};POPTS.forEach(function(g){PMAP[g[0]]=g[2];});
-function jobOutfit(job,male){var m={fighter:'ornate knight armor',paladin:'holy paladin plate armor',rogue:'rogue leather outfit, hood',ranger:'ranger archer light leather outfit',wizard:'mage magic robe',
-  cleric:male?'priest holy robe':'priestess holy robe',
-  bard:'elegant bard minstrel outfit',merchant:'travelling merchant outfit',scholar:'scholar robe with glasses',medic:'field medic apron outfit',diviner:'fortune teller mystic outfit'};return m[job]||'adventurer outfit';}
+function jobOutfit(job,male){var m={fighter:'ashigaru foot soldier armor, sengoku japan',paladin:'samurai full armor, sengoku japan, katana',rogue:'ninja outfit, dark hood, sengoku japan',ranger:'archer ashigaru outfit with bow, sengoku japan',wizard:'onmyoji robe, ofuda talismans, sengoku japan',
+  cleric:male?'shinto priest robe':'miko shrine maiden outfit, red hakama',
+  bard:'biwa hoshi travelling minstrel outfit, sengoku japan',merchant:'edo era wealthy merchant kimono',scholar:'strategist robe, sengoku japan, scroll',medic:'herbalist doctor kimono, sengoku japan',diviner:'onmyoji diviner outfit, mystic ofuda, sengoku japan'};return m[job]||'ronin outfit, sengoku japan';}
 function rarityFlair(rk){
   if(rk==='legend')return ', legendary hero, radiant divine glowing aura, extremely ornate intricate golden details, sparkling light particles, dramatic lighting, ultra detailed masterpiece';
   if(rk==='epic')return ', epic hero, magical glowing aura, ornate intricate details, dramatic rim lighting, highly detailed';
@@ -641,7 +641,7 @@ function pDoGen(){
 
 // ============ 序章劇情 ============
 function showIntro(cb){
-  var h='<div class="scene" style="height:150px"><div class="sun"></div>'+starDots()+'<div class="sil">🌲🏠🏰🏪🏠🌲</div><div class="title">⚔️ 海與劍之歌<small>序章</small></div></div>';
+  var h='<div class="scene" style="height:150px"><div class="sun"></div>'+starDots()+'<div class="sil">🌲🏠🏯🏪🏠🌲</div><div class="title">⚔️ 海與劍之歌<small>序章</small></div></div>';
   h+='<div class="pad"><div class="card" style="border-color:var(--gold-d)"><b>📖 序章</b><div class="note" style="text-align:left;margin-top:8px;white-space:pre-line;line-height:1.85;color:#f0d6ad">'+STORY.intro+'</div></div>';
   h+='<button class="btn gold" id="introgo">⚔️ 踏入城鎮</button></div>';
   app.innerHTML=h;
@@ -653,21 +653,21 @@ function topbar(){return '<div class="bar"><div class="t">⚔️ 海與劍之歌
   '<div class="pill">🪙 <span id="topgold">'+P.gold+'</span></div><div class="pill">⬇️ 第 <span id="topdeep">'+(P.deepest||0)+'</span> 層</div></div>';}
 function refreshTopbar(){var g=document.getElementById('topgold');if(g)g.textContent=P.gold;var d=document.getElementById('topdeep');if(d)d.textContent=(P.deepest||0);}
 var BLDG=[
-  ['guild','🗡️','傭兵公會','接委託領獎'],
+  ['guild','🗡️','武家評定所','接委託領獎'],
   ['team','👥','人員 / 隊伍','編隊・職務・副手'],
   ['inv','🎒','背包 / 倉庫','裝備・貨物・珍藏'],
-  ['tavern','🍺','酒館','招募夥伴'],
-  ['shop','🛡️','武器防具飾品店','購買裝備'],
-  ['inn','🛏️','旅館','休息回血'],
-  ['black','🕶️','黑市','稀有交易'],
+  ['tavern','🍺','酒場','招募夥伴'],
+  ['shop','🛡️','武具屋','購買裝備'],
+  ['inn','🛏️','旅籠','休息回血'],
+  ['black','🕶️','闇市','稀有交易'],
   ['trade','🏪','貿易所','跑商賺價差'],
   ['map','🗺️','出航','航向其他港口'],
-  ['shipyard','⚓','船塢','修船・升級・投資'],
-  ['shipbuy','🛳️','船商','購買艦隊船'],
+  ['shipyard','⚓','造船所','修船・升級・投資'],
+  ['shipbuy','🛳️','廻船問屋','購買艦隊船'],
   ['fleet','🚢','艦隊','自動商隊・護衛'],
-  ['castle','🏰','領主城堡','主線・晉升'],
-  ['lair','☠️','海盜巢穴','叛徒的根據地'],
-  ['roster','📜','冒險者名冊','看大家的進度']
+  ['castle','🏯','城','主線・晉升'],
+  ['lair','☠️','倭寇根城','叛徒的根據地'],
+  ['roster','📜','浪人名冊','看大家的進度']
 ];
 // 漸進解鎖：有船才開放海上；船隊功能（船商/艦隊）到第 10 層才出現
 function seaOpen(){return !!(P&&P.ship);}
@@ -675,8 +675,8 @@ function fleetOpen(){return seaOpen()&&(P.deepest||0)>=10;}
 var SEA_BLDG={trade:1,map:1,shipyard:1}, FLEET_BLDG={shipbuy:1,fleet:1};
 function bldgLocked(id){if(id==='lair')return !(P&&P.lair);if(FLEET_BLDG[id])return !fleetOpen();if(SEA_BLDG[id])return !seaOpen();return false;}
 // 貿易（客製顯示＋離線 mock 用）
-var GOODS_C=[{id:'salt',nm:'鹽',ico:'🧂',base:20},{id:'herb',nm:'藥草',ico:'🌿',base:35},{id:'spice',nm:'香料',ico:'🌶️',base:48},{id:'iron',nm:'鐵礦',ico:'⚙️',base:55},{id:'coffee',nm:'咖啡豆',ico:'☕',base:62},{id:'wine',nm:'美酒',ico:'🍷',base:70},{id:'fur',nm:'皮草',ico:'🦊',base:88},{id:'silk',nm:'絲綢',ico:'🧵',base:95},{id:'china',nm:'瓷器',ico:'🏺',base:125},{id:'powder',nm:'火藥',ico:'🧨',base:135},{id:'pearl',nm:'珍珠',ico:'🦪',base:160},{id:'ivory',nm:'象牙',ico:'🐘',base:185},{id:'gem',nm:'寶石',ico:'💎',base:210},{id:'amber',nm:'龍涎香',ico:'🐋',base:300}];
-var MARKETS_C=[{id:'merc',nm:'傭兵之城',ico:'🏰',x:18,y:44,cheap:['iron','herb'],dear:['silk','pearl'],sig:'iron',blurb:'傭兵與冒險者的據點，精鐵鍛造聞名'},{id:'whale',nm:'迷霧捕鯨鎮',ico:'🐋',x:14,y:18,cheap:['amber','salt'],dear:['wine','china'],sig:'amber',blurb:'終年迷霧的捕鯨港——龍涎香唯一的產地'},{id:'port',nm:'風帆港都',ico:'⛵',x:42,y:22,cheap:['silk','china'],dear:['spice','powder'],sig:'silk',blurb:'船隻雲集的繁華貿易港，絲綢集散地'},{id:'gold',nm:'黃金港',ico:'🏛️',x:80,y:26,cheap:['gem','china'],dear:['salt','coffee'],sig:'gem',blurb:'富甲一方的黃金之都，寶石璀璨'},{id:'bean',nm:'翠蔭咖啡島',ico:'☕',x:50,y:50,cheap:['coffee','spice'],dear:['iron','silk'],sig:'coffee',blurb:'火山沃土的梯田群島，咖啡香飄十里'},{id:'oasis',nm:'沙漠綠洲',ico:'🏜️',x:72,y:54,cheap:['spice','salt'],dear:['wine','fur'],sig:'spice',blurb:'沙海中的香料集散地'},{id:'volcano',nm:'熔岩鍛造島',ico:'🌋',x:36,y:64,cheap:['powder','iron'],dear:['herb','silk'],sig:'powder',blurb:'熔岩之島，火藥與精鐵的源頭'},{id:'temple',nm:'失落神廟島',ico:'🗿',x:90,y:66,cheap:['ivory','gem'],dear:['salt','herb'],sig:'ivory',blurb:'被藤蔓吞沒的古文明遺跡，象牙與古董'},{id:'snow',nm:'雪山商站',ico:'🏔️',x:24,y:74,cheap:['fur','gem'],dear:['spice','pearl'],sig:'fur',blurb:'冰封山脈的邊境商站，頂級皮草'},{id:'coral',nm:'珊瑚礁島',ico:'🏝️',x:56,y:84,cheap:['pearl','wine'],dear:['iron','fur'],sig:'pearl',blurb:'南方熱帶島嶼，採珠人的天堂'}];
+var GOODS_C=[{id:'salt',nm:'鹽',ico:'🧂',base:20},{id:'herb',nm:'藥草',ico:'🌿',base:35},{id:'spice',nm:'香料',ico:'🌶️',base:48},{id:'iron',nm:'鐵礦',ico:'⚙️',base:55},{id:'coffee',nm:'茶葉',ico:'🍵',base:62},{id:'wine',nm:'清酒',ico:'🍶',base:70},{id:'fur',nm:'毛皮',ico:'🦊',base:88},{id:'silk',nm:'生絲',ico:'🧵',base:95},{id:'china',nm:'陶磁器',ico:'🏺',base:125},{id:'powder',nm:'火薬',ico:'🧨',base:135},{id:'pearl',nm:'真珠',ico:'🦪',base:160},{id:'ivory',nm:'蒔絵',ico:'🖌️',base:185},{id:'gem',nm:'寶石',ico:'💎',base:210},{id:'amber',nm:'鯨蠟',ico:'🐋',base:300}];
+var MARKETS_C=[{id:'merc',nm:'尾張・清洲',ico:'🏯',x:48,y:42,cheap:['iron','herb'],dear:['silk','pearl'],sig:'iron',blurb:'織田家的根據地，鄰近關鍛冶之鄉，精鐵聞名'},{id:'whale',nm:'松前',ico:'🐋',x:66,y:8,cheap:['amber','salt'],dear:['wine','china'],sig:'amber',blurb:'蝦夷地極北的捕鯨藩地——鯨蠟唯一的產地'},{id:'port',nm:'堺',ico:'⛵',x:42,y:48,cheap:['silk','china'],dear:['spice','powder'],sig:'silk',blurb:'會合眾自治的天下貿易港，生絲集散地'},{id:'gold',nm:'佐渡',ico:'⛏️',x:50,y:24,cheap:['gem','china'],dear:['salt','coffee'],sig:'gem',blurb:'金山遍地的離島，寶石與礦產璀璨'},{id:'bean',nm:'宇治',ico:'🍵',x:38,y:46,cheap:['coffee','spice'],dear:['iron','silk'],sig:'coffee',blurb:'山城茶園之鄉，茶香飄十里'},{id:'oasis',nm:'出雲',ico:'⛩️',x:24,y:48,cheap:['spice','salt'],dear:['wine','fur'],sig:'spice',blurb:'神話之國的古老市集，異國香料的集散地'},{id:'volcano',nm:'薩摩',ico:'🌋',x:14,y:64,cheap:['powder','iron'],dear:['herb','silk'],sig:'powder',blurb:'火山之國，隼人剽悍，火藥與精鐵的源頭'},{id:'temple',nm:'高野山',ico:'🛕',x:40,y:54,cheap:['ivory','gem'],dear:['salt','herb'],sig:'ivory',blurb:'僧兵駐守的靈山古剎，蒔絵漆器與古物'},{id:'snow',nm:'越後',ico:'🏔️',x:44,y:30,cheap:['fur','gem'],dear:['spice','pearl'],sig:'fur',blurb:'上杉軍鎮守的雪國邊境，頂級毛皮'},{id:'coral',nm:'琉球',ico:'🏝️',x:10,y:82,cheap:['pearl','wine'],dear:['iron','fur'],sig:'pearl',blurb:'南方島國，採珠人與朱印船的樂園'}];
 var GOOD_BYC={};GOODS_C.forEach(function(g){GOOD_BYC[g.id]=g;});var MARKET_BYC={};MARKETS_C.forEach(function(m){MARKET_BYC[m.id]=m;});var CARGO_MAX_C=20;
 function hashNoiseC(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return ((h>>>0)%1000)/1000;}
 function tradeDayC(){return Math.floor(Date.now()/(1000*60*60*4));}
@@ -722,7 +722,7 @@ function mateNavalGunP(pl){if(!mateInBattleP(pl))return 0;return 1+Math.floor(af
 function mateNavalLineP(pl){if(!mateInBattleP(pl))return null;var m=(pl.roster||[]).filter(function(c){return c.id===pl.mate;})[0];if(!m)return null;var lv=affLevelP(pl,pl.mate);return '👩‍✈️ '+m.name+'：「'+(lv>=3?'包在我身上，左滿舵、全砲門開火！':'副手就位，聽我口令調度側舷！')+'」';}
 function injectMateLineC(pl,r){var ln=mateNavalLineP(pl);if(ln&&r.log)r.log.splice(1,0,ln);}
 // 領地 / 里程碑資料（客戶端鏡像）
-var GARRISONS_C={merc:{nm:'傭兵城衛隊',hull:90,cannon:9,gold:[80,160]},whale:{nm:'捕鯨鎮民兵',hull:120,cannon:11,gold:[120,240]},port:{nm:'港都巡防隊',hull:130,cannon:12,gold:[140,260]},gold:{nm:'黃金港衛兵',hull:200,cannon:18,gold:[260,480]},bean:{nm:'咖啡島守衛',hull:150,cannon:14,gold:[190,350]},oasis:{nm:'綠洲傭騎團',hull:160,cannon:15,gold:[200,360]},volcano:{nm:'鍛造島鐵衛',hull:210,cannon:19,gold:[270,500]},temple:{nm:'神廟守墓者',hull:230,cannon:20,gold:[300,560]},snow:{nm:'雪山邊防軍',hull:150,cannon:14,gold:[180,340]},coral:{nm:'礁島海防軍',hull:180,cannon:16,gold:[230,420]}};
+var GARRISONS_C={merc:{nm:'清洲城兵',hull:90,cannon:9,gold:[80,160]},whale:{nm:'松前藩兵',hull:120,cannon:11,gold:[120,240]},port:{nm:'堺會合衆',hull:130,cannon:12,gold:[140,260]},gold:{nm:'佐渡金山衆',hull:200,cannon:18,gold:[260,480]},bean:{nm:'宇治茶座衆',hull:150,cannon:14,gold:[190,350]},oasis:{nm:'出雲武者団',hull:160,cannon:15,gold:[200,360]},volcano:{nm:'薩摩隼人隊',hull:210,cannon:19,gold:[270,500]},temple:{nm:'高野山僧兵',hull:230,cannon:20,gold:[300,560]},snow:{nm:'越後上杉軍',hull:150,cannon:14,gold:[180,340]},coral:{nm:'琉球水軍',hull:180,cannon:16,gold:[230,420]}};
 var HOLD_TAX_BASE_C=26, HOLD_CYCLE_MS_C=5*60*1000, HOLD_LV_MAX_C=5;
 function holdUpCostC(lv){return Math.round(300*Math.pow(1.7,lv-1));}
 // 🏯 內政經營鏡像（Data.gs 兵營／太守／兵糧）
@@ -733,16 +733,16 @@ function holdTroopCapC(lv){return HOLD_TROOP_CAP_C[Math.min(HOLD_BARRACKS_MAX_C,
 function governorBonusC(pl,hold){if(!hold||!hold.governor)return 0;var c=(pl.roster||[]).filter(function(x){return x&&x.id===hold.governor;})[0];return c?Math.min(0.30,(c.level||1)*0.02):0;}
 // ---- NPC 勢力 / 好感度（客戶端鏡像）----
 var FACTIONS_C=[
-  {id:'guild',nm:'黃金商會',ico:'🏛️',kind:'trade',foe:'league',jobs:['merchant','scholar','bard'],blurb:'壟斷大洋航路的商人聯盟'},
-  {id:'navy',nm:'王國海軍',ico:'⚓',kind:'navy',foe:'pirate',jobs:['fighter','paladin','cleric'],blurb:'維護海疆秩序的王國艦隊'},
-  {id:'pirate',nm:'黑帆海盜團',ico:'☠️',kind:'pirate',foe:'navy',jobs:['rogue','ranger','fighter'],blurb:'劫掠四海的無旗艦隊'},
-  {id:'league',nm:'探險同盟',ico:'🧭',kind:'explore',foe:'guild',jobs:['ranger','scholar','wizard'],blurb:'追尋秘寶與新大陸的自由結社'}
+  {id:'guild',nm:'廻船問屋衆',ico:'🏛️',kind:'trade',foe:'league',jobs:['merchant','scholar','bard'],blurb:'壟斷四海航路的豪商聯盟'},
+  {id:'navy',nm:'幕府水軍',ico:'⚓',kind:'navy',foe:'pirate',jobs:['fighter','paladin','cleric'],blurb:'維護海疆秩序的幕府艦隊'},
+  {id:'pirate',nm:'倭寇衆',ico:'☠️',kind:'pirate',foe:'navy',jobs:['rogue','ranger','fighter'],blurb:'橫行四海的無旗船隊'},
+  {id:'league',nm:'南蠻貿易同盟',ico:'🧭',kind:'explore',foe:'guild',jobs:['ranger','scholar','wizard'],blurb:'與南蠻通商、追尋秘寶新土的自由結社'}
 ];
 var FACTION_BY_C={};FACTIONS_C.forEach(function(f){FACTION_BY_C[f.id]=f;});
 var REP_TIERS_C=[{nm:'世仇',ico:'💢'},{nm:'敵對',ico:'⚔️'},{nm:'中立',ico:'🤝'},{nm:'友好',ico:'😊'},{nm:'盟友',ico:'🎖️'}];
 function repTierC(v){v=v||0;if(v<=-600)return 0;if(v<-200)return 1;if(v<200)return 2;if(v<600)return 3;return 4;}
 function repClampC(v){return Math.max(-1000,Math.min(1000,Math.round(v||0)));}
-var SHIP_FACTION_C={'小商船':'league','武裝商船':'guild','海盜船':'pirate','私掠艦':'navy'};
+var SHIP_FACTION_C={'廻船':'league','武装廻船':'guild','倭寇船':'pirate','南蛮船':'navy'};
 function shipFactionC(nm){return SHIP_FACTION_C[nm]||'pirate';}
 var MARKET_FACTION_C={merc:'navy',whale:'league',port:'guild',gold:'guild',oasis:'league',temple:'league',coral:'pirate'};
 function marketFacC(id){return MARKET_FACTION_C[id]||'';}
@@ -760,8 +760,8 @@ function seaBar(track){ensureSeaC(P);var t=P[track],nm=track==='nav'?'⚓ 航海
 function tradeViewC(pl,day,disc){ensureSeaC(pl);return {port:pl.port,cargo:pl.cargo||{},cargoCount:cargoCountC(pl),cargoMax:effCargoC(pl),haggle:!!disc.haggle,nav:pl.nav,com:pl.com,comBuy:disc.buyMul,comSell:disc.sellMul,markets:MARKETS_C.map(function(m){return {id:m.id,nm:m.nm,ico:m.ico,goods:GOODS_C.map(function(g){var base=tradePriceC(m.id,g.id,day);return {id:g.id,nm:g.nm,ico:g.ico,buy:Math.round(base*disc.buyMul),sell:Math.round(base*0.92*disc.sellMul),tag:(m.cheap.indexOf(g.id)>=0?'產地':(m.dear.indexOf(g.id)>=0?'搶手':''))};})};})};}
 // 船艦（客製顯示＋mock）
 var SHIP_UP_C={hull:{nm:'強化船身',ico:'🛠️',stat:'hullMax',step:30,base:120},cannon:{nm:'加裝火砲',ico:'💣',stat:'cannon',step:3,base:150},cargo:{nm:'擴充貨艙',ico:'📦',stat:'cargoBonus',step:8,base:130},crew:{nm:'招募水手',ico:'⚓',stat:'crew',step:4,base:90},speed:{nm:'改良帆裝',ico:'💨',stat:'speed',step:1,base:110}};
-function startShipC(){return {name:'初心號',hullMax:60,hull:60,cannon:6,cargoBonus:0,crew:8,speed:6,gunTier:1,tier:1};}
-var FLAG_TIERS_C=[{nm:'小帆船',ico:'⛵',maxHull:120,maxCannon:12,maxCargo:20,maxCrew:16,maxGun:2,up:0},{nm:'快帆船',ico:'🚤',maxHull:190,maxCannon:18,maxCargo:34,maxCrew:24,maxGun:3,up:1400},{nm:'巡防艦',ico:'⚓',maxHull:290,maxCannon:28,maxCargo:46,maxCrew:38,maxGun:4,up:3600},{nm:'主力戰艦',ico:'🚢',maxHull:430,maxCannon:42,maxCargo:66,maxCrew:54,maxGun:5,up:8500}];
+function startShipC(){return {name:'初心丸',hullMax:60,hull:60,cannon:6,cargoBonus:0,crew:8,speed:6,gunTier:1,tier:1};}
+var FLAG_TIERS_C=[{nm:'小早船',ico:'⛵',maxHull:120,maxCannon:12,maxCargo:20,maxCrew:16,maxGun:2,up:0},{nm:'関船',ico:'🚤',maxHull:190,maxCannon:18,maxCargo:34,maxCrew:24,maxGun:3,up:1400},{nm:'安宅船',ico:'⚓',maxHull:290,maxCannon:28,maxCargo:46,maxCrew:38,maxGun:4,up:3600},{nm:'御座船',ico:'🚢',maxHull:430,maxCannon:42,maxCargo:66,maxCrew:54,maxGun:5,up:8500}];
 var AMMO_C={round:{nm:'實心彈',ico:'🔴',ds:'均衡・對船身傷害最高'},chain:{nm:'鏈彈',ico:'⛓️',ds:'打斷索具・削弱敵還擊、打帶跑必逃'},grape:{nm:'霰彈',ico:'🍇',ds:'殺傷水手・大幅提升接舷俘虜'}};
 function shipTierIxC(s){return Math.max(0,Math.min(FLAG_TIERS_C.length-1,((s&&s.tier)||1)-1));}
 function shipCapsC(s){return FLAG_TIERS_C[shipTierIxC(s)];}
@@ -810,19 +810,19 @@ function applyNavalRewardC(pl,enemy,r,rep){
   }else{var gs=Object.keys(pl.cargo||{});if(gs.length){var lg=gs[Math.floor(Math.random()*gs.length)];var ll=Math.min(pl.cargo[lg],1+Math.floor(Math.random()*3));pl.cargo[lg]-=ll;if(pl.cargo[lg]<=0)delete pl.cargo[lg];rep.lostCargo=ll;}var pen=Math.min(pl.gold||0,20+Math.floor(Math.random()*40));pl.gold-=pen;rep.lostGold=pen;}
 }
 function effCargoC(pl){return CARGO_MAX_C+((pl&&pl.ship&&pl.ship.cargoBonus)||0)+((pl&&pl.com&&pl.com.lv>=6)?6:0);}
-var SHIP_CLASSES_C=[{cls:'trader',nm:'商船',ico:'⛵',hullMax:70,cannon:5,cargoBonus:14,speed:5,price:600},{cls:'clipper',nm:'快船',ico:'🚤',hullMax:65,cannon:7,cargoBonus:10,speed:10,price:900},{cls:'frigate',nm:'戰艦',ico:'⚔️',hullMax:130,cannon:15,cargoBonus:6,speed:6,price:1500},{cls:'galleon',nm:'大帆船',ico:'🚢',hullMax:160,cannon:12,cargoBonus:26,speed:4,price:2400}];
+var SHIP_CLASSES_C=[{cls:'trader',nm:'弁才船',ico:'⛵',hullMax:70,cannon:5,cargoBonus:14,speed:5,price:600},{cls:'clipper',nm:'小早',ico:'🚤',hullMax:65,cannon:7,cargoBonus:10,speed:10,price:900},{cls:'frigate',nm:'関船',ico:'⚔️',hullMax:130,cannon:15,cargoBonus:6,speed:6,price:1500},{cls:'galleon',nm:'安宅船',ico:'🚢',hullMax:160,cannon:12,cargoBonus:26,speed:4,price:2400}];
 var FLEET_MAX_C=5, TRADE_CYCLE_MS_C=5*60*1000;
 function portNmC(id){var m=MARKET_BYC[id];return m?m.ico+m.nm:id;}
 // 主城 AI 背景（固定 seed → 全城一致；載不出就用手繪打底）
-var TOWN_BG_URL="https://image.pollinations.ai/prompt/"+encodeURIComponent("cozy fantasy medieval town square at golden dusk, warm glowing lanterns, tavern blacksmith market stalls, castle spires in the background, anime background art, studio ghibli style scenery, no people, no text, wide establishing shot")+"?width=768&height=384&nologo=true&model=flux&seed=777";
+var TOWN_BG_URL="https://image.pollinations.ai/prompt/"+encodeURIComponent("cozy sengoku era japanese castle town square at golden dusk, warm glowing paper lanterns, wooden merchant stalls and sake tavern, japanese castle tenshu in the background, cherry blossom trees, anime background art, studio ghibli style scenery, no people, no text, wide establishing shot")+"?width=768&height=384&nologo=true&model=flux&seed=777";
 function starDots(){var s=[[10,20],[24,10],[40,26],[58,12],[72,22],[86,9],[33,15],[66,28],[92,20],[17,32]];return s.map(function(p){return '<div class="star" style="left:'+p[0]+'%;top:'+p[1]+'%"></div>';}).join('');}
 // ==== 副手 / 好感 / 側欄 ====
 // 情境化建議：依當前狀態給提示（副手橫幅與建議面板共用）
 function getAdvice(){
   var out=[];
-  if(!P.ship&&(P.deepest||0)>=5)out.push('🚢 已達第 5 層！到領主城堡領取新手船艦，開啟航海。');
+  if(!P.ship&&(P.deepest||0)>=5)out.push('🚢 已達第 5 層！到城領取新手船艦，開啟航海。');
   if(P.fv===1)out.push('📜 領主試航委託：揚帆到其他港口買 1 箱貨，帶回回報。');
-  else if(P.fv===2)out.push((P.port||'merc')==='merc'?'📜 回城堡向領主回報試航，領獎！':'📜 帶著貨回傭兵之城，到城堡回報試航。');
+  else if(P.fv===2)out.push((P.port||'merc')==='merc'?'📜 回城向城主回報試航，領獎！':'📜 帶著貨回清洲，到城回報試航。');
   if(P.roster.some(function(c){return c.id!==P.heroId&&!isSup(c.job)&&c.hp<c.maxhp&&c.hp>0;})||(heroOf()&&heroOf().hp<heroOf().maxhp))
     out.push('🏨 有人掛彩了，先去旅館歇口氣再出發吧。');
   if(P.roster.some(function(c){return c.hp<=0;}))
@@ -897,7 +897,7 @@ var MATE_STORY=[2,3,4,5];
 // 情義片段（免費 AI，失敗用模板）
 function mateScene(c,lv,cb){
   var ci=cinfo(c.job),race=RACES[c.race]?RACES[c.race].nm:'人類',rel=AFF_NM[lv];
-  var prompt='用繁體中文寫一段 40 字內、溫暖有畫面感的小情節：奇幻傭兵團長與副手（'+race+ci.nm+'，名叫'+c.name+'）的關係加深到「'+rel+'」的一個瞬間。第三人稱敘事，只回那段話、不要引號或說明。';
+  var prompt='用繁體中文寫一段 40 字內、溫暖有畫面感的小情節：戰國武將與副手（'+race+ci.nm+'，名叫'+c.name+'）的關係加深到「'+rel+'」的一個瞬間。第三人稱敘事，只回那段話、不要引號或說明。';
   var done=false,tm=setTimeout(function(){if(!done){done=true;cb(sceneTemplate(c,lv));}},9000);
   fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){if(done)return;done=true;clearTimeout(tm);t=(t||'').trim().replace(/^["「』』]+|["」『』]+$/g,'').slice(0,80);cb(t||sceneTemplate(c,lv));}).catch(function(){if(!done){done=true;clearTimeout(tm);cb(sceneTemplate(c,lv));}});
 }
@@ -966,8 +966,8 @@ function pickOfficer(key){
 // 副手閒聊：免費 AI（Pollinations 文字），失敗用模板
 function mateChat(c,cb){
   var ci=cinfo(c.job),race=RACES[c.race]?RACES[c.race].nm:'人類',aff=AFF_NM[affLevel(c.id)];
-  var ctx='玩家是傭兵團長，目前第'+(P.deepest||0)+'層、'+P.gold+'金幣'+(P.quest?'、正在進行委託':'');
-  var prompt='你是奇幻傭兵團的副手（'+race+ci.nm+'），名叫'+c.name+'，和團長關係是「'+aff+'」。用繁體中文說一句 30 字內、有你個性、像在對團長閒聊或關心的話。情境：'+ctx+'。只回那句話，不要引號或說明。';
+  var ctx='玩家是武將，目前第'+(P.deepest||0)+'層、'+P.gold+'金幣'+(P.quest?'、正在進行委託':'');
+  var prompt='你是武將隊的副手（'+race+ci.nm+'），名叫'+c.name+'，和團長關係是「'+aff+'」。用繁體中文說一句 30 字內、有你個性、像在對團長閒聊或關心的話。情境：'+ctx+'。只回那句話，不要引號或說明。';
   // 背景升級用：即時台詞已先顯示，這裡只在 AI 真的回來時才替換（逾時/失敗就維持即時台詞）
   var done=false,timer=setTimeout(function(){if(!done){done=true;cb(null);}},8000);
   fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){
@@ -1079,7 +1079,7 @@ function dateRenderScenes(c){
 function dateSceneLine(c,sid,cb){
   var ci=cinfo(c.job)||{},race=(RACES[c.race]||{}).nm||'人類',aff=AFF_NM[affLevel(c.id)];
   var place={town:'熱鬧的城鎮酒館',port:'黃昏的港口碼頭',deck:'出海的船隻甲板上',night:'滿天星斗的夜色下'}[sid]||'你身旁';
-  var prompt='你是傭兵團長的副手兼心上人，名叫'+c.name+'，是'+race+ci.nm+'，個性：'+matePersona(c)+'。你和團長關係「'+aff+'」。你們此刻來到'+place+'。用繁體中文說一句 20~40 字、切合此情此景、有你個性與情感的開場話。只回那句話，不要旁白或引號。';
+  var prompt='你是武將的副手兼心上人，名叫'+c.name+'，是'+race+ci.nm+'，個性：'+matePersona(c)+'。你和團長關係「'+aff+'」。你們此刻來到'+place+'。用繁體中文說一句 20~40 字、切合此情此景、有你個性與情感的開場話。只回那句話，不要旁白或引號。';
   var done=false,tm=setTimeout(function(){if(!done){done=true;cb(dateSceneTemplate(c,sid));}},9000);
   fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){if(done)return;done=true;clearTimeout(tm);t=(t||'').trim().replace(/^["「『』]+|["」『』]+$/g,'').replace(new RegExp('^'+c.name+'[：:]\\s*'),'').slice(0,80);cb(t&&!/error|unable|sorry|api/i.test(t)?t:dateSceneTemplate(c,sid));}).catch(function(){if(done)return;done=true;clearTimeout(tm);cb(dateSceneTemplate(c,sid));});
 }
@@ -1175,7 +1175,7 @@ function maybeDateFinale(c){
 function dateFinaleScene(c,ch){
   var body='<div class="note" style="text-align:center;font-size:52px">💞</div><div class="card" style="border-color:#c86fb0"><div class="note" style="text-align:left;line-height:1.9">你與 <b>'+c.name+'</b> 締結為 <b style="color:#ff9ec7">'+ch.title+'</b>。<br>🎁 賀禮 +800🪙<br><small style="color:var(--soft)">（副手面板可見你們的關係；情義天長地久。）</small></div><div class="note" id="ftale" style="text-align:left;margin-top:8px;color:#f0d6ad;line-height:1.85">✨ …</div></div>';
   openSheet('💍 '+ch.title,'你與 '+c.name+' 的終章',body);
-  var prompt='用繁體中文寫一段 50 字內、溫柔動人的場景：大航海世界裡，傭兵團長與摯愛副手'+c.name+'締結「'+ch.title+'」的那一刻。第三人稱、只回那段話、不要引號或說明。';
+  var prompt='用繁體中文寫一段 50 字內、溫柔動人的場景：戰國大航海世界裡，武將與摯愛副手'+c.name+'締結「'+ch.title+'」的那一刻。第三人稱、只回那段話、不要引號或說明。';
   var done=false,tm=setTimeout(function(){if(!done){done=true;cb(finaleTpl(c,ch));}},9000);
   function cb(t){var e=document.getElementById('ftale');if(e)e.textContent=t;}
   fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){if(done)return;done=true;clearTimeout(tm);t=(t||'').trim().replace(/^["「『]+|["」』]+$/g,'').slice(0,100);cb(t&&!/error|unable|sorry|api/i.test(t)?t:finaleTpl(c,ch));}).catch(function(){if(done)return;done=true;clearTimeout(tm);cb(finaleTpl(c,ch));});
@@ -1210,7 +1210,7 @@ function dateReply(c,text,cb){
   var ci=cinfo(c.job)||{},race=(RACES[c.race]||{}).nm||'人類',aff=AFF_NM[affLevel(c.id)];
   var ctx='團長「'+P.nick+'」目前地城第'+(P.deepest||0)+'層、'+(P.gold||0)+'金幣'+(P.ship?'、有船在跑海':'、還在陸地起步')+(P.quest?'、正在跑委託':'');
   var hist=chatlog(c.id).filter(function(m){return m.w!==2;}).slice(-6).map(function(m){return (m.w===1?c.name:'團長')+'：'+m.t;}).join('\n');
-  var prompt='你是奇幻大航海世界裡傭兵團長的副手兼心上人，名叫'+c.name+'，是'+race+ci.nm+'，個性：'+matePersona(c)+'。你和團長的關係是「'+aff+'」。近況：'+ctx+'。這是你們最近的對話，請「延續記憶與語氣」自然回覆團長最新一句，用繁體中文、30~55字、有感情有你的個性，可主動延伸話題或回憶過去，但別浮誇。只回你要說的話，不要旁白、不要引號、不要寫出名字前綴。\n'+hist+'\n團長：'+text+'\n'+c.name+'：';
+  var prompt='你是戰國大航海世界裡武將的副手兼心上人，名叫'+c.name+'，是'+race+ci.nm+'，個性：'+matePersona(c)+'。你和團長的關係是「'+aff+'」。近況：'+ctx+'。這是你們最近的對話，請「延續記憶與語氣」自然回覆團長最新一句，用繁體中文、30~55字、有感情有你的個性，可主動延伸話題或回憶過去，但別浮誇。只回你要說的話，不要旁白、不要引號、不要寫出名字前綴。\n'+hist+'\n團長：'+text+'\n'+c.name+'：';
   var done=false,timer=setTimeout(function(){if(!done){done=true;cb(dateTemplate(c,text));}},9000);
   fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)+'?seed='+Math.floor(Math.random()*99999)).then(function(r){return r.text();}).then(function(t){
     if(done)return;done=true;clearTimeout(timer);
@@ -1338,12 +1338,12 @@ function asideHTML(){
 // ── 城郊地區地圖：把陸地畫成有邊界的一塊地（森林／山脈／通海大道），建築照地理位置擺 ──
 // [id, 圖示, 名稱, x%, y%, 只在解鎖海洋後出現?]
 var LSPOTS=[
-  ['castle','🏰','領主城堡',50,14,0],
-  ['guild','🗡️','傭兵公會',27,33,0],
-  ['tavern','🍺','酒館',70,31,0],
-  ['shop','🛡️','武具店',20,52,0],
-  ['inn','🛏️','旅館',45,50,0],
-  ['black','🕶️','黑市',73,52,0],
+  ['castle','🏯','城',50,14,0],
+  ['guild','🗡️','武家評定所',27,33,0],
+  ['tavern','🍺','酒場',70,31,0],
+  ['shop','🛡️','武具屋',20,52,0],
+  ['inn','🛏️','旅籠',45,50,0],
+  ['black','🕶️','闇市',73,52,0],
   ['team','👥','人員營帳',33,67,0],
   ['inv','🎒','倉庫',58,67,0],
   ['dungeon','⚔️','地下城入口',86,22,0],
@@ -1353,7 +1353,7 @@ var LSPOTS=[
 function regionMapHTML(){
   var sea=seaOpen();
   var h='<div class="lmap" id="lmap"><div class="lgrid"></div>';
-  h+='<div class="lbanner">🗺️ '+P.nick+'領地 · 城郊周邊</div>';
+  h+='<div class="lbanner">🗺️ '+P.nick+'領地 · 城下町周邊</div>';
   // 邊界地貌
   h+='<div class="lforest"></div><div class="lmtn"></div>';
   h+='<div class="lsea"><div class="lwv"></div></div>';
@@ -1393,9 +1393,9 @@ function renderTown(){
   h+='<div class="townwrap"><div class="townmain">';
   // 場景橫幅
   h+='<div class="scene" id="scene"><div class="sun"></div>'+starDots()+
-    '<div class="sil">🌲🏠🏰🏪🏠🌲</div>'+
+    '<div class="sil">🌲🏠🏯🏪🏠🌲</div>'+
     '<img class="bg" id="townbg" alt="">'+
-    '<div class="title">🏰 傭兵之城<small>黃昏的傭兵城鎮 · '+P.nick+'</small></div></div>';
+    '<div class="title">🏯 尾張・清洲<small>黃昏的城下町 · '+P.nick+'</small></div></div>';
   h+='<div class="pad" style="padding-top:12px">';
   // 副手橫幅（點開商量）
   var mate=P.mate?byId(P.mate):null;
@@ -1449,8 +1449,8 @@ var GUIDE_STEPS=[
   {ico:'⚔️',t:'第一次下地下城探索',hint:'⚔️ 地下城自動探索，設好起始/目標層，穩紮穩打',done:function(){return (P.deepest||0)>=1;}},
   {ico:'🌟',t:'領取命定夥伴（一生一次 5★）',hint:'下過地城後 → 🍺 酒館領取保底傳奇夥伴（自訂名字立繪）',done:function(){return P.gift5&&!P.gift5Cand;}},
   {ico:'🗡️',t:'完成一張公會委託',hint:'🗡️ 公會接委託 → 達標後回來領賞金',done:function(){return (P.questsDone||0)>=1;}},
-  {ico:'🎖️',t:'探到第 5 層，到城堡領新手船',hint:'深潛到第 5 層 → 🏰 領主城堡領船，解鎖航海/貿易',done:function(){return !!P.ship;}},
-  {ico:'📜',t:'完成領主試航委託',hint:'揚帆到其他港口買 1 箱貨 → 帶回傭兵之城向領主回報',done:function(){return (P.fv||0)>=3;}},
+  {ico:'🎖️',t:'探到第 5 層，到城堡領新手船',hint:'深潛到第 5 層 → 🏯 城領船，解鎖航海/貿易',done:function(){return !!P.ship;}},
+  {ico:'📜',t:'完成城主試航委託',hint:'揚帆到其他港口買 1 箱貨 → 帶回清洲向城主回報',done:function(){return (P.fv||0)>=3;}},
   {ico:'🏪',t:'跑商賺一次價差（練商業）',hint:'產地買便宜 → 🗺️ 出航到需求地賣貴，賺價差',done:function(){return !!(P.com&&(P.com.lv>1||P.com.xp>0));}},
   {ico:'⚓',t:'打一場海戰／掠奪（練航海術）',hint:'世界地圖 → 🏴‍☠️ 巡弋掠奪 或 🌊 海域商船；先 🔭 偵查抓弱點',done:function(){return !!(P.nav&&(P.nav.lv>1||P.nav.xp>0))||(P.raided&&Object.keys(P.raided).length>0);}},
   {ico:'👩‍✈️',t:'指定副手、約會培養情義',hint:'人員/角色卡設副手 → 💗 約會專屬對話（會記得你）',done:function(){return P.mate&&affLevel(P.mate)>=1;}},
@@ -1578,7 +1578,7 @@ function openTeam(){
     var inS=P.team.support.indexOf(c.id)>=0;
     body+=uRow(c,(inS?'<button class="btn ok sm" data-rms="'+c.id+'">後勤中</button>':'<button class="btn dim sm" data-adds="'+c.id+'">安排</button>'));
   });
-  if(!anySup)body+='<div class="note">還沒有後勤職業夥伴，去酒館招募吟遊詩人 / 商人 / 學者 / 醫者 / 占卜師。</div>';
+  if(!anySup)body+='<div class="note">還沒有後勤職業夥伴，去酒場招募琵琶法師 / 豪商 / 軍師 / 藥師 / 卜部。</div>';
   // 羈絆
   body+='<div class="glab" style="margin-top:14px">💞 羈絆（同隊出戰累積・同隊時互相加攻擊）</div>';
   var bonds=[],rs=P.roster;
@@ -1657,7 +1657,7 @@ function charSheet(id){
 // 免費 AI 個性（Pollinations 文字，失敗用模板保底）
 function genBio(c,cb){
   var ci=cinfo(c.job),rc=c.rarity&&RARITY_C[c.rarity]?RARITY_C[c.rarity].nm:'常見',race=RACES[c.race]?RACES[c.race].nm:'人類';
-  var prompt='用繁體中文，為一位奇幻世界的傭兵寫一句 30 字以內、生動有個性的自我介紹或口頭禪。職業：'+ci.nm+'，種族：'+race+'，資質：'+rc+'。只回傳那一句話本身，不要引號、不要任何額外說明。';
+  var prompt='用繁體中文，為一位戰國世界的浪人寫一句 30 字以內、生動有個性的自我介紹或口頭禪。職業：'+ci.nm+'，種族：'+race+'，資質：'+rc+'。只回傳那一句話本身，不要引號、不要任何額外說明。';
   var done=false,timer=setTimeout(function(){if(!done){done=true;cb(bioTemplate(c));}},9000);
   fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){
     if(done)return;done=true;clearTimeout(timer);
@@ -1667,7 +1667,7 @@ function genBio(c,cb){
 }
 function bioTemplate(c){
   var t={fighter:'刀口舔血慣了，錢給夠，我就替你擋在最前面。',paladin:'以聖光之名，我發誓守護同伴到最後一刻。',rogue:'噓，別出聲——值錢的東西，我來拿就好。',ranger:'我的箭從不落空，除非我想讓它落空。',wizard:'凡人的常識？在我的魔法面前不適用。',cleric:'受傷就過來，別逞強，交給我。',bard:'來，聽我唱一首，順便替你們打打氣！',merchant:'一分錢一分貨，跟著我準沒錯。',scholar:'知識就是力量，這地下城的秘密我都記著。',medic:'別死在我面前，那是對我醫術的侮辱。',diviner:'命運？我早看過結局了，跟緊我。'};
-  return t[c.job]||'一位來歷成謎的傭兵。';
+  return t[c.job]||'一位來歷成謎的浪人。';
 }
 
 // ---- 裝備 ----
@@ -1793,14 +1793,14 @@ var RARITY_C={common:{nm:'常見',star:'⭐',color:'#b6a892'},fine:{nm:'精良',
 function rarC(k){return RARITY_C[k]||RARITY_C.common;}
 function candStats(cand){return {job:cand.job,race:cand.race,level:1,base:cand.base,equip:{weapon:null,armor:null,trinket:null}};}
 function openTavern(){
-  openSheet('🍺 酒館','今日應徵的傭兵（稀有度隨機）','<div class="note">召集應徵者…</div>');
+  openSheet('🍺 酒場','今日應徵的浪人（稀有度隨機）','<div class="note">召集應徵者…</div>');
   flushSave().then(function(){return srv('tavern',{nick:P.nick,op:'list'});}).then(function(r){P=r.player;refreshTopbar();renderTavern();}).catch(function(e){toast(e.message);});
 }
 function renderTavern(){
   var body='<div class="note" style="text-align:left">小隊 '+P.roster.length+'/'+ROSTER_MAX+' 人。應徵者資質已隨機抽定，雇走就沒了；雇用後可自訂名字與立繪。</div>';
   // 🌟 命定夥伴（一生一次的保底 5★）
   if(P.gift5Cand){
-    body+='<div class="card" style="border-color:#f4c34e;background:linear-gradient(180deg,rgba(244,195,78,.16),transparent)"><b>🌟 命定夥伴降臨！</b><div class="note" style="text-align:left;margin-top:2px">一位<b style="color:#f4c34e">⭐⭐⭐⭐⭐ 傳奇</b>傭兵慕名來投（一生一次）。<button class="btn gold sm" id="gift5take" style="margin-top:6px">🌟 收下命定夥伴（免費・自訂名字立繪）</button></div></div>';
+    body+='<div class="card" style="border-color:#f4c34e;background:linear-gradient(180deg,rgba(244,195,78,.16),transparent)"><b>🌟 命定夥伴降臨！</b><div class="note" style="text-align:left;margin-top:2px">一位<b style="color:#f4c34e">⭐⭐⭐⭐⭐ 傳奇</b>浪人慕名來投（一生一次）。<button class="btn gold sm" id="gift5take" style="margin-top:6px">🌟 收下命定夥伴（免費・自訂名字立繪）</button></div></div>';
   } else if(!P.gift5&&P.roster.length<ROSTER_MAX){
     if((P.deepest||0)>=1)body+='<div class="card" style="border-color:#f4c34e;background:linear-gradient(180deg,rgba(244,195,78,.16),transparent)"><b>🌟 命定之遇（一生一次）</b><div class="note" style="text-align:left;margin-top:2px">你已在地下城證明實力——領主為你舉薦一位<b style="color:#f4c34e">傳奇（5★）</b>夥伴！<button class="btn gold sm" id="gift5offer" style="margin-top:6px">🌟 領取保底 5★ 夥伴</button></div></div>';
     else body+='<div class="card" style="border-color:var(--gold-d)"><div class="note" style="text-align:left">🌟 <b>命定之遇</b>：先<b>下地下城探索一次</b>，即可領取一位<b>傳奇（5★）</b>夥伴（一生一次；之後 5★ 只能碰運氣抽）。</div></div>';
@@ -1818,7 +1818,7 @@ function renderTavern(){
   });
   if(!(P.tavern||[]).length)body+='<div class="note">應徵者都被雇走了，換一批看看？</div>';
   body+='<div class="rowbtns" style="margin-top:6px"><button class="btn dim sm" id="tref"'+(P.gold<30?' disabled':'')+'>🔄 換一批（30🪙）</button><button class="btn re sm" id="trumor">👂 打聽消息</button></div>';
-  sheet.innerHTML='<button class="close" onclick="closeSheet()">✕</button><h2>🍺 酒館</h2><p class="sub">今日應徵的傭兵（稀有度隨機・雇走就沒了）</p>'+body;
+  sheet.innerHTML='<button class="close" onclick="closeSheet()">✕</button><h2>🍺 酒場</h2><p class="sub">今日應徵的浪人（稀有度隨機・雇走就沒了）</p>'+body;
   q('[data-cand]',function(el){var cand=(P.tavern||[]).filter(function(c){return c.cid===el.dataset.cand;})[0];if(cand)startRecruit(cand);});
   var g5o=document.getElementById('gift5offer');if(g5o)g5o.onclick=function(){g5o.disabled=true;flushSave().then(function(){return srv('gift5',{nick:P.nick,op:'offer'});}).then(function(r){P=r.player;renderTavern();}).catch(function(e){g5o.disabled=false;toast(e.message);});};
   var g5t=document.getElementById('gift5take');if(g5t)g5t.onclick=function(){startRecruit(P.gift5Cand,true);};
@@ -1868,7 +1868,7 @@ function openInn(){
   var r=document.getElementById('rest');if(r)r.onclick=function(){if((P.gold||0)<cost)return;P.gold-=cost;P.roster.forEach(function(c){c.hp=c.maxhp;});saveP(function(){openSheet('🛏️ 旅館','','<div class="note" style="font-size:14px">😴 一夜好眠，全隊生龍活虎！</div>');});};
 }
 
-// ---- 傭兵公會（委託）----
+// ---- 武家評定所（委託）----
 function openGuild(){
   var body='';
   if(P.quest){var q=P.quest;var done=q.prog>=q.target;var pct=Math.min(100,Math.round(q.prog/q.target*100));
@@ -1880,7 +1880,7 @@ function openGuild(){
   }else{
     body+='<div class="note">接一張委託，進地下城達成目標就自動領賞金。委託目標依你目前最深層調整。</div><button class="btn ok" id="qacc">接新委託</button>';
   }
-  openSheet('🗡️ 傭兵公會','接委託 → 下地下城達成 → 回城自動領獎',body);
+  openSheet('🗡️ 武家評定所','接委託 → 下地下城達成 → 回城自動領獎',body);
   var acc=document.getElementById('qacc');if(acc)acc.onclick=function(){acc.disabled=true;acc.textContent='接洽中…';flushSave().then(function(){return srv('quest',{nick:P.nick,op:'accept'});}).then(function(r){P=r.player;openGuild();}).catch(function(e){acc.disabled=false;acc.textContent='接新委託';toast(e.message);});};
   var ab=document.getElementById('qab');if(ab)ab.onclick=function(){if(!confirm('確定放棄目前委託？'))return;flushSave().then(function(){return srv('quest',{nick:P.nick,op:'abandon'});}).then(function(r){P=r.player;openGuild();}).catch(function(e){toast(e.message);});};
 }
@@ -1948,7 +1948,7 @@ function renderTrade(v){
 }
 function tradeDo(op,good){
   var q=prompt((op==='buy'?'買入':'賣出')+' 數量：','1');if(q===null)return;q=Math.max(1,parseInt(q,10)||1);
-  flushSave().then(function(){return srv('trade',{nick:P.nick,op:op,good:good,qty:q});}).then(function(r){P=r.player;var fvUp=(op==='buy'&&P.fv===1&&(P.port&&P.port!=='merc'));if(fvUp)P.fv=2;refreshTopbar();renderTrade(r.view);if(fvUp){saveP();toast('📜 試航進度：已在外地採購！帶貨回傭兵之城向領主回報');}else if(r.sea&&(r.sea.ups>0||r.sea.bountyProg))seaToast(r.sea);else toast(op==='buy'?'買入 ×'+q:'賣出 ×'+q);}).catch(function(e){toast(e.message);});
+  flushSave().then(function(){return srv('trade',{nick:P.nick,op:op,good:good,qty:q});}).then(function(r){P=r.player;var fvUp=(op==='buy'&&P.fv===1&&(P.port&&P.port!=='merc'));if(fvUp)P.fv=2;refreshTopbar();renderTrade(r.view);if(fvUp){saveP();toast('📜 試航進度：已在外地採購！帶貨回清洲向城主回報');}else if(r.sea&&(r.sea.ups>0||r.sea.bountyProg))seaToast(r.sea);else toast(op==='buy'?'買入 ×'+q:'賣出 ×'+q);}).catch(function(e){toast(e.message);});
 }
 
 // ---- 世界地圖・出航 ----
@@ -2080,7 +2080,7 @@ function renderNaval(r){
   function decide(decision){flushSave().then(function(){return srv('prize',{nick:P.nick,decision:decision});}).then(function(res){P=res.player;refreshTopbar();var k=res.kept;toast(k.mode==='fleet'?('編入艦隊：'+k.nm):('拆解 +'+k.gold+'🪙'));var pc=document.getElementById('prizecard');if(pc)pc.innerHTML='<b>⚓ 已處置戰利品船</b><div class="note" style="text-align:left;margin-top:4px">'+(k.mode==='fleet'?('已編入艦隊：'+k.nm):('拆解換得 '+k.gold+'🪙'))+'</div>';}).catch(function(e){toast(e.message);});}
   var pf=document.getElementById('prizeFleet');if(pf)pf.onclick=function(){decide('fleet');};
   var ps=document.getElementById('prizeScrap');if(ps)ps.onclick=function(){decide('scrap');};
-  function capDecide(decision){flushSave().then(function(){return srv('captive',{nick:P.nick,decision:decision});}).then(function(res){P=res.player;refreshTopbar();var k=res.kept;toast(k.mode==='take'?('🎉 '+k.name+' 加入傭兵團！'):('放走換得 +'+k.gold+'🪙'));var cc=document.getElementById('captivecard');if(cc)cc.innerHTML='<b>🕊️ 已處置俘虜</b><div class="note" style="text-align:left;margin-top:4px">'+(k.mode==='take'?('已收編：'+k.name+' 加入傭兵團（到人員編隊上場）'):('放走換得 '+k.gold+'🪙'))+'</div>';}).catch(function(e){toast(e.message);});}
+  function capDecide(decision){flushSave().then(function(){return srv('captive',{nick:P.nick,decision:decision});}).then(function(res){P=res.player;refreshTopbar();var k=res.kept;toast(k.mode==='take'?('🎉 '+k.name+' 加入武將隊！'):('放走換得 +'+k.gold+'🪙'));var cc=document.getElementById('captivecard');if(cc)cc.innerHTML='<b>🕊️ 已處置俘虜</b><div class="note" style="text-align:left;margin-top:4px">'+(k.mode==='take'?('已收編：'+k.name+' 加入武將隊（到人員編隊上場）'):('放走換得 '+k.gold+'🪙'))+'</div>';}).catch(function(e){toast(e.message);});}
   var ct=document.getElementById('capTake');if(ct)ct.onclick=function(){capDecide('take');};
   var cr=document.getElementById('capRansom');if(cr)cr.onclick=function(){capDecide('ransom');};
   function capnDecide(decision){flushSave().then(function(){return srv('captain',{nick:P.nick,decision:decision});}).then(function(res){P=res.player;refreshTopbar();var k=res.kept;toast(k.mode==='sell'?('賣給'+k.foeNm+' +'+k.gold+'🪙'):(k.mode==='release'?('放走了船長・'+(k.facNm||'')+'好感大增'):('贖回 +'+k.gold+'🪙'))); var cc=document.getElementById('captaincard');if(cc)cc.innerHTML='<b>🧑‍✈️ 已處置船長</b><div class="note" style="text-align:left;margin-top:4px">'+(k.mode==='sell'?('賣給'+k.foeNm+'，換得 '+k.gold+'🪙（徹底得罪原勢力）'):(k.mode==='release'?('放走了船長，'+(k.facNm||'')+'好感大增'):('贖回原勢力，換得 '+k.gold+'🪙')))+'</div>';}).catch(function(e){toast(e.message);});}
@@ -2310,15 +2310,15 @@ function renderVoyage(v){
   document.getElementById('arrive').onclick=renderTown;if(v.sea)seaToast(v.sea);
 }
 
-// ---- 領主城堡（主線・階級）----
+// ---- 城（主線・階級）----
 // ---- 威名 / 爵位（把地城深度＋財富＋領地＋艦隊＋海事＋戰功合成總目標）----
-var PEERAGE_C=[{t:0,nm:'無名浪人',ico:'🚶'},{t:300,nm:'見習船長',ico:'⛵'},{t:800,nm:'名聞商賈',ico:'💰'},{t:1600,nm:'海域騎士',ico:'🗡️'},{t:2800,nm:'男爵',ico:'🎖️'},{t:4500,nm:'子爵',ico:'🏅'},{t:7000,nm:'伯爵',ico:'👑'},{t:10000,nm:'侯爵',ico:'💠'},{t:15000,nm:'海洋霸主',ico:'🌊'}];
+var PEERAGE_C=[{t:0,nm:'無名浪人',ico:'🚶'},{t:300,nm:'廻船若頭',ico:'⛵'},{t:800,nm:'堺豪商',ico:'💰'},{t:1600,nm:'水軍武者',ico:'🗡️'},{t:2800,nm:'旗本',ico:'🎖️'},{t:4500,nm:'大身旗本',ico:'🏅'},{t:7000,nm:'国主',ico:'👑'},{t:10000,nm:'大名',ico:'💠'},{t:15000,nm:'天下人',ico:'🌊'}];
 function fameOfC(pl){var f=0;f+=(pl.deepest||0)*40;f+=Math.floor((pl.gold||0)/120)+Math.floor((pl.invest||0)/120);if(pl.holdings)Object.keys(pl.holdings).forEach(function(k){f+=50+(pl.holdings[k].lv||1)*50;});f+=(pl.fleet||[]).length*40;f+=(((pl.nav&&pl.nav.lv)||1)+((pl.com&&pl.com.lv)||1))*18;f+=(pl.questsDone||0)*12;(pl.roster||[]).forEach(function(c){f+=(c.level||1)*3;});if(pl.uniques)f+=Object.keys(pl.uniques).length*80;f+=(pl.fameBonus||0);return Math.round(f);}
 // 🏴‍☠️ 傳說船艦・海圖奇譚（離線鏡像 Data.gs LEGEND_SHIPS）
 var LEGEND_SHIPS_C=[
-  {id:'ghost',nm:'亡者迴響',ico:'👻',tier:4,gunTier:5,hullMax:260,cannon:32,speed:14,cargoBonus:14,crew:34,perk:'夜霧幽襲',perkDesc:'幽靈之速冠絕四海——打帶跑幾乎必定脫離，夜襲先手兇狠。',lore:'終年迷霧的死亡海域，一艘沒有活人的船逆風而行。船員早已化作亡魂，唯有詛咒還在掌舵。',need:{nav:6,clues:6},needTxt:'航海術 Lv6 ＋ 秘寶線索 ≥6',hint:{nav:3},rumor:'酒館角落，一名獨眼老水手壓低聲音：「夜霧海域…有艘沒有活人的船在打轉。夠格的航海家才追得上。」',guardian:{nm:'亡者船長',ico:'☠️',hull:210,cannon:24,speed:12},intro:['濃霧裡浮出一片破帆——傳說中的幽靈船「亡者迴響」。','甲板上的亡魂緩緩轉頭：「活人…也想加入我們的航程嗎？」','（要奪下這艘船，得先讓亡者船長重歸安息。）'],win:['最後一輪齊射轟碎詛咒的鎖鏈，亡者船長化作霧氣消散：「自由了…她是你的了。」','幽藍鬼火沿桅杆亮起，「亡者迴響」認你為新船長。']},
-  {id:'golden',nm:'大金鹿號',ico:'🪙',tier:4,gunTier:3,hullMax:320,cannon:20,speed:6,cargoBonus:46,crew:44,perk:'富甲天下',perkDesc:'傳說級巨大貨艙，售貨價再 +8%——跑商發財神器。',lore:'百年前滿載黃金沉沒的商船隊旗艦，據說塞滿半個王國的財富。',need:{com:6,gold:5000},needTxt:'商業 Lv6 ＋ 5000🪙（雇打撈隊）',hint:{com:3},rumor:'碼頭商人神秘兮兮：「百年前沉沒的黃金船隊…有人拼出了半張海圖。有本錢的商人才玩得起這場打撈。」',guardian:{nm:'打撈海盜團',ico:'🏴‍☠️',hull:240,cannon:20,speed:7},intro:['海圖殘片拼出沉船座標——你雇來打撈隊，卻發現一群海盜也聞風而至。','「金子是我們的！」只有打退他們，寶船才屬於你。'],win:['海盜狼狽退去，打撈索拉起這艘塞滿黃金的巨舟。','「大金鹿號」重見天日——光艙裡舊財寶就夠你笑好幾天。']},
-  {id:'dragon',nm:'海龍王',ico:'🐉',tier:4,gunTier:6,hullMax:420,cannon:48,speed:7,cargoBonus:16,crew:56,perk:'龍息齊射',perkDesc:'以古龍骸骨為龍骨，海戰砲擊 +6，碾壓一切。',lore:'遠古海龍的巨大骸骨沉睡在最深海溝，被古文明打造成不沉的戰艦。',need:{deepest:15,fame:2800},needTxt:'地城深潛 ≥15 層 ＋ 威名 ≥2800',hint:{deepest:10},rumor:'一位斷了腿的老探險家盯著你：「最深的海溝底下…睡著一頭古龍的骸骨。夠深、夠有名望的人，才聽得懂它的呼喚。」',guardian:{nm:'深淵守衛獸',ico:'🐙',hull:330,cannon:32,speed:8},intro:['循古老海圖潛入最深海溝，龍骨戰艦「海龍王」靜臥其中——','一頭深淵守衛獸盤據其上，噴出墨黑潮水。要它的船，先過牠這關。'],win:['守衛獸發出最後哀鳴沉入黑暗。龍骨深處亮起古老符文——','「海龍王」承認了你的膽識，古龍之力自此為你所用。']}
+  {id:'ghost',nm:'怨霊丸',ico:'👻',tier:4,gunTier:5,hullMax:260,cannon:32,speed:14,cargoBonus:14,crew:34,perk:'夜霧幽襲',perkDesc:'幽靈之速冠絕四海——打帶跑幾乎必定脫離，夜襲先手兇狠。',lore:'終年迷霧的死亡海域，一艘沒有活人的船逆風而行。船員早已化作怨靈，唯有執念還在掌舵。',need:{nav:6,clues:6},needTxt:'航海術 Lv6 ＋ 秘寶線索 ≥6',hint:{nav:3},rumor:'酒場角落，一名獨眼老船頭壓低聲音：「夜霧海域…有艘沒有活人的船在打轉。夠格的船頭才追得上。」',guardian:{nm:'亡霊船頭',ico:'☠️',hull:210,cannon:24,speed:12},intro:['濃霧裡浮出一片破帆——傳說中的幽靈船「怨霊丸」。','甲板上的怨靈緩緩轉頭：「活人…也想加入我們的航程嗎？」','（要奪下這艘船，得先讓亡霊船頭重歸安息。）'],win:['最後一輪齊射轟碎執念的鎖鏈，亡霊船頭化作霧氣消散：「自由了…她是你的了。」','幽藍鬼火沿桅杆亮起，「怨霊丸」認你為新船頭。']},
+  {id:'golden',nm:'黄金丸',ico:'🪙',tier:4,gunTier:3,hullMax:320,cannon:20,speed:6,cargoBonus:46,crew:44,perk:'富甲天下',perkDesc:'傳說級巨大貨艙，售貨價再 +8%——跑商發財神器。',lore:'百年前滿載金山黃金沉沒的廻船隊旗艦，據說塞滿半個天下的財富。',need:{com:6,gold:5000},needTxt:'商業 Lv6 ＋ 5000🪙（雇打撈隊）',hint:{com:3},rumor:'碼頭豪商神秘兮兮：「百年前沉沒的黃金船隊…有人拼出了半張海圖。有本錢的商人才玩得起這場打撈。」',guardian:{nm:'倭寇打撈隊',ico:'🏴‍☠️',hull:240,cannon:20,speed:7},intro:['海圖殘片拼出沉船座標——你雇來打撈隊，卻發現一群倭寇也聞風而至。','「金子是我們的！」只有打退他們，寶船才屬於你。'],win:['倭寇狼狽退去，打撈索拉起這艘塞滿黃金的巨舟。','「黄金丸」重見天日——光艙裡舊財寶就夠你笑好幾天。']},
+  {id:'dragon',nm:'龍神丸',ico:'🐉',tier:4,gunTier:6,hullMax:420,cannon:48,speed:7,cargoBonus:16,crew:56,perk:'龍息齊射',perkDesc:'以龍神骸骨為龍骨，海戰砲擊 +6，碾壓一切。',lore:'海神龍神的巨大骸骨沉睡在最深海溝，被古老工匠打造成不沉的戰艦。',need:{deepest:15,fame:2800},needTxt:'地城深潛 ≥15 層 ＋ 威名 ≥2800',hint:{deepest:10},rumor:'一位斷了腿的老船頭盯著你：「最深的海溝底下…睡著龍神的骸骨。夠深、夠有名望的人，才聽得懂祂的呼喚。」',guardian:{nm:'龍宮の守護獣',ico:'🐙',hull:330,cannon:32,speed:8},intro:['循古老海圖潛入最深海溝，龍骨戰艦「龍神丸」靜臥其中——','一頭巨大的龍宮守護獸盤據其上，噴出墨黑潮水。要它的船，先過牠這關。'],win:['守護獸發出最後哀鳴沉入黑暗。龍骨深處亮起古老紋樣——','「龍神丸」承認了你的膽識，龍神之力自此為你所用。']}
 ];
 var LEGEND_INQUIRE_COST_C=150;
 var LEGEND_BY_C={};LEGEND_SHIPS_C.forEach(function(s){LEGEND_BY_C[s.id]=s;});
@@ -2418,9 +2418,9 @@ function peerageEvent(mode,d){
 function peerageTaleTpl(mode,d){return mode==='confer'?(d.outlaw?('黑帆升起，甲板上眾海盜齊聲怒吼你的名號——「'+d.title+'」！這片海，從此無人敢攖其鋒。'):('號角齊鳴，'+d.facNm+'的旗幟下，眾人見證你受封「'+d.title+'」，掌聲如潮水般湧起。')):(d.facNm+'當眾撕下你的爵位徽記：「叛徒！這片海，不再有你的容身之處。」');}
 function peerageTale(mode,d,cb){
   var prompt=mode==='confer'
-    ?(d.outlaw?'用繁體中文寫一段 45 字內、狂野豪邁的場景：大航海世界裡黑帆海盜團在甲板上擁立某傭兵團長為「'+d.title+'」的那一刻。第三人稱、只回那段話、不要引號或說明。'
-              :'用繁體中文寫一段 45 字內、莊嚴有畫面感的授勳場景：大航海世界裡「'+d.facNm+'」為傭兵團長冊封「'+d.title+'」爵位的那一刻。第三人稱、只回那段話、不要引號或說明。')
-    :'用繁體中文寫一段 45 字內、有戲劇張力的場景：大航海世界裡「'+d.facNm+'」當眾宣布褫奪某傭兵團長爵位、斥其為叛徒的那一刻。第三人稱、只回那段話、不要引號或說明。';
+    ?(d.outlaw?'用繁體中文寫一段 45 字內、狂野豪邁的場景：戰國大航海世界裡倭寇衆在甲板上擁立某武將為「'+d.title+'」的那一刻。第三人稱、只回那段話、不要引號或說明。'
+              :'用繁體中文寫一段 45 字內、莊嚴有畫面感的授勳場景：戰國大航海世界裡「'+d.facNm+'」為武將冊封「'+d.title+'」爵位的那一刻。第三人稱、只回那段話、不要引號或說明。')
+    :'用繁體中文寫一段 45 字內、有戲劇張力的場景：戰國大航海世界裡「'+d.facNm+'」當眾宣布褫奪某武將爵位、斥其為叛徒的那一刻。第三人稱、只回那段話、不要引號或說明。';
   var done=false,tm=setTimeout(function(){if(!done){done=true;cb(peerageTaleTpl(mode,d));}},9000);
   fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){if(done)return;done=true;clearTimeout(tm);t=(t||'').trim().replace(/^["「『]+|["」』]+$/g,'').slice(0,90);cb(t&&!/error|unable|sorry|api/i.test(t)?t:peerageTaleTpl(mode,d));}).catch(function(){if(done)return;done=true;clearTimeout(tm);cb(peerageTaleTpl(mode,d));});
 }
@@ -2496,10 +2496,10 @@ function openCastle(){
   }
   // 領主試航委託（領船後的第一趟商旅引導）
   if(P.ship&&P.fv&&P.fv<3){
-    if(P.fv===1)body+='<div class="card" style="border-color:#3a6ea5"><b>📜 領主試航委託</b><div class="note" style="text-align:left;margin-top:4px">「揚帆到<b>任一其他港口</b>，在貿易所買 <b>1 箱貨</b>，再帶回傭兵之城向我回報——就當是你的第一趟商旅。」</div></div>';
+    if(P.fv===1)body+='<div class="card" style="border-color:#3a6ea5"><b>📜 領主試航委託</b><div class="note" style="text-align:left;margin-top:4px">「揚帆到<b>任一其他港口</b>，在貿易所買 <b>1 箱貨</b>，再帶回清洲向我回報——就當是你的第一趟商旅。」</div></div>';
     else if(P.fv===2){
       if((P.port||'merc')==='merc')body+='<div class="card" style="border-color:var(--gold)"><b>📜 試航委託・可回報</b><div class="note" style="text-align:left;margin-top:4px">你帶著外地的貨回來了！向領主回報，領取賞賜。</div><button class="btn gold" id="fvreport" style="margin-top:8px">📜 回報試航（+300🪙 ＋ 秘寶線索）</button></div>';
-      else body+='<div class="card" style="border-color:#3a6ea5"><b>📜 試航委託・帶貨回航</b><div class="note" style="text-align:left;margin-top:4px">已在外地採購！現在<b>揚帆回傭兵之城</b>（'+portNmC('merc')+'），再到城堡回報。</div></div>';
+      else body+='<div class="card" style="border-color:#3a6ea5"><b>📜 試航委託・帶貨回航</b><div class="note" style="text-align:left;margin-top:4px">已在外地採購！現在<b>揚帆回清洲</b>（'+portNmC('merc')+'），再到城回報。</div></div>';
     }
   }
   body+='<div class="card" style="border-color:var(--gold);background:linear-gradient(180deg,rgba(200,151,31,.14),transparent)"><b style="font-size:15px">'+pr.ico+' 爵位：'+pr.nm+'</b> <span class="tag">威名 '+fame+'</span>';
@@ -2511,21 +2511,21 @@ function openCastle(){
   fameBreakdownC(P).forEach(function(x){if(x[1]>0)body+='<div class="note" style="text-align:left;display:inline-block;width:48%">'+x[0]+' <b style="color:var(--gold)">'+x[1]+'</b></div>';});
   body+='</div>';
   body+='<div class="card" style="border-color:var(--gold-d)"><b>🌊 海上終極目標</b><div class="note" style="text-align:left;margin-top:4px">累積威名達 <b>15000</b>，受封『🌊 海洋霸主』—— 打得深、賺得多、佔得廣、艦隊強，樣樣都算數。</div></div>';
-  body+='<div class="card"><b>🎖️ 傭兵階級：'+RANKS[ri].nm+'</b>';
+  body+='<div class="card"><b>🎖️ 武家階級：'+RANKS[ri].nm+'</b>';
   if(next){var pct=Math.min(100,Math.round(deep/next.floor*100));
     body+='<div class="note" style="text-align:left;margin-top:4px">下一階「'+next.nm+'」：探索到第 '+next.floor+' 層（目前最深 '+deep+'）</div>'+
       '<div class="hpbar" style="height:9px;margin-top:6px"><i style="background:linear-gradient(90deg,#f4c34e,#c8971f);width:'+pct+'%"></i></div>';}
-  else body+='<div class="note" style="text-align:left;margin-top:4px">🏆 你已是傳說傭兵，全城以你為傲！</div>';
+  else body+='<div class="note" style="text-align:left;margin-top:4px">🏆 你已是軍神，全城以你為傲！</div>';
   body+='</div>';
   body+='<div class="card"><b>👑 領主的懸賞（主線）</b><div class="note" style="text-align:left;margin-top:4px">'+
-    '討伐盤踞地下城第 20 層的魔王【巫妖】，成為傳說傭兵。<br>每 5 層有一名頭目把守：哥布林王(5) → 巨魔領主(10) → 骨龍(15) → 巫妖(20)。</div></div>';
+    '討伐盤踞地下城第 20 層的大妖【酒呑童子】，成為軍神。<br>每 5 層有一名頭目把守：鬼王(5) → 鵺(10) → 八岐大蛇(15) → 酒呑童子(20)。</div></div>';
   body+='<div class="note">階級越高，代表你探得越深。晉升自動觸發並發放賞金。</div>';
   body+='<div class="rowbtns" style="margin-top:8px"><button class="btn gold sm" id="opendonate">🎗️ 獻金晉身</button><button class="btn dim sm" id="opendex">📖 結局圖鑑</button></div>';
-  openSheet('🏰 領主城堡','向領主稟報你的功績',body);
+  openSheet('🏯 城','向城主稟報你的功績',body);
   var dn=document.getElementById('opendonate');if(dn)dn.onclick=openDonate;
   var dx=document.getElementById('opendex');if(dx)dx.onclick=openDex;
   var cs=document.getElementById('claimship');if(cs)cs.onclick=function(){cs.disabled=true;flushSave().then(function(){return srv('ship',{nick:P.nick,op:'claim'});}).then(function(r){P=r.player;P.fv=1;saveP();refreshTopbar();openSheet('🚢 揚帆待發！','',
-    '<div class="note" style="text-align:center;font-size:44px">⛵</div><div class="note" style="text-align:left;line-height:1.9">領主賜予你一艘 <b>初心號</b>！<br>現在城鎮多了 <b>🏪 貿易所・🗺️ 出航・⚓ 船塢</b>，底部也出現「出航／貿易」分頁。<br><br>📜 <b>領主的試航委託</b>：揚帆到<b>其他港口</b>買 1 箱貨，帶回傭兵之城向領主回報。<br><small style="color:var(--soft)">（第 10 層後還會解鎖 🛳️船商／🚢艦隊 的船隊玩法）</small></div>'+
+    '<div class="note" style="text-align:center;font-size:44px">⛵</div><div class="note" style="text-align:left;line-height:1.9">城主賜予你一艘 <b>初心丸</b>！<br>現在城下町多了 <b>🏪 貿易所・🗺️ 出航・⚓ 造船所</b>，底部也出現「出航／貿易」分頁。<br><br>📜 <b>城主的試航委託</b>：揚帆到<b>其他港口</b>買 1 箱貨，帶回清洲向城主回報。<br><small style="color:var(--soft)">（第 10 層後還會解鎖 🛳️廻船問屋／🚢艦隊 的船隊玩法）</small></div>'+
     '<button class="btn gold" onclick="closeSheet()" style="margin-top:8px">出發！</button>');}).catch(function(e){cs.disabled=false;toast(e.message);});};
   var fr=document.getElementById('fvreport');if(fr)fr.onclick=function(){P.gold=(P.gold||0)+300;P.clues=(P.clues||0)+1;P.fv=3;saveP();refreshTopbar();openSheet('📜 試航達成！','',
     '<div class="note" style="text-align:center;font-size:40px">🎉</div><div class="note" style="text-align:left;line-height:1.9">領主頷首：「不錯，有商人的樣子了。這 300🪙 拿去，還有一片海圖殘片——往後這片海，就靠你闖蕩了。」<br><br>🪙 +300　🧭 秘寶線索 +1</div><button class="btn gold" onclick="closeSheet()" style="margin-top:8px">領命！</button>');};
@@ -2611,8 +2611,8 @@ function mockBattle(pl,floor,boss){
   var by={};pl.roster.forEach(function(c){by[c.id]=c;});
   var party=(pl.team.battle||[]).map(function(id){return by[id];}).filter(Boolean).map(function(c){return {id:c.id,name:c.name,ico:(cinfo(c.job)||{}).ico||'⚔️',portrait:c.portrait||'',maxhp:c.maxhp||30,_atk:7+Math.floor((c.level||1)*1.4)};});
   if(!party.length)party=[{id:'x',name:'隊長',ico:'⚔️',portrait:'',maxhp:30,_atk:10}];
-  var bossNm=['哥布林王','巨魔領主','骨龍','巫妖','深淵魔神'][Math.min(4,Math.max(0,Math.floor(floor/5)-1))];
-  var foes=boss?[{nm:bossNm,ico:'👹',maxhp:44+floor*8}]:[{nm:'哥布林',ico:'👺',maxhp:14+floor*3},{nm:'座狼',ico:'🐺',maxhp:11+floor*2}];
+  var bossNm=['鬼王','鵺','八岐大蛇','酒呑童子','業魔'][Math.min(4,Math.max(0,Math.floor(floor/5)-1))];
+  var foes=boss?[{nm:bossNm,ico:'👹',maxhp:44+floor*8}]:[{nm:'河童',ico:'🐸',maxhp:14+floor*3},{nm:'山犬',ico:'🐺',maxhp:11+floor*2}];
   var ph=party.map(function(p){return p.maxhp;}),fh=foes.map(function(f){return f.maxhp;});
   var ev=[],lines=[],round=0,guard=0;
   function any(a){return a.some(function(x){return x>0;});}
@@ -2745,15 +2745,15 @@ function renderReport(rep){
   var wb=document.getElementById('watchbtl');if(wb&&featured)wb.onclick=function(){renderBattle(featured.encounters[0],function(){renderReport(rep);});};
   Array.prototype.forEach.call(document.querySelectorAll('[data-wbtl]'),function(el){el.onclick=function(){var f=rep.floors[+el.dataset.wbtl];if(f&&f.encounters&&f.encounters[0])renderBattle(f.encounters[0],function(){renderReport(rep);});};});
   var at=document.getElementById('aitale');
-  if(at)at.onclick=function(){at.disabled=true;at.textContent='✍️ 執筆中…';var box=document.getElementById('aitalebox');box.style.display='block';box.textContent='✨ 吟遊詩人正在編寫戰記…';
+  if(at)at.onclick=function(){at.disabled=true;at.textContent='✍️ 執筆中…';var box=document.getElementById('aitalebox');box.style.display='block';box.textContent='✨ 琵琶法師正在編寫戰記…';
     genBattleTale(rep,function(t){box.textContent=t;if(at)at.remove();});};
 }
 // 免費 AI 戰記（Pollinations 文字，按需生成、超時用模板保底）
 function genBattleTale(rep,cb){
-  var names=(P.team.battle||[]).map(function(id){var c=byId(id);return c?c.name:null;}).filter(Boolean).join('、')||'一支傭兵小隊';
+  var names=(P.team.battle||[]).map(function(id){var c=byId(id);return c?c.name:null;}).filter(Boolean).join('、')||'一支武將小隊';
   var bosses=(rep.newBosses||[]).length?('，並擊破第 '+(rep.newBosses||[]).join('、')+' 層的頭目'):'';
   var ending=rep.wiped?'最後力竭全滅、被抬回城裡':(rep.cleared?'最終凱旋歸來':'見好就收、安全撤退');
-  var prompt='用繁體中文寫一段 60~100 字、生動有畫面感的奇幻戰記，描述傭兵小隊這趟地下城的經歷。隊員：'+names+'。他們從第 '+(rep.start||1)+' 層打到第 '+rep.reached+' 層，擊敗約 '+(rep.kills||0)+' 隻魔物'+bosses+'，'+ending+'。只回傳戰記本文，不要標題、不要引號、不要多餘說明。';
+  var prompt='用繁體中文寫一段 60~100 字、生動有畫面感的奇幻戰記，描述武將小隊這趟地下城的經歷。隊員：'+names+'。他們從第 '+(rep.start||1)+' 層打到第 '+rep.reached+' 層，擊敗約 '+(rep.kills||0)+' 隻魔物'+bosses+'，'+ending+'。只回傳戰記本文，不要標題、不要引號、不要多餘說明。';
   var done=false,timer=setTimeout(function(){if(!done){done=true;cb(taleTemplate(rep,names,ending));}},12000);
   fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)).then(function(r){return r.text();}).then(function(t){
     if(done)return;done=true;clearTimeout(timer);t=(t||'').trim().replace(/^["「『]+|["」』]+$/g,'').slice(0,320);
