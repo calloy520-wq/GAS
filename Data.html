@@ -11,10 +11,10 @@ var VER = 1;
 // 一季 20 天，一年 80 天。冬天是主要壓力來源（採集暴跌＋要燒柴）。
 var SEASON_LEN = 20;
 var SEASONS = [
-  { id:'spring', nm:'春', ico:'🌸', forage:1.00, farm:1.00, sick:1.00, thirst:1.00, warm:0 },
-  { id:'summer', nm:'夏', ico:'☀️', forage:1.20, farm:1.10, sick:1.10, thirst:1.50, warm:0 },
-  { id:'autumn', nm:'秋', ico:'🍂', forage:1.10, farm:1.70, sick:1.00, thirst:1.00, warm:0 },
-  { id:'winter', nm:'冬', ico:'❄️', forage:0.35, farm:0.00, sick:1.80, thirst:0.80, warm:1 }
+  { id:'spring', nm:'春', ico:'🌸', forage:1.00, farm:1.00, sick:1.00, thirst:1.00, warm:0, eat:1.00 },
+  { id:'summer', nm:'夏', ico:'☀️', forage:1.20, farm:1.10, sick:1.10, thirst:1.50, warm:0, eat:1.00 },
+  { id:'autumn', nm:'秋', ico:'🍂', forage:1.10, farm:1.70, sick:1.00, thirst:1.00, warm:0, eat:1.00 },
+  { id:'winter', nm:'冬', ico:'❄️', forage:0.35, farm:0.00, sick:1.80, thirst:0.80, warm:1, eat:1.45 }
 ];
 
 // ---- 天氣 ----------------------------------------------------
@@ -145,7 +145,7 @@ var C = {
 
   EAT:        1.0,          // 每人每天吃
   DRINK:      1.0,          // 每人每天喝（乘季節 thirst）
-  BURN:       1.0,          // 冬天每人每天燒柴
+  BURN:        1.2,          // 冬天每人每天燒柴
 
   HUNGER_HP:  13,           // 沒糧時每日扣血
   THIRST_HP:  22,           // 沒水時每日扣血（比餓更致命）

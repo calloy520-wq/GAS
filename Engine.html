@@ -365,7 +365,7 @@ function resolveDay(P, assign){
 
   // 6) 每日消耗
   var n = alive(P).length;
-  var needFood  = n * C.EAT;
+  var needFood  = n * C.EAT * (S.eat || 1);     // 冬天禦寒要吃更多
   var needWater = n * C.DRINK * S.thirst * (W.water || 1);
   var needWood  = S.warm ? n * C.BURN : 0;
 
@@ -421,7 +421,13 @@ function resolveDay(P, assign){
     }
 
     // 心情
+    // 吃飽喝足有正向回饋 —— 沒有這個，缺糧一次就會進入永遠爬不回來的死亡螺旋：
+    // 心情掉下去 → 派人休息止血 → 沒人採集 → 繼續餓 → 繼續掉。
+    // 有了它，只要把糧水穩住，村子就能慢慢回復。
     var md = aura;
+    // 只拉回基準線為止：吃飽能止血、能爬出谷底，但高昂士氣仍得靠建築／發現／羈絆去換。
+    // （無上限版本實測會讓滅村率掉到 2%，心情等於免費。）
+    if (!hungry && !thirsty && !cold && p.mood < 55) md += 3;
     md += (W.mood || 0);
     if (P.build.shelter === 0) md -= 2;
     if (alive(P).length > maxPeople(P)) md -= 4;          // 擠不下
@@ -523,13 +529,17 @@ function rollEvent(P, R, rep, gain, use){
       var v = pick(R, crew);
       v.hp = clamp(v.hp - rint(R, 10, 24), 0, C.HP_MAX);
       v.sick = clamp(v.sick + 1, 0, 3);
-      var lost = Math.min(P.res.food || 0, rint(R, 3, 9)); use('food', lost);
+      // 偷糧按存量比例計，不用定額 —— 定額會讓前期（只有 20 糧）被偷 9 等於毀滅，
+      // 後期（200 糧）被偷 9 卻毫無感覺，難度曲線完全顛倒。
+      var lost = Math.min(P.res.food || 0, rint(R, 3, 9), Math.ceil((P.res.food || 0) * 0.18));
+      use('food', lost);
       ev.victim = v.name; ev.foodLost = lost;
       ev.text = v.name + '在夜裡被野獸撲倒，受了傷，糧食也被拖走一些。';
       if (v.hp <= 0){ v.alive = false; P.stats.lost++; rep.deaths.push({ name:v.name, reason:'被野獸所害' }); }
     }
   } else if (id === 'illness'){
-    var h = crew.filter(function(p){ return p.sick === 0; });
+    // 排除今天才剛被治好的人，否則村誌會出現「病了→康復了」這種看不懂的同日矛盾
+    var h = crew.filter(function(p){ return p.sick === 0 && rep.healed.indexOf(p.name) < 0; });
     if (h.length){ var s = pick(R, h); s.sick = 1; rep.sick.push(s.name); ev.victim = s.name; ev.text = s.name + '夜裡發起高燒。'; }
     else ev.text = '病氣在村裡遲遲不散。';
   } else if (id === 'quarrel'){

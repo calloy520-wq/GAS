@@ -55,6 +55,7 @@ input,select{font-family:inherit;font-size:15px;color:var(--ink);background:#1b1
   border:1px solid var(--line);cursor:pointer}
 .jb.on{background:var(--gold);color:#241d10;border-color:var(--gold);font-weight:700}
 .jb.no{opacity:.3;cursor:not-allowed}
+.tag.cur{background:var(--gold);color:#241d10;border-color:var(--gold);font-weight:700}
 
 /* ── 底部操作 ── */
 #bot{position:fixed;bottom:0;left:0;right:0;z-index:40;background:#120f0bf2;
@@ -129,6 +130,7 @@ input,select{font-family:inherit;font-size:15px;color:var(--ink);background:#1b1
       <span class="sp"></span>
       <button class="sm" id="btnSame" style="padding:5px 10px">↻ 同昨天</button>
       <button class="sm" id="btnAuto" style="padding:5px 10px">⚙ 自動</button>
+      <button class="sm" id="btnFold" style="padding:5px 10px" title="全部展開／收合">⇕</button>
     </div>
     <div id="people"></div>
     <div class="card" style="padding:10px">
@@ -269,6 +271,28 @@ function renderTop(){
   }).join('');
 }
 
+// 人一多（>4）卡片就預設收合，只顯示目前的工作，點一下才展開選單——
+// 不然 8 個人每張都攤開整組按鈕，手機上要滑很久才找得到想改的那個人。
+// OPEN 只記錄「玩家手動點過的」；沒點過的一律依目前人數動態決定，
+// 這樣村子從 3 人長到 8 人時不會變成半開半合的混雜狀態。
+var OPEN = {};
+var FOLD_AT = 4;
+function isOpen(p, crew){
+  if (OPEN[p.id] !== undefined) return OPEN[p.id];
+  return crew.length <= FOLD_AT;
+}
+function togglePerson(pid){
+  var crew = alive(P), p = byId(P, pid);
+  OPEN[pid] = !isOpen(p, crew);
+  renderPeople();
+}
+function toggleAll(){
+  var crew = alive(P);
+  var anyClosed = crew.some(function(p){ return !isOpen(p, crew); });
+  crew.forEach(function(p){ OPEN[p.id] = anyClosed; });
+  renderPeople();
+}
+
 function renderPeople(){
   var crew = alive(P);
   var dead = P.people.filter(function(p){ return !p.alive; });
@@ -282,15 +306,20 @@ function renderPeople(){
 
 function personCard(p){
   var T = TRAITS[p.trait] || {};
+  var open = isOpen(p, alive(P));
+  var cur = JOBS[LAST[p.id] || 'rest'];
+
   var h = '<div class="pcard' + (p.sick ? ' sick' : '') + '">';
-  h += '<div class="phead">' +
+  h += '<div class="phead" onclick="togglePerson(\'' + p.id + '\')" style="cursor:pointer">' +
     '<span class="pname">' + esc(p.name) + '</span>' +
     '<span class="tag">' + (p.sex === 'f' ? '♀' : '♂') + ' ' + p.age + '</span>' +
     '<span class="tag" title="' + esc(T.desc || '') + '">' + (T.ico||'') + ' ' + esc(T.nm||'') + '</span>' +
     (p.sick ? '<span class="tag" style="border-color:#8a5a44;color:#e8a88c">🤒 ' +
        (p.sick >= 2 ? '病重' : '不適') + '</span>' : '') +
     '<span class="sp"></span>' +
-    '<span class="tag" title="最拿手的活">' + bestSkill(p) + '</span>' +
+    (open ? '<span class="tag" title="最拿手的活">' + bestSkill(p) + '</span>'
+          : '<span class="tag cur">' + cur.ico + cur.nm + '</span>') +
+    '<span class="dim sm" style="width:12px;text-align:center">' + (open ? '▾' : '▸') + '</span>' +
     '</div>';
 
   h += '<div class="bars">' +
@@ -298,15 +327,17 @@ function personCard(p){
     bar('心情', p.mood, C.MOOD_MAX) +
     bar('健康', p.hp, C.HP_MAX) + '</div>';
 
-  h += '<div class="jobs">' + JOB_ORDER.map(function(j){
-    var J = JOBS[j];
-    var why = jobBlock(P, p, j);
-    var on = (LAST[p.id] || 'rest') === j;
-    return '<span class="jb' + (on ? ' on' : '') + (why ? ' no' : '') + '"' +
-      ' title="' + esc(why || J.hint || '') + '"' +
-      (why ? '' : ' onclick="setJob(\'' + p.id + '\',\'' + j + '\')"') + '>' +
-      J.ico + J.nm + '</span>';
-  }).join('') + '</div>';
+  if (open){
+    h += '<div class="jobs">' + JOB_ORDER.map(function(j){
+      var J = JOBS[j];
+      var why = jobBlock(P, p, j);
+      var on = (LAST[p.id] || 'rest') === j;
+      return '<span class="jb' + (on ? ' on' : '') + (why ? ' no' : '') + '"' +
+        ' title="' + esc(why || J.hint || '') + '"' +
+        (why ? '' : ' onclick="setJob(\'' + p.id + '\',\'' + j + '\')"') + '>' +
+        J.ico + J.nm + '</span>';
+    }).join('') + '</div>';
+  }
 
   return h + '</div>';
 }
@@ -760,7 +791,7 @@ function openRuins(){
 
 function restart(){
   P = newRun(NICK);
-  LAST = {};
+  LAST = {}; OPEN = {};
   autoJobs();
   closeSheet(); render(); flushSave();
   toast('新的一局開始了');
@@ -776,7 +807,8 @@ function start(){
   srv('load', { nick: nick }).then(function(d){
     NICK = d.nick || nick;
     P = d.save ? ensureShape(d.save) : null;
-    if (!P){ P = newRun(NICK); autoJobs(); }
+    OPEN = {};
+    if (!P){ P = newRun(NICK); autoJobs(true); }
     else {
       // 回填上次的派工，省得每天重設
       alive(P).forEach(function(p){ LAST[p.id] = JOBS[p.job] ? p.job : 'rest'; });
@@ -800,7 +832,8 @@ document.addEventListener('DOMContentLoaded', function(){
   $('btnBuild').onclick = openBuild;
   $('btnMap').onclick = openMap;
   $('btnLog').onclick = openLog;
-  $('btnAuto').onclick = autoJobs;
+  $('btnAuto').onclick = function(){ autoJobs(); };
+  $('btnFold').onclick = toggleAll;
   $('btnSame').onclick = function(){ renderPeople(); toast('沿用昨天的派工'); };
   $('btnCmd').onclick = runCmd;
   $('cmd').addEventListener('keydown', function(e){ if (e.key === 'Enter') runCmd(); });
