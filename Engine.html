@@ -213,7 +213,7 @@ function extractName(text, arch){
          .replace(/^(幾|數|兩|三|四|五|一)?(座|間|棟|個|所|處|條|道|口|張|堵|排|盞|把|組)/, '');
   }
   var A = CUSTOM_ARCH[arch || classifyBuild(text)];
-  var SUF = '房屋舍場所間臺台棚亭塔井渠倉窖堂館寮鋪坊園圃池';   // 建築常見後綴，要一起吃進名字
+  var SUF = '房屋舍場所間臺台棚亭塔井渠倉窖堂館寮鋪坊園圃池溝牆垣窯圳埕';   // 建築常見後綴，要一起吃進名字
   if (A){
     var kw = '', at = -1;
     for (var j = 0; j < A.key.length; j++){                      // 找實際命中的最長關鍵字

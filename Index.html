@@ -35,6 +35,11 @@ input,select{font-family:inherit;font-size:15px;color:var(--ink);background:#1b1
 #res{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px}
 .res{background:#1b1812;border:1px solid var(--line);border-radius:7px;padding:3px 7px;font-size:13px;white-space:nowrap}
 .res.low{border-color:var(--red);color:#f0a08c}
+.wbar:empty{display:none}
+.wbar{margin-top:7px;padding:5px 9px;border-radius:7px;font-size:12.5px;
+  background:#2a2114;border:1px solid #6b5326}
+.wbar.ok{background:#1d2618;border-color:#3f5c35}
+.wbar b{color:var(--gold)} .wbar b.bad{color:#f0a08c}
 .res b{color:var(--ink);font-weight:600}
 
 /* ── 住民卡 ── */
@@ -123,6 +128,7 @@ input,select{font-family:inherit;font-size:15px;color:var(--ink);background:#1b1
   <div id="top">
     <div id="dayline"></div>
     <div id="res"></div>
+    <div id="wbar"></div>
   </div>
   <div style="padding:0 12px">
     <div class="row" style="margin:11px 0 3px">
@@ -257,6 +263,30 @@ function renderTop(){
     '<span class="dim">' + W.ico + W.nm + '</span>' +
     '<span class="sp"></span>' +
     '<span class="dim sm">👥 ' + crew.length + '/' + maxPeople(P) + '　🎯 第 ' + WIN_DAY + ' 天</span>';
+
+  // ── 入冬預警 ──
+  // 冬天是整個遊戲的那道牆，不能讓玩家毫無心理準備地撞上去。
+  var dayInYear = ((P.run.day - 1) % (SEASON_LEN * 4)) + 1;
+  var ce = customEff(P);
+  var warnHtml = '';
+  if (S.id === 'winter'){
+    var left = SEASON_LEN * 4 - dayInYear + 1;
+    var needF = Math.ceil(crew.length * C.EAT * S.eat * left);
+    var needW = Math.ceil(crew.length * C.BURN * ce.burn * left);
+    var okF = (P.res.food || 0) >= needF, okW = (P.res.wood || 0) >= needW;
+    warnHtml = '<div class="wbar' + (okF && okW ? ' ok' : '') + '">❄️ 冬天還有 <b>' + left + '</b> 天　' +
+      '還需要約 <b class="' + (okF ? '' : 'bad') + '">' + needF + '</b> 糧、' +
+      '<b class="' + (okW ? '' : 'bad') + '">' + needW + '</b> 柴' +
+      (okF && okW ? '　<span class="good">存量足夠</span>' : '　<span class="bad">存量不足，要邊過冬邊補</span>') + '</div>';
+  } else if (S.id === 'autumn' && dayInYear > SEASON_LEN * 3 - 12){
+    var toWinter = SEASON_LEN * 3 - dayInYear + 1;
+    var wF = Math.ceil(crew.length * C.EAT * 1.45 * SEASON_LEN);
+    var wW = Math.ceil(crew.length * C.BURN * ce.burn * SEASON_LEN);
+    warnHtml = '<div class="wbar">🍂 再 <b>' + toWinter + '</b> 天入冬　' +
+      '整個冬天約要 <b>' + wF + '</b> 糧、<b>' + wW + '</b> 柴　' +
+      '<span class="dim">（現有 ' + Math.floor(P.res.food || 0) + ' / ' + Math.floor(P.res.wood || 0) + '）</span></div>';
+  }
+  $('wbar').innerHTML = warnHtml;
 
   var order = ['food','water','wood','stone','herb','coin'];
   var icos = { food:'🌾', water:'💧', wood:'🪵', stone:'🪨', herb:'🌿', coin:'🪙' };
@@ -619,7 +649,9 @@ function runCmd(){
   var txt = raw.replace(/\s+/g, '');
 
   // ── 蓋建築（先比對既有的六種）
-  var wantsBuild = /蓋|建|造|修|搭|起|開工/.test(txt);
+  // 動詞清單必須涵蓋 extractName 會剝掉的所有動詞，
+  // 否則「弄個苗圃」「挖個地窖」「堆個料場」引擎看得懂、UI 卻先擋掉。
+  var wantsBuild = /蓋|建|造|修|搭|起|開工|挖|弄|做|設|築|堆|砌|壘|架/.test(txt);
   for (var bk in BUILDS){
     var B = BUILDS[bk];
     if (txt.indexOf(B.nm) >= 0 && wantsBuild){
