@@ -44,6 +44,24 @@ function setAiKey(key){
   PropertiesService.getScriptProperties().setProperty(PROP_AI_KEY, key);
   return '已設定 AI 金鑰（長度 ' + (key || '').length + '）';
 }
+function clearAiKey(){
+  PropertiesService.getScriptProperties().deleteProperty(PROP_AI_KEY);
+  return '已移除 AI 金鑰，村誌會改用模板文字';
+}
+// 想換模型時執行（預設 claude-opus-5；claude-haiku-4-5 便宜約五倍）
+function setAiModel(model){
+  PropertiesService.getScriptProperties().setProperty('AI_MODEL', model);
+  return '已設定模型：' + model;
+}
+// 在編輯器執行這個就能確認金鑰有沒有通
+function testAi(){
+  var r = apiNarrate_({ facts: {
+    village:'測試村', day:1, season:'春', weather:'晴',
+    cards:[{name:'阿福',sex:'男',age:34,trait:'耐勞',stam:100,mood:62,hp:100,sick:''}],
+    lines:['阿福 伐木 ＋4 木材','這一天沒什麼事']
+  }});
+  return JSON.stringify(r);
+}
 
 function sheet_(name, header){
   var ss = getSS_();

@@ -66,6 +66,15 @@
 - chromium 在 `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`，`NODE_PATH=/opt/node22/lib/node_modules`。
 - `.claspignore` 只推 `*.gs`/`*.html`/`appsscript.json`；`.md` 不上傳。
 
+## AI 村誌（已接上，預設關閉）
+`setAiKey()` 填金鑰才會啟用；`setAiModel()` 換模型（預設 `claude-opus-5`，
+`claude-haiku-4-5` 便宜約五倍——**這是使用者的選擇，不要自作主張降級**）。
+`testAi()` 可在編輯器直接驗證金鑰。詳見說明書 §9。
+
+**改這塊時務必守住**：`apiNarrate_` 只回 `{text}`，前端只塞進 `P.log[i].ai`（純顯示）。
+任何失敗都要沿用模板，畫面不能卡住。送給 AI 的 facts 只放「已算完的事實」，
+絕不送對話歷史——否則成本會隨遊戲進度膨脹。
+
 ## 內容界線
 寫實的生存殘酷（餓死、病死、出走）是核心，不迴避。
 但不做種族奴隸制／人口販賣，也不做對特定現實族群的貶抑。

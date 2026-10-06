@@ -88,6 +88,8 @@ input,select{font-family:inherit;font-size:15px;color:var(--ink);background:#1b1
 .spot{display:flex;gap:9px;align-items:flex-start;padding:7px 0}
 .lock{opacity:.35}
 .logday{border-left:2px solid var(--line);padding:2px 0 2px 10px;margin:9px 0;white-space:pre-wrap;font-size:13.5px}
+.prose{margin:6px 0;line-height:1.85;color:#efe6d4;white-space:normal}
+.detail{font-size:12.5px;color:var(--dim);border-top:1px dashed var(--line);padding-top:6px;margin-top:7px}
 #toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:80;
   background:#2c2518;border:1px solid var(--gold);border-radius:9px;padding:9px 15px;
   font-size:14px;opacity:0;transition:.25s;pointer-events:none;max-width:90%}
@@ -464,9 +466,10 @@ function nextDay(){
   // 死掉的人要從派工表移除
   Object.keys(LAST).forEach(function(id){ var p = byId(P, id); if (!p || !p.alive) delete LAST[id]; });
   render(); saveSoon();
-  if (P.run.over){ onGameOver(); return; }
-  if (rep.ending && rep.ending.open){ onMilestone(rep); return; }
   showReport([rep]);
+  askNarrate([rep]);
+  if (P.run.over){ onGameOver(); return; }
+  if (rep.ending && rep.ending.open) onMilestone(rep);
 }
 
 function skipDays(){
@@ -481,17 +484,18 @@ function skipDays(){
   }
   Object.keys(LAST).forEach(function(id){ var p = byId(P, id); if (!p || !p.alive) delete LAST[id]; });
   render(); saveSoon();
+  showReport(reps);
+  askNarrate(reps.slice(-3));          // 一次最多請 AI 寫最後三天，省成本
   if (P.run.over){ onGameOver(); return; }
   var milestone = reps.filter(function(r){ return r.ending && r.ending.open; })[0];
-  if (milestone){ onMilestone(milestone); return; }
-  showReport(reps);
+  if (milestone) onMilestone(milestone);
 }
 
 function showReport(reps){
   if (!reps.length) return;
   var h = '<h3>' + (reps.length > 1 ? '這 ' + reps.length + ' 天' : '第 ' + reps[0].day + ' 天') + '</h3>';
   reps.forEach(function(rep){
-    h += '<div class="rep">' + colorLog(rep.text) + '</div>';
+    h += '<div class="rep" data-day="' + rep.day + '">' + colorLog(rep.text) + '</div>';
   });
   var last = reps[reps.length - 1];
   if (last.warn.length) h += '<p class="warnc sm">⚠️ ' + last.warn.map(esc).join('；') + '</p>';
@@ -504,6 +508,62 @@ function colorLog(txt){
     .replace(/(🪦[^\n]*)/g, '<span class="bad">$1</span>')
     .replace(/(⚠️[^\n]*)/g, '<span class="warnc">$1</span>')
     .replace(/(💚[^\n]*|🔨[^\n]*|🏚️[^\n]*)/g, '<span class="good">$1</span>');
+}
+
+// ============================================================
+//  AI 村誌
+//  ★ 玩家永遠不等 AI：模板文字先出，AI 回來了才就地升級。
+//    AI 沒金鑰／逾時／失敗，遊戲完全不受影響。
+// ============================================================
+var AI_OFF = false;          // 確認過沒金鑰就不再浪費請求
+
+function narrateFacts(rep){
+  // 只送「已經算完的事實」，不送對話歷史 —— 成本才會固定，不隨進度膨脹
+  var lines = rep.text.split('\n').slice(1).map(function(l){ return l.replace(/^\u3000/, '').trim(); })
+                      .filter(function(l){ return l; });
+  var mem = '';
+  var prev = P.log.filter(function(l){ return l.day < rep.day && l.ai; }).slice(-1)[0];
+  if (prev) mem = prev.ai.replace(/\s+/g, '').slice(0, 120);
+  return {
+    village: NICK, day: rep.day, season: rep.seasonNm, weather: rep.weatherNm,
+    cards: alive(P).map(function(p){
+      var T = TRAITS[p.trait] || {};
+      return { name: p.name, sex: p.sex === 'f' ? '女' : '男', age: p.age, trait: T.nm || '',
+               stam: Math.round(p.stam), mood: Math.round(p.mood), hp: Math.round(p.hp),
+               sick: p.sick >= 2 ? '病重' : (p.sick ? '不適' : '') };
+    }),
+    memory: mem,
+    lines: lines,
+    custom: P.custom.map(function(c){ return c.name; })
+  };
+}
+
+function askNarrate(reps){
+  if (!SRV || AI_OFF || !reps || !reps.length) return;
+  reps.forEach(function(rep){
+    srv('narrate', { facts: narrateFacts(rep) }).then(function(d){
+      if (!d || !d.text){
+        if (d && (d.reason === 'no-key')) AI_OFF = true;   // 沒金鑰就別再問了
+        return;
+      }
+      for (var i = P.log.length - 1; i >= 0; i--){
+        if (P.log[i].day === rep.day){ P.log[i].ai = d.text; break; }
+      }
+      var el = document.querySelector('.rep[data-day="' + rep.day + '"]');
+      if (el) el.innerHTML = repHTML(rep.day, rep.text, d.text);
+      saveSoon();
+    }).catch(function(){});
+  });
+}
+
+// 村誌一則的呈現：AI 散文在上，結構化明細在下（數字還是要看得到）
+function repHTML(day, tmpl, ai){
+  if (!ai) return colorLog(tmpl);
+  var head = tmpl.split('\n')[0];
+  var rest = tmpl.split('\n').slice(1).join('\n');
+  return '<div class="dim sm">' + esc(head) + '</div>' +
+         '<div class="prose">' + esc(ai).replace(/\n/g, '<br>') + '</div>' +
+         '<div class="detail">' + colorLog(rest) + '</div>';
 }
 
 // ============================================================
@@ -606,7 +666,7 @@ function openLog(){
   var h = '<h3>📖 村誌</h3>';
   if (!P.log.length) h += '<p class="dim">還沒有記錄。</p>';
   else h += P.log.slice().reverse().map(function(l){
-    return '<div class="logday">' + colorLog(l.text) + '</div>';
+    return '<div class="logday">' + repHTML(l.day, l.text, l.ai) + '</div>';
   }).join('');
   openSheet(h);
 }
