@@ -1,48 +1,67 @@
-# CLAUDE.md — 《海與劍之歌》專案指南
+# CLAUDE.md — 《廢村開拓》專案指南
 
-免費多人網頁 RPG，跑在 **Google Apps Script**。主軸：**⚔️地下城 × 🌊大航海 × 👑爭霸**（戰國日本 × 大航海 × 騎砍）。
-世界觀＝架空戰國日本：玩家＝浪人出身的武將／船頭，從「尾張・清洲」城下町起家；地圖依日本地形排列（松前→佐渡→越後→尾張清洲→宇治→高野山→出雲→薩摩→琉球）。職業/種族/怪物/勢力/船艦皆重命名為戰國風味，對照表見 `docs/遊戲說明書.md` §0.1（底層 key 不變，只換顯示名）。使用者是繁體中文玩家，喜歡我**直接把功能做完＋測試＋部署**。
+免費單人網頁遊戲，跑在 **Google Apps Script**。
+類型：**小隊生存模擬**（《無人島物語》×《牧場物語》）。你帶三個人走進一座荒廢的村子，
+每天派工，撐過第一個冬天（第 80 天）。使用者是繁體中文玩家，喜歡我**直接把功能做完＋測試＋部署**。
 
-> 📖 **完整功能地圖看 [`docs/遊戲說明書.md`](docs/遊戲說明書.md)** —— 動工前先讀，別只憑摘要。
+> 📖 **動工前先讀 [`docs/遊戲說明書.md`](docs/遊戲說明書.md)**，別只憑摘要。
+> ⚠️ 前一個專案《海與劍之歌》已整體廢棄，程式碼保留在 git 歷史（最後一版 commit `56526e7`）。
+
+## ⛓️ 第一鐵律：文字永遠只是文字
+
+**所有數值、成敗、生死都在 `Engine.html` 算完。** 玩家能決定的只有「下什麼指令」，
+不能決定「指令的後果」。流程固定：
+
+```
+輸入 → ①意圖解析（只能對應固定清單）→ ②驗證（不合法當場擋掉）
+     → ③結算（純程式碼，唯一能改數值的地方）→ ④敘事（唯讀，只寫文字）
+```
+
+接 AI 時這條不能破：AI 只收 `report`、只回純文字、**不得回寫任何欄位**，
+且一律要有模板保底（AI 掛掉遊戲仍完整可玩）。死光就是死光，不靠文字硬掰。
 
 ## 檔案分工
 | 檔案 | 職責 |
 |---|---|
-| `Data.gs` | 規則常數與資料表（職業/種族/稀有度/裝備/怪物/貨品/港口/船艦/威名/世界事件） |
-| `Engine.gs` | 骰子與戰鬥引擎（建角/升級/技能檢定/`runDungeon`地城/`resolveCombat`回合戰） |
-| `Store.gs` | 資料層（Sheet 讀寫/快取/`ensureShape_`補洞/`sanitize_`夾值/名冊） |
-| `Code.gs` | 路由 `api()`→`route_()`→`apiXxx_()` + 海事/貿易/海戰/艦隊/領地/職務邏輯 |
-| `Index.html` | 整個前端 SPA（CSS＋渲染＋離線 mock）。超大、長行。 |
+| `Data.html` | 純資料表：季節／天氣／個性／工作／建築／地點／事件／平衡常數 `C` |
+| `Engine.html` | 結算引擎（純函式）：`newRun`/`ensureShape`/`resolveDay`/`startBuild`/`narrate` |
+| `Index.html` | 前端 SPA：畫面＋派工＋指令解析。用 `<?!= include('Data') ?>` 引入上兩者 |
+| `Code.gs` | `doGet` ＋ `api()` 路由：`load`/`save`/`ruins`/`bury`/`narrate`/`meta` |
+| `Store.gs` | Sheet 資料層。Script Property key `VILLAGE_SHEET_ID`（與舊遊戲完全隔開） |
 
 ## 架構要點
-- 前端唯一後端入口：`google.script.run.api(action, payloadJson)` → 回 `{ok,data}` JSON 字串。
-- **伺服器權威**：所有隨機/戰鬥/經濟在後端算完再回傳；前端只畫面 + 播放結構化事件動畫（地城 `ev`、海戰 `nev`）。
-- 存檔在綁定 Google Sheet 的 `Players` 分頁。player 資料模型見說明書 §2。
+- **引擎在前端，只有一份**——刻意不做伺服器／mock 雙份鏡像（那是上一個專案最大的維護痛點）。
+  伺服器只做：發網頁、存讀檔、（之後）代打 AI。
+- 引擎是純函式、不碰任何 Google API，所以可直接拉進 Node 跑模擬。
+- 代價：前端可改值作弊。單人遊戲可接受。
+  **若日後加排行榜或 PvP，必須把 `resolveDay` 搬回伺服器改成權威模式。**
+- 前端沒有後端時會退回 `localStorage`（`localFallback`），所以離線與 sandbox 測試都能跑。
 
 ## ⚠️ 動工前必記的雷區
-1. **離線 mock 鏡像**：`Index.html` 有一整套 `*C`/`*_C` 後綴函式與常數（`tradePriceC`/`MARKETS_C`/`resolveNavalC`/`GARRISONS_C`…）鏡像伺服器邏輯。
-   **改伺服器規則/資料 → 一定同步這些鏡像**，否則線上/離線不一致。
-2. **新增港口** → 同步 `MARKETS`＋`MARKETS_C`、`GARRISONS`＋`GARRISONS_C`、`MARKET_FACTION`＋`MARKET_FACTION_C`（勢力歸屬）。
-   **改勢力/好感規則** → 同步 `FACTIONS`/`applyRep_`（Code.gs）與 `FACTIONS_C`/`applyRepC`（Index.html）。
-3. **改 player 欄位** → 同步 `ensureShape_`（Store.gs）與 `ensureC`（Index.html mock）補洞。
-   **傳說船艦** → 同步 `LEGEND_SHIPS`＋`apiLegend_`＋perk 掛勾 `navalGun_`/`tradeDisc_`（Code.gs/Data.gs）與 `LEGEND_SHIPS_C`＋mock `action==='legend'`＋`navalGunC`/`tradeDiscC`（Index.html）。詳見說明書 §5.10。
-   **領地內政（兵營/太守/兵糧）** → 同步 `HOLD_BARRACKS_*`/`HOLD_TROOP_*`/`governorBonus_`（Data.gs）與 `_C` 常數/`governorBonusC`（Index.html）；`apiHold_` 新 op（barracks/recruit/governor）↔ mock `action==='holdings'`。詳見說明書 §5.6.1。這是「內政生資源→養兵→出征打仗」大戰略玩法的第一階段（駐軍是打「戰事/出征」用的抽象兵力，跟夥伴角色完全分開，打輸只損耗兵力不動角色）；後續戰事系統會消耗這裡的駐軍。
-4. **頭像 `pthumb` 永遠回傳原網址**（`return url`）；靠 CSS `object-fit:cover` 裁切＋瀏覽器快取。
-   **絕不**改請求別的尺寸——會逼 Pollinations 重新生成（慢＋常破圖＋失快取）。載入失敗 `onerror` 退回職業圖示。
-5. **樂觀更新**：改狀態用 `saveP(cb)`（先改畫面、300ms 去抖存檔）；重讀伺服器前先 `flushSave()`。
-6. **免費 AI**（Pollinations 頭像/傳聞/戰記）一律要有**模板保底**（sandbox 無網路）。
-7. **離線 mock 閉包陷阱**：`mock()` 的 `setTimeout` callback 內若用 `var mk=...`/`var xx=...`，會因 `var` 提升**遮蔽整個 callback 的同名 helper**（例：`function mk`/`function roll` 已改名為 `mkChar`/`rollC` 避開）。新增 mock 分支時，別用會撞到 helper 的區域變數名，或呼叫已改名的 helper。
-
-## 解鎖節奏（漸進，別破壞）
-- 新玩家**不自帶船**。地城**第 5 層** → 領主城堡領新手船（開放貿易/海戰）。**第 10 層** → 解鎖船商/艦隊。
-- 前端 `seaOpen()` / `fleetOpen()` 控制顯示，別讓新手一次看到全部功能。
+1. **改存檔欄位 → 一定同步 `ensureShape()`**（`Engine.html`），否則舊存檔缺欄位會壞。
+2. **改平衡數值 → 一定重跑模擬**，別憑感覺調。基準見說明書 §7（滅村率應落在 15-30%，
+   且死亡高峰要在第 70-80 天的冬天）。單一局的結果是變異，**不要用一局下結論**。
+3. **新增工作／建築／地點／事件 → 記得同步 `JOB_ORDER` / `BUILD_ORDER`**，否則 UI 不會顯示。
+4. **新增建築時注意 `cost` 與 `work` 陣列長度要等於 `max`**。
+5. **說明文字不能騙玩家**：水井曾經寫「不必天天取水」但產量不足，導致照說明玩會全村渴死。
+   任何「有了這個就不用做某事」的描述，數值上必須真的成立。
+6. **「自動」按鈕要能活下去**——它會自己開工程＋派工。只派工不蓋東西一定撐不過冬天。
+7. 自由打字的三張表：`JOB_WORDS`（合法指令）、`RISKY`（說得通的冒險嘗試）、
+   `ABSURD`（荒謬→世界不配合）。新增詞彙時三者語意別重疊。
 
 ## 開發・部署・測試
-- **只有 push 到 `main` 會部署**（GitHub Action → clasp push + deploy，`/exec` 網址不變）。功能先在指定 feature 分支開發。
+- **只有 push 到 `main` 會部署**（GitHub Action → clasp push + deploy，`/exec` 網址不變）。
+  功能先在指定 feature 分支開發。`clasp push` 是整包取代：本地沒有的檔案會從 GAS 上消失。
 - commit 訊息用繁體中文、清楚描述做了什麼。
-- **測試用 Playwright**：chromium 在 `/opt/pw-browsers/`，`NODE_PATH=/opt/node22/lib/node_modules`；
-  用 node http server 服務 `Index.html`，`page.evaluate` seed `window.P` 後呼叫 `renderXxx`/`openXxx` 驗證。mock 有 250ms 假延遲，測流程留等待時間。
-- `.claspignore` 只推 `*.gs`/`*.html`/`appsscript.json`；`.md` 不上傳（本檔與說明書不影響部署）。
+- **測試腳本**（在 scratchpad）：
+  - `build.js` 把 `<?!= include() ?>` 展開成可在瀏覽器跑的 `idx.html`（測試前必跑）
+  - `sim.js N DAYS` — Node 直接跑引擎的平衡模擬
+  - `autosim.js N` — 在瀏覽器裡批次跑**真前端**的自動模式（測玩家真正會走的路徑）
+  - `trace.js SEED` — 逐日追一局，診斷死因用
+  - `play.js` — Playwright 完整流程實測＋截圖
+- chromium 在 `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`，`NODE_PATH=/opt/node22/lib/node_modules`。
+- `.claspignore` 只推 `*.gs`/`*.html`/`appsscript.json`；`.md` 不上傳。
 
 ## 內容界線
-種族奴隸制／人口販賣（「賣黑奴」等）**不做**。硬核「抓人換錢」改用正派包裝：俘虜贖金、解放奴隸任務線。
+寫實的生存殘酷（餓死、病死、出走）是核心，不迴避。
+但不做種族奴隸制／人口販賣，也不做對特定現實族群的貶抑。

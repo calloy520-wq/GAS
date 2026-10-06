@@ -1,0 +1,192 @@
+<script>
+// ============================================================
+// 《廢村開拓》— 遊戲資料表（純常數，無副作用）
+// 這個檔案同時被前端 include，也可直接載入 Node 跑平衡模擬。
+// 規則原則：所有數值結算都在程式碼，AI 永遠只負責敘事。
+// ============================================================
+
+var VER = 1;
+
+// ---- 季節 ----------------------------------------------------
+// 一季 20 天，一年 80 天。冬天是主要壓力來源（採集暴跌＋要燒柴）。
+var SEASON_LEN = 20;
+var SEASONS = [
+  { id:'spring', nm:'春', ico:'🌸', forage:1.00, farm:1.00, sick:1.00, thirst:1.00, warm:0 },
+  { id:'summer', nm:'夏', ico:'☀️', forage:1.20, farm:1.10, sick:1.10, thirst:1.50, warm:0 },
+  { id:'autumn', nm:'秋', ico:'🍂', forage:1.10, farm:1.70, sick:1.00, thirst:1.00, warm:0 },
+  { id:'winter', nm:'冬', ico:'❄️', forage:0.35, farm:0.00, sick:1.80, thirst:0.80, warm:1 }
+];
+
+// ---- 天氣 ----------------------------------------------------
+var WEATHER = {
+  clear: { nm:'晴',     ico:'☀️', out:1.00, mood: 1, sick:1.0 },
+  cloud: { nm:'陰',     ico:'☁️', out:0.95, mood: 0, sick:1.0 },
+  fog:   { nm:'濃霧',   ico:'🌫️', out:0.85, mood:-1, sick:1.0, scout:0.5 },
+  rain:  { nm:'雨',     ico:'🌧️', out:0.75, mood:-2, sick:1.2, water:1.4 },
+  snow:  { nm:'雪',     ico:'🌨️', out:0.50, mood:-3, sick:1.5 },
+  storm: { nm:'暴風雨', ico:'⛈️', out:0.35, mood:-5, sick:1.3, wreck:true }
+};
+// 各季天氣權重
+var WEATHER_W = {
+  spring: { clear:30, cloud:25, rain:28, fog:10, storm:7,  snow:0  },
+  summer: { clear:45, cloud:20, rain:20, fog:5,  storm:10, snow:0  },
+  autumn: { clear:28, cloud:28, rain:24, fog:12, storm:8,  snow:0  },
+  winter: { clear:20, cloud:25, rain:5,  fog:10, storm:8,  snow:32 }
+};
+
+// ---- 技能 ----------------------------------------------------
+// 做哪種工作就練哪種技能，1.0 起跳，慢慢成長。
+var SKILLS = {
+  gather: { nm:'採集', ico:'🧺' },
+  labor:  { nm:'勞作', ico:'🪓' },
+  hunt:   { nm:'狩獵', ico:'🏹' },
+  heal:   { nm:'醫護', ico:'🌿' },
+  scout:  { nm:'踏查', ico:'🧭' }
+};
+var SKILL_MAX = 5.0;
+var SKILL_GAIN = 0.045;   // 每天工作成長；邊際遞減見 Engine
+
+// ---- 個性 ----------------------------------------------------
+// 每個個性都真的動數值，不只是文字描述。
+var TRAITS = {
+  hardy:  { nm:'耐勞',   ico:'💪', desc:'體力消耗較少',           stam:0.78 },
+  green:  { nm:'綠手指', ico:'🌱', desc:'採集與農耕出色',         work:{ forage:1.30, farm:1.35 } },
+  strong: { nm:'壯碩',   ico:'🪨', desc:'伐木採石出色',           work:{ wood:1.35, stone:1.30 } },
+  hunter: { nm:'獵戶',   ico:'🏹', desc:'狩獵高手，較不易受傷',   work:{ hunt:1.45 }, hurt:0.55 },
+  healer: { nm:'醫者',   ico:'🌿', desc:'照護事半功倍',           work:{ heal:1.50 } },
+  ranger: { nm:'斥候',   ico:'🧭', desc:'踏查範圍更廣',           work:{ scout:1.45 } },
+  cheer:  { nm:'開朗',   ico:'😄', desc:'讓全村心情好轉',         aura: 2 },
+  gloomy: { nm:'陰鬱',   ico:'🌧️', desc:'心情掉得快，但不易崩潰', moodDrop:1.45, panic:0.45 },
+  lazy:   { nm:'懶散',   ico:'😪', desc:'產出偏低，但不太累',     work:{ all:0.78 }, stam:0.72 },
+  greedy: { nm:'貪婪',   ico:'🤲', desc:'可能私藏糧食',           steal:0.10 },
+  tough:  { nm:'硬骨',   ico:'🛡️', desc:'不易生病受傷',           sick:0.55, hurt:0.65 },
+  frail:  { nm:'體弱',   ico:'🩹', desc:'容易生病，也較易疲累',   sick:1.65, stam:1.22 },
+  kind:   { nm:'善良',   ico:'🤝', desc:'容易與人結下情誼',       bond:1.6 },
+  stern:  { nm:'剛硬',   ico:'⚔️', desc:'心志堅定，不易動搖',     panic:0.4, moodDrop:0.8, bond:0.7 }
+};
+
+// ---- 工作 ----------------------------------------------------
+// base = 基準產出；stam = 體力消耗（負數代表回復）
+// out  = 是否受天氣「戶外」係數影響
+var JOBS = {
+  forage: { nm:'採集', ico:'🧺', res:'food',  base:4.2, stam:14, skill:'gather', out:true,  hint:'在林間找野菜與果實，穩定但量少' },
+  hunt:   { nm:'狩獵', ico:'🏹', res:'food',  base:9.5, stam:25, skill:'hunt',   out:true,  hurt:0.15, vary:0.55, hint:'回報高，但可能受傷或空手而回' },
+  water:  { nm:'取水', ico:'🪣', res:'water', base:6.5, stam:12, skill:'gather', out:true,  hint:'到溪邊打水' },
+  wood:   { nm:'伐木', ico:'🪓', res:'wood',  base:4.4, stam:19, skill:'labor',  out:true,  hint:'冬天要燒柴，別等到下雪才砍' },
+  stone:  { nm:'採石', ico:'⛏️', res:'stone', base:3.0, stam:21, skill:'labor',  out:true,  hint:'蓋好東西都要石料' },
+  farm:   { nm:'農耕', ico:'🌾', res:'food',  base:5.5, stam:16, skill:'gather', out:true,  needs:'farm', hint:'需要農田；秋季大豐收，冬季無收成' },
+  build:  { nm:'建造', ico:'🔨', res:null,    base:11,  stam:20, skill:'labor',  out:true,  hint:'推進目前的工程進度' },
+  scout:  { nm:'踏查', ico:'🧭', res:null,    base:10,  stam:22, skill:'scout',  out:true,  hurt:0.09, hint:'揭開地圖，發現新地點' },
+  heal:   { nm:'照護', ico:'🌿', res:null,    base:0,   stam:10, skill:'heal',   out:false, hint:'照顧傷病者，加快復原' },
+  rest:   { nm:'休息', ico:'😴', res:null,    base:0,   stam:-34, out:false,     hint:'回復體力與心情' }
+};
+var JOB_ORDER = ['forage','hunt','water','wood','stone','farm','build','scout','heal','rest'];
+
+// ---- 建築 ----------------------------------------------------
+// work = 需要累積的工數；cost 在「開工時」一次扣掉
+var BUILDS = {
+  shelter: { nm:'住所',   ico:'🏚️', max:3, desc:'禦寒、提高心情與人口上限',
+             cost:[{wood:18},{wood:40,stone:12},{wood:70,stone:35}], work:[28,58,100] },
+  well:    { nm:'水井',   ico:'🪨', max:2, desc:'每日自動湧水；二級井足夠養一村人',
+             cost:[{wood:10,stone:16},{stone:40}], work:[38,72] },
+  farm:    { nm:'農田',   ico:'🌾', max:3, desc:'開放農耕工作，秋季豐收',
+             cost:[{wood:14},{wood:28,stone:10},{wood:46,stone:24}], work:[32,62,105] },
+  store:   { nm:'倉庫',   ico:'📦', max:2, desc:'提高資源上限、減少腐壞',
+             cost:[{wood:22},{wood:45,stone:18}], work:[34,68] },
+  infirm:  { nm:'療養所', ico:'⛺', max:2, desc:'傷病復原加快',
+             cost:[{wood:18,herb:4},{wood:36,stone:14,herb:9}], work:[42,78] },
+  wall:    { nm:'柵欄',   ico:'🧱', max:2, desc:'阻擋野獸襲擊',
+             cost:[{wood:26},{wood:36,stone:30}], work:[46,86] }
+};
+var BUILD_ORDER = ['shelter','well','farm','store','infirm','wall'];
+
+// ---- 地圖地點（靠踏查累積進度解鎖）-------------------------
+var SPOTS = [
+  { id:'brook',  nm:'淺溪',       ico:'🏞️', need:0,   eff:{ water:1.30 }, desc:'取水變得輕鬆' },
+  { id:'grove',  nm:'野果林',     ico:'🌳', need:14,  eff:{ forage:1.25 }, desc:'採集量提升' },
+  { id:'clay',   nm:'黏土坡',     ico:'🧱', need:28,  eff:{ wood:1.15, stone:1.15 }, desc:'建材取得變快' },
+  { id:'den',    nm:'獸徑',       ico:'🐗', need:44,  eff:{ hunt:1.35 }, desc:'狩獵收穫提升' },
+  { id:'herbs',  nm:'藥草窪地',   ico:'🌿', need:62,  eff:{ herb:1 }, desc:'採集時會順便取得藥草' },
+  { id:'ruin',   nm:'舊屋遺構',   ico:'🏛️', need:84,  loot:{ stone:35, wood:20, coin:25 }, desc:'前人留下的物料' },
+  { id:'shrine', nm:'荒廢祠堂',   ico:'⛩️', need:110, eff:{ mood:3 }, desc:'村民有了寄託，每日心情回升' },
+  { id:'pass',   nm:'山口小徑',   ico:'🛤️', need:140, eff:{ trade:1 }, desc:'商旅開始經過此地' }
+];
+
+// ---- 事件 ----------------------------------------------------
+// w = 權重；when 由 Engine 判斷條件。全部由程式抽選，AI 不參與。
+var EVENTS = [
+  { id:'beast',   nm:'野獸來襲', ico:'🐺', w:10, bad:true  },
+  { id:'illness', nm:'有人病倒', ico:'🤒', w:10, bad:true  },
+  { id:'quarrel', nm:'口角爭執', ico:'💢', w:9,  bad:true  },
+  { id:'wreck',   nm:'屋舍受損', ico:'🪵', w:6,  bad:true  },
+  { id:'theft',   nm:'糧食短少', ico:'🫥', w:5,  bad:true  },
+  { id:'wander',  nm:'有人來投', ico:'🚶', w:9,  good:true },
+  { id:'forage',  nm:'意外收穫', ico:'🍄', w:10, good:true },
+  { id:'bond',    nm:'情誼漸生', ico:'🫂', w:10, good:true },
+  { id:'trader',  nm:'商旅經過', ico:'🧳', w:6,  good:true },
+  { id:'calm',    nm:'平靜的一天', ico:'🌾', w:16 }
+];
+
+// ---- 村民姓名 ------------------------------------------------
+var NAMES_M = ['阿福','石頭','老柴','大牛','阿昌','鐵生','二郎','窯哥','山貴','阿水','老邱','柱子','阿勇','豆仔','長腳','老耿'];
+var NAMES_F = ['阿梅','小蘭','秀娘','杏兒','阿珠','桂枝','阿桃','雲姑','小棠','藥娘','阿薇','石榴','青娥','阿荷'];
+// 開局倖存者固定三人（讓前期體驗一致），之後靠事件招攬
+var STARTERS = [
+  { name:'阿福', sex:'m', age:34, trait:'hardy',  skills:{ labor:1.5, gather:1.2 } },
+  { name:'阿梅', sex:'f', age:29, trait:'green',  skills:{ gather:1.6 } },
+  { name:'老柴', sex:'m', age:47, trait:'healer', skills:{ heal:1.7, labor:1.1 } }
+];
+
+// ---- 平衡常數 ------------------------------------------------
+var C = {
+  START_RES:  { food:26, water:18, wood:12, stone:0, herb:2, coin:0 },
+  CAP_BASE:   { food:120, water:90, wood:140, stone:120, herb:40, coin:9999 },
+  CAP_STORE:  1.8,          // 每級倉庫的上限倍率
+
+  EAT:        1.0,          // 每人每天吃
+  DRINK:      1.0,          // 每人每天喝（乘季節 thirst）
+  BURN:       1.0,          // 冬天每人每天燒柴
+
+  HUNGER_HP:  13,           // 沒糧時每日扣血
+  THIRST_HP:  22,           // 沒水時每日扣血（比餓更致命）
+  COLD_HP:    11,           // 冬天沒柴每日扣血
+  HUNGER_MOOD:6,
+  COLD_MOOD:  5,
+
+  STAM_MAX:   100,
+  MOOD_MAX:   100,
+  HP_MAX:     100,
+  STAM_LOW:   30,           // 體力低於此產出打折
+  MOOD_LOW:   25,           // 心情低於此可能有人出走
+
+  SICK_BASE:  0.035,        // 每人每日生病基礎機率
+  SICK_HP:    7,            // 每級病情每日扣血
+  HEAL_NAT:   0.18,         // 自然痊癒機率/日
+  HEAL_CARE:  0.55,         // 被照護時痊癒機率
+  HP_REGEN:   6,            // 健康時每日回血
+
+  FLEE_MOOD:  18,           // 心情低於此開始有出走風險
+  FLEE_CHANCE:0.10,
+
+  EVENT_CH:   0.55,         // 每日觸發事件機率
+  SPOT_MOOD:  0,
+
+  MAX_PEOPLE_BASE: 4,       // 住所 0 級時容納上限
+  MAX_PEOPLE_PER:  3,       // 每級住所 +3
+
+  // 水井每日湧水量（index = 井的等級）。
+  // 二級井要能撐住一村人的夏季用水，否則「不必取水」的說明會害死玩家。
+  WELL_YIELD: [0, 9, 22],
+
+  // 餓/渴/冷的傷害浮動，讓倒下的人有先後、玩家來得及反應
+  LACK_VARY: 0.35
+};
+
+// ---- 失敗與結局 ----------------------------------------------
+var ENDINGS = {
+  wipe:    { nm:'村落斷絕',   ico:'🪦', desc:'最後一個人也倒下了。這座村子重新回歸荒野。' },
+  flee:    { nm:'人去樓空',   ico:'🚪', desc:'再也沒有人願意留下。村子空了。' },
+  thrive:  { nm:'炊煙不絕',   ico:'🏡', desc:'村子站住了腳。往後的日子，會由住在這裡的人自己寫下去。' }
+};
+var WIN_DAY = 80;           // 撐過第一年＝站穩
+</script>

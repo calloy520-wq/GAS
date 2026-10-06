@@ -1,0 +1,628 @@
+<script>
+// ============================================================
+// 《廢村開拓》— 結算引擎（純函式）
+//
+// ★ 鐵律：所有數值、成敗、生死都在這裡算完。
+//   AI 只會拿到「已經算完的結果」去寫文字，永遠不能改變結果。
+//   玩家能決定的只有「下什麼指令」，不能決定「指令的後果」。
+//
+// 亂數採可重現種子，整局可由 seed + 操作序列完整重播。
+// ============================================================
+
+// ---- 可重現亂數（mulberry32）--------------------------------
+function rnd(R){
+  R.seed = (R.seed + 0x6D2B79F5) | 0;
+  var t = R.seed;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+function rint(R, a, b){ return a + Math.floor(rnd(R) * (b - a + 1)); }
+function pick(R, arr){ return arr[Math.floor(rnd(R) * arr.length)]; }
+function chance(R, p){ return rnd(R) < p; }
+function wpick(R, map){                  // 權重抽選 {key:weight}
+  var tot = 0, k;
+  for (k in map) tot += map[k];
+  var r = rnd(R) * tot;
+  for (k in map){ r -= map[k]; if (r <= 0) return k; }
+  return k;
+}
+function clamp(v, lo, hi){ return v < lo ? lo : (v > hi ? hi : v); }
+function r1(v){ return Math.round(v * 10) / 10; }
+
+// ---- 建立新局 ------------------------------------------------
+function newRun(nick, seed){
+  var R = { seed: (seed == null ? (Date.now() & 0x7fffffff) : seed) | 0 };
+  var P = {
+    nick: nick || '無名',
+    ver: VER,
+    run: {
+      seed: R.seed, seed0: R.seed,
+      day: 1, weather: 'clear',
+      over: false, ending: '', overDay: 0
+    },
+    res: {},
+    people: [],
+    build: {},        // key -> 完成等級
+    site: null,       // 目前工程 { key, lv, work, need }
+    map: { explored: 0, found: [] },
+    log: [],          // 村誌（最近 60 天）
+    stats: { lost: 0, joined: 0, built: 0, bestDay: 0 },
+    seen: {}          // 已看過的提示
+  };
+  var k;
+  for (k in C.START_RES) P.res[k] = C.START_RES[k];
+  for (k in BUILDS) P.build[k] = 0;
+
+  for (var i = 0; i < STARTERS.length; i++) P.people.push(mkPerson(P.run, STARTERS[i], i, nameList(P)));
+  P.map.found.push('brook');   // 淺溪一開始就知道
+  return P;
+}
+
+// taken = 已使用的名字陣列，避免村裡出現兩個同名的人（分不清誰是誰）
+function freshName(R, sex, taken){
+  var pool = (sex === 'm' ? NAMES_M : NAMES_F).filter(function(n){ return taken.indexOf(n) < 0; });
+  if (!pool.length){                                   // 名字用光了，改用另一性別的，再不行就加後綴
+    pool = NAMES_M.concat(NAMES_F).filter(function(n){ return taken.indexOf(n) < 0; });
+  }
+  if (!pool.length){
+    var base = pick(R, NAMES_M.concat(NAMES_F));
+    for (var i = 2; i < 40; i++) if (taken.indexOf(base + i) < 0) return base + i;
+    return base;
+  }
+  return pick(R, pool);
+}
+
+var _pid = 0;
+function mkPerson(R, spec, idx, taken){
+  spec = spec || {};
+  var sex = spec.sex || (chance(R, 0.5) ? 'm' : 'f');
+  var p = {
+    id: 'p' + (idx != null ? idx : (Date.now() % 100000) + '_' + (_pid++)),
+    name: spec.name || freshName(R, sex, taken || []),
+    sex: sex,
+    age: spec.age || rint(R, 17, 52),
+    trait: spec.trait || pick(R, Object.keys(TRAITS)),
+    skills: { gather:1, labor:1, hunt:1, heal:1, scout:1 },
+    stam: C.STAM_MAX, mood: 62, hp: C.HP_MAX,
+    sick: 0,                  // 0=健康 1~3=傷病程度
+    job: 'rest',
+    bonds: {},
+    days: 0,
+    alive: true
+  };
+  if (spec.skills) for (var s in spec.skills) p.skills[s] = spec.skills[s];
+  return p;
+}
+
+// ---- 補洞（舊存檔升級用）------------------------------------
+function ensureShape(P){
+  if (!P || typeof P !== 'object') return null;
+  P.ver = VER;
+  P.run = P.run || {};
+  var r = P.run;
+  if (typeof r.seed !== 'number') r.seed = (Date.now() & 0x7fffffff);
+  if (typeof r.seed0 !== 'number') r.seed0 = r.seed;
+  if (typeof r.day !== 'number' || r.day < 1) r.day = 1;
+  if (!WEATHER[r.weather]) r.weather = 'clear';
+  r.over = !!r.over; r.ending = r.ending || ''; r.overDay = r.overDay || 0;
+
+  P.res = P.res || {};
+  for (var k in C.START_RES) if (typeof P.res[k] !== 'number' || !isFinite(P.res[k])) P.res[k] = 0;
+  P.build = P.build || {};
+  for (var b in BUILDS) if (typeof P.build[b] !== 'number') P.build[b] = 0;
+    else P.build[b] = clamp(Math.floor(P.build[b]), 0, BUILDS[b].max);
+
+  if (P.site && (!BUILDS[P.site.key] || typeof P.site.work !== 'number')) P.site = null;
+  P.map = P.map || {}; P.map.explored = P.map.explored || 0;
+  if (!Array.isArray(P.map.found)) P.map.found = ['brook'];
+  if (!Array.isArray(P.log)) P.log = [];
+  P.stats = P.stats || {};
+  ['lost','joined','built','bestDay'].forEach(function(s){ if (typeof P.stats[s] !== 'number') P.stats[s] = 0; });
+  P.seen = P.seen || {};
+
+  if (!Array.isArray(P.people)) P.people = [];
+  P.people.forEach(function(p, i){
+    p.id = p.id || ('p' + i);
+    p.name = (p.name || '無名').toString().slice(0, 8);
+    p.sex = (p.sex === 'f') ? 'f' : 'm';
+    p.age = clamp(Math.floor(p.age || 30), 10, 99);
+    if (!TRAITS[p.trait]) p.trait = 'hardy';
+    p.skills = p.skills || {};
+    for (var s in SKILLS) p.skills[s] = clamp(+p.skills[s] || 1, 1, SKILL_MAX);
+    p.stam = clamp(Math.round(p.stam), 0, C.STAM_MAX);
+    p.mood = clamp(Math.round(p.mood), 0, C.MOOD_MAX);
+    p.hp   = clamp(Math.round(p.hp),   0, C.HP_MAX);
+    p.sick = clamp(Math.floor(p.sick || 0), 0, 3);
+    if (!JOBS[p.job]) p.job = 'rest';
+    p.bonds = p.bonds || {};
+    p.days = p.days || 0;
+    p.alive = p.hp > 0 && p.alive !== false;
+  });
+  return P;
+}
+
+// ---- 查詢小工具 ----------------------------------------------
+function seasonOf(day){ return SEASONS[Math.floor((day - 1) / SEASON_LEN) % SEASONS.length]; }
+function yearOf(day){ return Math.floor((day - 1) / (SEASON_LEN * SEASONS.length)) + 1; }
+function alive(P){ return P.people.filter(function(p){ return p.alive; }); }
+// 含已故者 —— 逝者的名字不該再被新來的人用掉，否則村誌會錯亂
+function nameList(P){ return P.people.map(function(p){ return p.name; }); }
+function byId(P, id){ for (var i=0;i<P.people.length;i++) if (P.people[i].id === id) return P.people[i]; return null; }
+
+function caps(P){
+  var out = {}, mult = Math.pow(C.CAP_STORE, P.build.store || 0);
+  for (var k in C.CAP_BASE) out[k] = Math.round(C.CAP_BASE[k] * (k === 'coin' ? 1 : mult));
+  return out;
+}
+function maxPeople(P){ return C.MAX_PEOPLE_BASE + (P.build.shelter || 0) * C.MAX_PEOPLE_PER; }
+
+// 已發現地點提供的效果（乘算）
+function spotEff(P){
+  var e = {};
+  P.map.found.forEach(function(id){
+    for (var i=0;i<SPOTS.length;i++){
+      if (SPOTS[i].id === id && SPOTS[i].eff){
+        for (var k in SPOTS[i].eff) e[k] = (e[k] || 1) * SPOTS[i].eff[k];
+      }
+    }
+  });
+  return e;
+}
+function hasSpot(P, id){ return P.map.found.indexOf(id) >= 0; }
+
+// 這個人能不能做這份工（回傳失敗原因或 null）
+function jobBlock(P, p, job){
+  var J = JOBS[job];
+  if (!J) return '沒有這種工作';
+  if (J.needs && !(P.build[J.needs] > 0)) return '還沒有' + BUILDS[J.needs].nm;
+  if (job === 'build' && !P.site) return '沒有正在進行的工程';
+  if (job === 'farm' && seasonOf(P.run.day).farm <= 0) return '冬天沒有收成';
+  if (job === 'heal' && !alive(P).some(function(x){ return x.sick > 0; })) return '沒有人需要照護';
+  if (p && p.sick >= 2 && job !== 'rest') return p.name + '病得太重，只能休息';
+  if (p && p.stam < 8 && job !== 'rest') return p.name + '體力透支，只能休息';
+  return null;
+}
+
+// ---- 產出公式 ------------------------------------------------
+// 出力 = 基準 × 技能 × 個性 × 體力 × 季節 × 天氣 × 地點 × 隨機
+function workPower(P, p, job, R){
+  var J = JOBS[job], T = TRAITS[p.trait] || {}, S = seasonOf(P.run.day), W = WEATHER[P.run.weather];
+  var v = J.base;
+
+  v *= 0.55 + 0.45 * (p.skills[J.skill] || 1);          // 技能 1→1.0 倍, 5→2.35 倍
+
+  if (T.work){                                           // 個性
+    if (T.work[job]) v *= T.work[job];
+    if (T.work.all)  v *= T.work.all;
+  }
+
+  var stamF = p.stam >= C.STAM_LOW ? 1 : (0.45 + 0.55 * (p.stam / C.STAM_LOW));
+  v *= stamF;                                            // 體力不足產出打折
+  if (p.sick > 0) v *= (1 - 0.22 * p.sick);              // 帶病工作
+  v *= 0.75 + 0.25 * (p.mood / C.MOOD_MAX);              // 心情
+
+  if (job === 'forage' || job === 'farm') v *= (job === 'farm' ? S.farm : S.forage);
+  if (J.out) v *= W.out;
+  if (job === 'scout' && W.scout) v *= W.scout;
+
+  var e = spotEff(P);
+  if (e[job]) v *= e[job];
+
+  var vary = J.vary || 0.22;                             // 狩獵波動最大
+  v *= (1 - vary) + rnd(R) * vary * 2;
+
+  return Math.max(0, v);
+}
+
+// ---- 開工 / 工程 ---------------------------------------------
+function buildCost(key, lv){ return BUILDS[key].cost[lv] || {}; }
+function canBuild(P, key){
+  var B = BUILDS[key];
+  if (!B) return '沒有這種建築';
+  var lv = P.build[key] || 0;
+  if (lv >= B.max) return '已經蓋到最高級';
+  if (P.site) return '已經有工程在進行：' + BUILDS[P.site.key].nm;
+  var cost = buildCost(key, lv);
+  for (var k in cost) if ((P.res[k] || 0) < cost[k]) return '缺少' + resName(k) + ' ' + (cost[k] - Math.floor(P.res[k] || 0));
+  return null;
+}
+function startBuild(P, key){
+  var why = canBuild(P, key);
+  if (why) throw new Error(why);
+  var lv = P.build[key] || 0, cost = buildCost(key, lv);
+  for (var k in cost) P.res[k] -= cost[k];
+  P.site = { key: key, lv: lv, work: 0, need: BUILDS[key].work[lv] };
+  return P.site;
+}
+function cancelBuild(P){
+  if (!P.site) return null;
+  var lv = P.site.lv, cost = buildCost(P.site.key, lv);
+  for (var k in cost) P.res[k] += Math.floor(cost[k] * 0.5);   // 退一半材料
+  var old = P.site; P.site = null; return old;
+}
+function resName(k){
+  return ({ food:'糧食', water:'飲水', wood:'木材', stone:'石料', herb:'藥草', coin:'錢' })[k] || k;
+}
+
+// ============================================================
+//  核心：結算一天
+//  assign = { personId: jobKey }
+//  回傳 report（結構化資料，之後交給敘事層）
+// ============================================================
+function resolveDay(P, assign){
+  if (P.run.over) throw new Error('這一局已經結束了');
+  var R = P.run;                              // 亂數狀態就存在 run.seed
+  var S = seasonOf(R.day);
+
+  // 1) 抽今天的天氣
+  R.weather = wpick(R, WEATHER_W[S.id]);
+  var W = WEATHER[R.weather];
+
+  var rep = {
+    day: R.day, year: yearOf(R.day), season: S.id, seasonNm: S.nm,
+    weather: R.weather, weatherNm: W.nm, weatherIco: W.ico,
+    works: [], events: [], gained: {}, used: {},
+    deaths: [], left: [], joined: [], sick: [], healed: [], hurt: [],
+    builtDone: null, spots: [], warn: [], ending: null
+  };
+  function gain(k, v){ if (!v) return; P.res[k] = (P.res[k] || 0) + v; rep.gained[k] = r1((rep.gained[k] || 0) + v); }
+  function use(k, v){ if (!v) return; P.res[k] = (P.res[k] || 0) - v; rep.used[k] = r1((rep.used[k] || 0) + v); }
+
+  var crew = alive(P);
+
+  // 2) 逐人結算工作
+  crew.forEach(function(p){
+    var job = (assign && assign[p.id]) || 'rest';
+    var blocked = jobBlock(P, p, job);
+    if (blocked){ job = 'rest'; }
+    p.job = job;
+    var J = JOBS[job], T = TRAITS[p.trait] || {};
+    var w = { id:p.id, name:p.name, job:job, jobNm:J.nm, ico:J.ico, out:0, note: blocked || '' };
+
+    if (job === 'rest'){
+      p.stam = clamp(p.stam - J.stam, 0, C.STAM_MAX);     // stam 為負＝回復
+      p.mood = clamp(p.mood + 4, 0, C.MOOD_MAX);
+    } else {
+      var power = workPower(P, p, job, R);
+
+      if (J.res){
+        var amt = power;
+        if (job === 'forage' && hasSpot(P, 'herbs') && chance(R, 0.22)) { gain('herb', 1); w.extra = '順手採到藥草'; }
+        if (job === 'hunt' && amt < J.base * 0.45) { w.note = '空手而回'; amt = Math.max(0, amt * 0.4); }
+        amt = Math.round(amt * 10) / 10;
+        gain(J.res, amt); w.out = amt; w.res = J.res;
+      } else if (job === 'build'){
+        P.site.work += power;
+        w.out = r1(power); w.res = 'work';
+      } else if (job === 'scout'){
+        P.map.explored += power;
+        w.out = r1(power); w.res = 'explore';
+      } else if (job === 'heal'){
+        var pats = crew.filter(function(x){ return x.sick > 0 && x.id !== p.id; });
+        if (pats.length){
+          var pat = pats.sort(function(a,b){ return b.sick - a.sick; })[0];
+          var pw = C.HEAL_CARE * (T.work && T.work.heal ? T.work.heal : 1) * (0.6 + 0.4 * p.skills.heal);
+          if (P.build.infirm > 0) pw *= 1 + 0.25 * P.build.infirm;
+          if ((P.res.herb || 0) >= 1){ use('herb', 1); pw *= 1.35; }
+          if (chance(R, Math.min(0.92, pw))){
+            pat.sick = Math.max(0, pat.sick - 1);
+            if (pat.sick === 0){ rep.healed.push(pat.name); w.note = '治好了' + pat.name; }
+            else w.note = pat.name + '的病情好轉';
+          } else w.note = '照顧了' + pat.name + '，但沒有起色';
+          w.target = pat.name;
+        }
+      }
+
+      // 體力與技能
+      var cost = J.stam * (T.stam || 1) * (1 + 0.25 * p.sick);
+      if (P.build.shelter >= 2) cost *= 0.94;
+      p.stam = clamp(p.stam - cost, 0, C.STAM_MAX);
+      if (J.skill){
+        var cur = p.skills[J.skill] || 1;
+        p.skills[J.skill] = clamp(cur + SKILL_GAIN * (1 - (cur - 1) / (SKILL_MAX - 1)) , 1, SKILL_MAX);
+      }
+      p.mood = clamp(p.mood - 1, 0, C.MOOD_MAX);
+
+      // 受傷判定
+      var hurtP = (J.hurt || 0) * (T.hurt || 1) * (W.out < 0.6 ? 1.5 : 1);
+      if (hurtP > 0 && chance(R, hurtP)){
+        p.sick = clamp(p.sick + 1, 0, 3);
+        p.hp = clamp(p.hp - rint(R, 6, 16), 0, C.HP_MAX);
+        rep.hurt.push({ name: p.name, job: J.nm });
+        w.note = '受了傷';
+      }
+    }
+    p.days++;
+    rep.works.push(w);
+  });
+
+  // 3) 工程完工
+  if (P.site && P.site.work >= P.site.need){
+    var key = P.site.key;
+    P.build[key] = clamp((P.build[key] || 0) + 1, 0, BUILDS[key].max);
+    P.stats.built++;
+    rep.builtDone = { key: key, nm: BUILDS[key].nm, ico: BUILDS[key].ico, lv: P.build[key] };
+    P.site = null;
+    alive(P).forEach(function(p){ p.mood = clamp(p.mood + 7, 0, C.MOOD_MAX); });
+  }
+
+  // 4) 踏查解鎖地點
+  SPOTS.forEach(function(sp){
+    if (P.map.explored >= sp.need && !hasSpot(P, sp.id)){
+      P.map.found.push(sp.id);
+      rep.spots.push({ id: sp.id, nm: sp.nm, ico: sp.ico, desc: sp.desc });
+      if (sp.loot) for (var k in sp.loot) gain(k, sp.loot[k]);
+      alive(P).forEach(function(p){ p.mood = clamp(p.mood + 5, 0, C.MOOD_MAX); });
+    }
+  });
+
+  // 5) 水井自動產水（只打到裝得下的量 —— 不然滿溢警告會天天洗版）
+  if (P.build.well > 0){
+    var wcap = caps(P).water, room = Math.max(0, wcap - (P.res.water || 0));
+    gain('water', Math.min(C.WELL_YIELD[P.build.well] || 0, room));
+  }
+
+  // 6) 每日消耗
+  var n = alive(P).length;
+  var needFood  = n * C.EAT;
+  var needWater = n * C.DRINK * S.thirst * (W.water || 1);
+  var needWood  = S.warm ? n * C.BURN : 0;
+
+  var gotFood  = Math.min(P.res.food  || 0, needFood);
+  var gotWater = Math.min(P.res.water || 0, needWater);
+  var gotWood  = Math.min(P.res.wood  || 0, needWood);
+  use('food', gotFood); use('water', gotWater); if (needWood) use('wood', gotWood);
+
+  var hungry = gotFood  < needFood  - 0.01;
+  var thirsty= gotWater < needWater - 0.01;
+  var cold   = needWood > 0 && gotWood < needWood - 0.01;
+  if (hungry) rep.warn.push('糧食不足，有人餓著肚子');
+  if (thirsty) rep.warn.push('飲水不足');
+  if (cold) rep.warn.push('柴火不夠，夜裡很冷');
+
+  // 7) 健康、傷病、心情
+  var aura = 0;
+  alive(P).forEach(function(p){ var T = TRAITS[p.trait]; if (T && T.aura) aura += T.aura; });
+  if (hasSpot(P, 'shrine')) aura += 3;
+
+  alive(P).forEach(function(p){
+    var T = TRAITS[p.trait] || {};
+
+    // 餓渴冷的傷害帶浮動，體質硬的人撐得久一點 —— 倒下才會有先後，玩家來得及搶救
+    function lack(base){
+      var v = base * (1 - C.LACK_VARY + rnd(R) * C.LACK_VARY * 2) * (T.sick || 1);
+      return Math.round(v);
+    }
+    if (hungry){ p.hp = clamp(p.hp - lack(C.HUNGER_HP), 0, C.HP_MAX); p.mood = clamp(p.mood - C.HUNGER_MOOD, 0, C.MOOD_MAX); }
+    if (thirsty){ p.hp = clamp(p.hp - lack(C.THIRST_HP), 0, C.HP_MAX); p.mood = clamp(p.mood - C.HUNGER_MOOD, 0, C.MOOD_MAX); }
+    if (cold){ p.hp = clamp(p.hp - lack(C.COLD_HP), 0, C.HP_MAX); p.mood = clamp(p.mood - C.COLD_MOOD, 0, C.MOOD_MAX); }
+
+    // 生病判定
+    var sickP = C.SICK_BASE * S.sick * (W.sick || 1) * (T.sick || 1);
+    if (P.build.shelter === 0) sickP *= 1.6; else sickP *= Math.max(0.5, 1 - 0.18 * P.build.shelter);
+    if (p.stam < C.STAM_LOW) sickP *= 1.5;
+    if (hungry || cold) sickP *= 1.6;
+    if (p.sick === 0 && chance(R, sickP)){
+      p.sick = 1; rep.sick.push(p.name);
+    }
+
+    // 病情發展
+    if (p.sick > 0){
+      p.hp = clamp(p.hp - C.SICK_HP * p.sick, 0, C.HP_MAX);
+      var nat = C.HEAL_NAT * (P.build.infirm > 0 ? 1 + 0.3 * P.build.infirm : 1);
+      if (p.job === 'rest') nat *= 1.6;
+      if (chance(R, nat)){
+        p.sick--;
+        if (p.sick === 0 && rep.healed.indexOf(p.name) < 0) rep.healed.push(p.name);
+      }
+    } else if (!hungry && !thirsty && !cold){
+      p.hp = clamp(p.hp + C.HP_REGEN, 0, C.HP_MAX);
+    }
+
+    // 心情
+    var md = aura;
+    md += (W.mood || 0);
+    if (P.build.shelter === 0) md -= 2;
+    if (alive(P).length > maxPeople(P)) md -= 4;          // 擠不下
+    if (md < 0) md *= (T.moodDrop || 1);
+    p.mood = clamp(p.mood + md, 0, C.MOOD_MAX);
+
+    // 死亡
+    if (p.hp <= 0){
+      p.alive = false; p.hp = 0;
+      P.stats.lost++;
+      rep.deaths.push({ name: p.name, reason: thirsty ? '渴死' : (hungry ? '餓死' : (p.sick ? '病逝' : '傷重不治')) });
+    }
+  });
+
+  // 死亡打擊全村心情
+  if (rep.deaths.length) alive(P).forEach(function(p){
+    var T = TRAITS[p.trait] || {};
+    p.mood = clamp(p.mood - 16 * rep.deaths.length * (T.moodDrop || 1), 0, C.MOOD_MAX);
+  });
+
+  // 8) 出走判定
+  alive(P).forEach(function(p){
+    if (p.mood <= C.FLEE_MOOD){
+      var T = TRAITS[p.trait] || {};
+      if (chance(R, C.FLEE_CHANCE * (T.panic != null ? T.panic : 1))){
+        p.alive = false; P.stats.lost++;
+        rep.left.push({ name: p.name });
+      }
+    }
+  });
+
+  // 9) 隨機事件
+  if (chance(R, C.EVENT_CH)) rollEvent(P, R, rep, gain, use);
+
+  // 10) 資源夾值與腐壞
+  var cp = caps(P);
+  for (var k in P.res){
+    P.res[k] = Math.max(0, P.res[k]);
+    if (cp[k] != null && P.res[k] > cp[k]){ P.res[k] = cp[k]; rep.warn.push(resName(k) + '放不下了，有些浪費掉'); }
+  }
+  // 糧食腐壞（倉庫可減緩）
+  if (P.res.food > 0){
+    var rot = P.res.food * (0.02 / (1 + 0.6 * (P.build.store || 0))) * (S.id === 'summer' ? 1.8 : 1);
+    if (rot >= 0.1){ use('food', r1(rot)); }
+  }
+
+  // 11) 體力自然回復一點（沒工作的已在 rest 處理）
+  alive(P).forEach(function(p){ if (p.job !== 'rest') p.stam = clamp(p.stam + 6, 0, C.STAM_MAX); });
+
+  // 12) 結局判定
+  P.stats.bestDay = Math.max(P.stats.bestDay, R.day);
+  var left = alive(P);
+  if (left.length === 0){
+    P.run.over = true;
+    P.run.ending = rep.deaths.length ? 'wipe' : 'flee';
+    P.run.overDay = R.day;
+    rep.ending = { id: P.run.ending, nm: ENDINGS[P.run.ending].nm, ico: ENDINGS[P.run.ending].ico, desc: ENDINGS[P.run.ending].desc, day: R.day };
+  } else if (R.day >= WIN_DAY && !P.run.ending){
+    P.run.ending = 'thrive';
+    rep.ending = { id:'thrive', nm: ENDINGS.thrive.nm, ico: ENDINGS.thrive.ico, desc: ENDINGS.thrive.desc, day: R.day, open:true };
+  }
+
+  // 13) 推進日期
+  if (!P.run.over) R.day++;
+
+  // 14) 村誌
+  rep.text = narrate(P, rep);
+  P.log.push({ day: rep.day, season: S.nm, weather: W.ico, text: rep.text });
+  if (P.log.length > 60) P.log.shift();
+
+  return rep;
+}
+
+// ---- 隨機事件 ------------------------------------------------
+function rollEvent(P, R, rep, gain, use){
+  var crew = alive(P);
+  if (!crew.length) return;
+
+  // 依條件組出可用事件池
+  var pool = {};
+  EVENTS.forEach(function(e){
+    if (e.id === 'beast'   && P.build.wall >= 2) return;        // 柵欄蓋滿就不會被野獸攻破
+    if (e.id === 'wander'  && crew.length >= maxPeople(P)) return;
+    if (e.id === 'theft'   && !crew.some(function(p){ return (TRAITS[p.trait]||{}).steal; })) return;
+    if (e.id === 'quarrel' && crew.length < 2) return;
+    if (e.id === 'bond'    && crew.length < 2) return;
+    if (e.id === 'trader'  && !hasSpot(P, 'pass')) return;
+    if (e.id === 'wreck'   && !WEATHER[P.run.weather].wreck) return;
+    pool[e.id] = e.w;
+  });
+  var id = wpick(R, pool);
+  var ev = { id: id };
+  var E = EVENTS.filter(function(x){ return x.id === id; })[0] || {};
+  ev.nm = E.nm; ev.ico = E.ico;
+
+  if (id === 'beast'){
+    if (P.build.wall > 0){ ev.text = '野獸在柵欄外徘徊了一夜，沒能進來。'; ev.blocked = true; }
+    else {
+      var v = pick(R, crew);
+      v.hp = clamp(v.hp - rint(R, 10, 24), 0, C.HP_MAX);
+      v.sick = clamp(v.sick + 1, 0, 3);
+      var lost = Math.min(P.res.food || 0, rint(R, 3, 9)); use('food', lost);
+      ev.victim = v.name; ev.foodLost = lost;
+      ev.text = v.name + '在夜裡被野獸撲倒，受了傷，糧食也被拖走一些。';
+      if (v.hp <= 0){ v.alive = false; P.stats.lost++; rep.deaths.push({ name:v.name, reason:'被野獸所害' }); }
+    }
+  } else if (id === 'illness'){
+    var h = crew.filter(function(p){ return p.sick === 0; });
+    if (h.length){ var s = pick(R, h); s.sick = 1; rep.sick.push(s.name); ev.victim = s.name; ev.text = s.name + '夜裡發起高燒。'; }
+    else ev.text = '病氣在村裡遲遲不散。';
+  } else if (id === 'quarrel'){
+    var a = pick(R, crew), b = pick(R, crew.filter(function(x){ return x.id !== a.id; }));
+    if (b){
+      a.bonds[b.id] = (a.bonds[b.id] || 0) - rint(R, 8, 18);
+      b.bonds[a.id] = (b.bonds[a.id] || 0) - rint(R, 8, 18);
+      a.mood = clamp(a.mood - 7, 0, C.MOOD_MAX); b.mood = clamp(b.mood - 7, 0, C.MOOD_MAX);
+      ev.pair = [a.name, b.name];
+      ev.text = a.name + '和' + b.name + '為了活計吵了一架，誰也不讓誰。';
+    }
+  } else if (id === 'wreck'){
+    var dmg = [];
+    for (var k in P.build) if (P.build[k] > 0 && chance(R, 0.35)) { P.build[k]--; dmg.push(BUILDS[k].nm); }
+    if (P.site && chance(R, 0.5)){ P.site.work = Math.max(0, P.site.work * 0.6); dmg.push('施工中的' + BUILDS[P.site.key].nm); }
+    ev.damaged = dmg;
+    ev.text = dmg.length ? ('風雨打壞了' + dmg.join('、') + '。') : '風雨很大，所幸沒有損壞什麼。';
+  } else if (id === 'theft'){
+    var g = crew.filter(function(p){ return (TRAITS[p.trait]||{}).steal; });
+    var who = pick(R, g);
+    if (who && chance(R, TRAITS[who.trait].steal * 3)){
+      var amt = Math.min(P.res.food || 0, rint(R, 2, 6)); use('food', amt);
+      ev.victim = who.name; ev.text = '糧倉少了些東西。沒有人承認，' + who.name + '始終低著頭。';
+    } else ev.text = '糧倉清點對不太上，大概是記錯了。';
+  } else if (id === 'wander'){
+    var np = mkPerson(R, {}, P.people.length, nameList(P));
+    np.stam = rint(R, 40, 75); np.mood = rint(R, 35, 60);
+    if (chance(R, 0.3)) np.sick = 1;
+    P.people.push(np); P.stats.joined++;
+    rep.joined.push({ name: np.name, trait: np.trait, traitNm: TRAITS[np.trait].nm, sex: np.sex, age: np.age, sick: np.sick });
+    ev.joined = np.name;
+    ev.text = '一個叫' + np.name + '的人走到村口，問能不能留下來。' + (np.sick ? '他看起來病著。' : '');
+  } else if (id === 'forage'){
+    var what = wpick(R, { food:40, wood:25, herb:20, stone:15 });
+    var amt2 = what === 'food' ? rint(R, 5, 14) : rint(R, 3, 10);
+    gain(what, amt2);
+    ev.text = '有人在林子裡撞見一片' + (what === 'food' ? '野菇' : (what === 'herb' ? '藥草' : (what === 'wood' ? '倒木' : '碎石堆'))) + '，搬回來不少。';
+    ev.got = {}; ev.got[what] = amt2;
+  } else if (id === 'bond'){
+    var c = pick(R, crew), d = pick(R, crew.filter(function(x){ return x.id !== c.id; }));
+    if (d){
+      var tc = TRAITS[c.trait] || {}, td = TRAITS[d.trait] || {};
+      var amt3 = rint(R, 8, 16);
+      c.bonds[d.id] = (c.bonds[d.id] || 0) + Math.round(amt3 * (tc.bond || 1));
+      d.bonds[c.id] = (d.bonds[c.id] || 0) + Math.round(amt3 * (td.bond || 1));
+      c.mood = clamp(c.mood + 6, 0, C.MOOD_MAX); d.mood = clamp(d.mood + 6, 0, C.MOOD_MAX);
+      ev.pair = [c.name, d.name];
+      ev.text = c.name + '和' + d.name + '一起收工回來，路上聊了很久。';
+    }
+  } else if (id === 'trader'){
+    var sell = Math.min(P.res.herb || 0, rint(R, 1, 4));
+    if (sell > 0){ use('herb', sell); gain('coin', sell * 12); ev.text = '一隊商旅經過，收走了' + sell + '份藥草。'; }
+    else { gain('food', rint(R, 4, 10)); ev.text = '一隊商旅經過，留下了一點乾糧當謝禮。'; }
+  } else {
+    ev.text = '這一天沒什麼事。炊煙照常升起。';
+  }
+
+  rep.events.push(ev);
+}
+
+// ============================================================
+//  敘事層（模板）
+//  ★ 之後會改成呼叫 AI，但 AI 只拿 rep 寫文字，動不了任何數值。
+//    所以 AI 掛掉時遊戲照常完整可玩。
+// ============================================================
+function narrate(P, rep){
+  var L = [];
+  var S = SEASONS.filter(function(s){ return s.id === rep.season; })[0];
+  L.push('第 ' + rep.day + ' 天・' + S.nm + '・' + rep.weatherIco + rep.weatherNm);
+
+  var did = rep.works.filter(function(w){ return w.job !== 'rest'; });
+  var rst = rep.works.filter(function(w){ return w.job === 'rest'; });
+  did.forEach(function(w){
+    var s = w.name + ' ' + w.ico + w.jobNm;
+    if (w.res && w.res !== 'work' && w.res !== 'explore' && w.out) s += ' ＋' + w.out + resName(w.res);
+    else if (w.res === 'work') s += ' 推進 ' + w.out + ' 工';
+    else if (w.res === 'explore') s += ' 踏查 ' + w.out;
+    if (w.extra) s += '（' + w.extra + '）';
+    if (w.note) s += '——' + w.note;
+    L.push('　' + s);
+  });
+  if (rst.length) L.push('　' + rst.map(function(w){ return w.name; }).join('、') + ' 休息');
+
+  if (rep.builtDone) L.push('　' + rep.builtDone.ico + ' ' + rep.builtDone.nm + ' 完工了（' + rep.builtDone.lv + '級）');
+  rep.spots.forEach(function(s){ L.push('　' + s.ico + ' 發現「' + s.nm + '」——' + s.desc); });
+  rep.events.forEach(function(e){ if (e.text) L.push('　' + (e.ico || '・') + ' ' + e.text); });
+  rep.warn.forEach(function(w){ L.push('　⚠️ ' + w); });
+  rep.sick.forEach(function(nm){ L.push('　🤒 ' + nm + ' 病了'); });
+  rep.healed.forEach(function(nm){ L.push('　💚 ' + nm + ' 康復了'); });
+  rep.left.forEach(function(x){ L.push('　🚪 ' + x.name + ' 在天亮前離開了村子'); });
+  rep.deaths.forEach(function(d){ L.push('　🪦 ' + d.name + ' ' + d.reason + '了'); });
+  if (rep.ending) L.push('　' + rep.ending.ico + ' ' + rep.ending.nm);
+
+  return L.join('\n');
+}
+</script>
