@@ -46,6 +46,7 @@ function newRun(nick, seed){
     build: {},        // key -> 完成等級
     site: null,       // 目前工程 { key, lv, work, need }
     map: { explored: 0, found: [] },
+    custom: [],       // 玩家自建的建築 { id, name, arch }
     log: [],          // 村誌（最近 60 天）
     stats: { lost: 0, joined: 0, built: 0, bestDay: 0 },
     seen: {}          // 已看過的提示
@@ -116,6 +117,11 @@ function ensureShape(P){
   if (P.site && (!BUILDS[P.site.key] || typeof P.site.work !== 'number')) P.site = null;
   P.map = P.map || {}; P.map.explored = P.map.explored || 0;
   if (!Array.isArray(P.map.found)) P.map.found = ['brook'];
+  if (!Array.isArray(P.custom)) P.custom = [];
+  P.custom = P.custom.filter(function(cb){ return cb && CUSTOM_ARCH[cb.arch]; })
+                     .map(function(cb, i){
+                       return { id: cb.id || ('cb' + i), name: (cb.name || '無名建物').toString().slice(0,10), arch: cb.arch };
+                     });
   if (!Array.isArray(P.log)) P.log = [];
   P.stats = P.stats || {};
   ['lost','joined','built','bestDay'].forEach(function(s){ if (typeof P.stats[s] !== 'number') P.stats[s] = 0; });
@@ -150,9 +156,72 @@ function alive(P){ return P.people.filter(function(p){ return p.alive; }); }
 function nameList(P){ return P.people.map(function(p){ return p.name; }); }
 function byId(P, id){ for (var i=0;i<P.people.length;i++) if (P.people[i].id === id) return P.people[i]; return null; }
 
+// ---- 自建建築 ------------------------------------------------
+// 玩家自己發明的建築。名字是他取的，效果一律來自 CUSTOM_ARCH 的固定原型。
+function customEff(P){
+  var e = { work:{}, cap:{}, sick:1, heal:1, rot:1, eat:1, guard:1, mood:0 };
+  (P.custom || []).forEach(function(cb){
+    var A = CUSTOM_ARCH[cb.arch];
+    if (!A) return;
+    var f = A.eff || {};
+    if (f.work) for (var j in f.work) e.work[j] = (e.work[j] || 1) * f.work[j];
+    if (f.cap)  for (var r in f.cap)  e.cap[r]  = (e.cap[r]  || 1) * f.cap[r];
+    if (f.sick)  e.sick  *= f.sick;
+    if (f.heal)  e.heal  *= f.heal;
+    if (f.rot)   e.rot   *= f.rot;
+    if (f.eat)   e.eat   *= f.eat;
+    if (f.guard) e.guard *= f.guard;
+    if (f.mood)  e.mood  += f.mood;
+  });
+  return e;
+}
+function customSlots(P){ return CUSTOM_SLOTS(P.build.shelter || 0); }
+function customUsed(P){ return (P.custom || []).length; }
+
+// 把玩家打的字歸類到某個效果原型；比對不到就回 null（擋掉，不會憑空生效果）
+function classifyBuild(text){
+  var t = (text || '').replace(/\s+/g, '');
+  for (var k in CUSTOM_ARCH){
+    var A = CUSTOM_ARCH[k];
+    for (var i = 0; i < A.key.length; i++){
+      if (t.indexOf(A.key[i]) >= 0) return k;
+    }
+  }
+  return null;
+}
+// 從玩家的句子裡取出建築名（去掉「我想挖個…」「…到溪邊」這類贅詞與地點後綴）
+function extractName(text, arch){
+  var t = (text || '').replace(/\s+/g, '');
+  t = t.replace(/[。，、！？!?,.（）()]/g, '');
+  // 前綴：人稱 → 意願 → 動詞 → 量詞（各自可有可無，剝兩輪以處理「我想挖個…」）
+  for (var i = 0; i < 2; i++){
+    t = t.replace(/^(我們|我|咱|幫我|幫忙|請|來)/, '')
+         .replace(/^(想要|想|要|打算|希望|可以|能不能)/, '')
+         .replace(/^(蓋|建造|建|造|修建|修|搭建|搭|起|挖掘|挖|做|弄|設置|設|築|開)/, '')
+         .replace(/^(一)?(座|間|棟|個|所|處|條|道|口|張|堵|排)/, '');
+  }
+  t = t.replace(/(在|到|於)[^]{0,8}$/, '');            // 「…到溪邊」這種地點後綴
+  t = t.replace(/(吧|啦|呢|唄|好嗎|可以嗎|如何|怎麼樣|好不好)$/, '');
+  // 剝到空、或剝不乾淨（還是一長串），就用比對到的關鍵字當名字
+  if (!t || t.length > 8){
+    var A = CUSTOM_ARCH[arch || classifyBuild(text)];
+    if (A){
+      for (var j = 0; j < A.key.length; j++){
+        var at = t.indexOf(A.key[j]);
+        if (at >= 0) return t.slice(at, at + A.key[j].length + 2) || A.key[j];
+      }
+      return A.key[0];
+    }
+  }
+  return t.slice(0, 8) || '無名建物';
+}
+
 function caps(P){
   var out = {}, mult = Math.pow(C.CAP_STORE, P.build.store || 0);
-  for (var k in C.CAP_BASE) out[k] = Math.round(C.CAP_BASE[k] * (k === 'coin' ? 1 : mult));
+  var ce = customEff(P);
+  for (var k in C.CAP_BASE){
+    out[k] = Math.round(C.CAP_BASE[k] * (k === 'coin' ? 1 : mult) * (ce.cap[k] || 1));
+  }
   return out;
 }
 function maxPeople(P){ return C.MAX_PEOPLE_BASE + (P.build.shelter || 0) * C.MAX_PEOPLE_PER; }
@@ -208,6 +277,8 @@ function workPower(P, p, job, R){
 
   var e = spotEff(P);
   if (e[job]) v *= e[job];
+  var ce = customEff(P);
+  if (ce.work[job]) v *= ce.work[job];
 
   var vary = J.vary || 0.22;                             // 狩獵波動最大
   v *= (1 - vary) + rnd(R) * vary * 2;
@@ -235,9 +306,38 @@ function startBuild(P, key){
   P.site = { key: key, lv: lv, work: 0, need: BUILDS[key].work[lv] };
   return P.site;
 }
+// ---- 自建建築：開工 ------------------------------------------
+// text 是玩家打的整句話。名字取自他的話，效果取自比對到的原型。
+function canCustomBuild(P, text){
+  if (P.site) return '已經有工程在進行：' + siteName(P);
+  var arch = classifyBuild(text);
+  if (!arch) return '村民聽不懂那是什麼東西';
+  if (customUsed(P) >= customSlots(P)) return '村子裡已經沒有空地了（擴建住所才容得下更多）';
+  var cost = CUSTOM_COST(customUsed(P));
+  for (var k in cost) if ((P.res[k] || 0) < cost[k]) return '缺少' + resName(k) + ' ' + (cost[k] - Math.floor(P.res[k] || 0));
+  return null;
+}
+function startCustomBuild(P, text){
+  var why = canCustomBuild(P, text);
+  if (why) throw new Error(why);
+  var arch = classifyBuild(text);
+  var n = customUsed(P), cost = CUSTOM_COST(n);
+  for (var k in cost) P.res[k] -= cost[k];
+  P.site = { custom: true, arch: arch, name: extractName(text, arch), work: 0, need: CUSTOM_WORK(n) };
+  return P.site;
+}
+function siteName(P){
+  if (!P.site) return '';
+  return P.site.custom ? P.site.name : BUILDS[P.site.key].nm;
+}
+function siteCost(P){
+  if (!P.site) return {};
+  return P.site.custom ? CUSTOM_COST(customUsed(P)) : buildCost(P.site.key, P.site.lv);
+}
+
 function cancelBuild(P){
   if (!P.site) return null;
-  var lv = P.site.lv, cost = buildCost(P.site.key, lv);
+  var cost = siteCost(P);
   for (var k in cost) P.res[k] += Math.floor(cost[k] * 0.5);   // 退一半材料
   var old = P.site; P.site = null; return old;
 }
@@ -304,6 +404,7 @@ function resolveDay(P, assign){
           var pat = pats.sort(function(a,b){ return b.sick - a.sick; })[0];
           var pw = C.HEAL_CARE * (T.work && T.work.heal ? T.work.heal : 1) * (0.6 + 0.4 * p.skills.heal);
           if (P.build.infirm > 0) pw *= 1 + 0.25 * P.build.infirm;
+          pw *= customEff(P).heal;
           if ((P.res.herb || 0) >= 1){ use('herb', 1); pw *= 1.35; }
           if (chance(R, Math.min(0.92, pw))){
             pat.sick = Math.max(0, pat.sick - 1);
@@ -339,10 +440,17 @@ function resolveDay(P, assign){
 
   // 3) 工程完工
   if (P.site && P.site.work >= P.site.need){
-    var key = P.site.key;
-    P.build[key] = clamp((P.build[key] || 0) + 1, 0, BUILDS[key].max);
+    if (P.site.custom){
+      var A = CUSTOM_ARCH[P.site.arch];
+      var cb = { id: 'cb' + P.run.day + '_' + (P.custom.length), name: P.site.name, arch: P.site.arch };
+      P.custom.push(cb);
+      rep.builtDone = { custom: true, nm: cb.name, ico: A.ico, archNm: A.nm, desc: A.desc };
+    } else {
+      var key = P.site.key;
+      P.build[key] = clamp((P.build[key] || 0) + 1, 0, BUILDS[key].max);
+      rep.builtDone = { key: key, nm: BUILDS[key].nm, ico: BUILDS[key].ico, lv: P.build[key] };
+    }
     P.stats.built++;
-    rep.builtDone = { key: key, nm: BUILDS[key].nm, ico: BUILDS[key].ico, lv: P.build[key] };
     P.site = null;
     alive(P).forEach(function(p){ p.mood = clamp(p.mood + 7, 0, C.MOOD_MAX); });
   }
@@ -365,7 +473,8 @@ function resolveDay(P, assign){
 
   // 6) 每日消耗
   var n = alive(P).length;
-  var needFood  = n * C.EAT * (S.eat || 1);     // 冬天禦寒要吃更多
+  var CE = customEff(P);                              // 自建建築的總效果
+  var needFood  = n * C.EAT * (S.eat || 1) * CE.eat;  // 冬天禦寒要吃更多
   var needWater = n * C.DRINK * S.thirst * (W.water || 1);
   var needWood  = S.warm ? n * C.BURN : 0;
 
@@ -385,6 +494,7 @@ function resolveDay(P, assign){
   var aura = 0;
   alive(P).forEach(function(p){ var T = TRAITS[p.trait]; if (T && T.aura) aura += T.aura; });
   if (hasSpot(P, 'shrine')) aura += 3;
+  aura += CE.mood;
 
   alive(P).forEach(function(p){
     var T = TRAITS[p.trait] || {};
@@ -399,7 +509,7 @@ function resolveDay(P, assign){
     if (cold){ p.hp = clamp(p.hp - lack(C.COLD_HP), 0, C.HP_MAX); p.mood = clamp(p.mood - C.COLD_MOOD, 0, C.MOOD_MAX); }
 
     // 生病判定
-    var sickP = C.SICK_BASE * S.sick * (W.sick || 1) * (T.sick || 1);
+    var sickP = C.SICK_BASE * S.sick * (W.sick || 1) * (T.sick || 1) * CE.sick;
     if (P.build.shelter === 0) sickP *= 1.6; else sickP *= Math.max(0.5, 1 - 0.18 * P.build.shelter);
     if (p.stam < C.STAM_LOW) sickP *= 1.5;
     if (hungry || cold) sickP *= 1.6;
@@ -410,7 +520,7 @@ function resolveDay(P, assign){
     // 病情發展
     if (p.sick > 0){
       p.hp = clamp(p.hp - C.SICK_HP * p.sick, 0, C.HP_MAX);
-      var nat = C.HEAL_NAT * (P.build.infirm > 0 ? 1 + 0.3 * P.build.infirm : 1);
+      var nat = C.HEAL_NAT * (P.build.infirm > 0 ? 1 + 0.3 * P.build.infirm : 1) * CE.heal;
       if (p.job === 'rest') nat *= 1.6;
       if (chance(R, nat)){
         p.sick--;
@@ -470,7 +580,7 @@ function resolveDay(P, assign){
   }
   // 糧食腐壞（倉庫可減緩）
   if (P.res.food > 0){
-    var rot = P.res.food * (0.02 / (1 + 0.6 * (P.build.store || 0))) * (S.id === 'summer' ? 1.8 : 1);
+    var rot = P.res.food * (0.02 / (1 + 0.6 * (P.build.store || 0))) * (S.id === 'summer' ? 1.8 : 1) * CE.rot;
     if (rot >= 0.1){ use('food', r1(rot)); }
   }
 
@@ -527,11 +637,12 @@ function rollEvent(P, R, rep, gain, use){
     if (P.build.wall > 0){ ev.text = '野獸在柵欄外徘徊了一夜，沒能進來。'; ev.blocked = true; }
     else {
       var v = pick(R, crew);
-      v.hp = clamp(v.hp - rint(R, 10, 24), 0, C.HP_MAX);
-      v.sick = clamp(v.sick + 1, 0, 3);
+      var g = customEff(P).guard;                 // 守望類自建建築可減傷
+      v.hp = clamp(v.hp - Math.round(rint(R, 10, 24) * g), 0, C.HP_MAX);
+      if (g >= 1 || chance(R, g)) v.sick = clamp(v.sick + 1, 0, 3);
       // 偷糧按存量比例計，不用定額 —— 定額會讓前期（只有 20 糧）被偷 9 等於毀滅，
       // 後期（200 糧）被偷 9 卻毫無感覺，難度曲線完全顛倒。
-      var lost = Math.min(P.res.food || 0, rint(R, 3, 9), Math.ceil((P.res.food || 0) * 0.18));
+      var lost = Math.round(Math.min(P.res.food || 0, rint(R, 3, 9), Math.ceil((P.res.food || 0) * 0.18)) * customEff(P).guard);
       use('food', lost);
       ev.victim = v.name; ev.foodLost = lost;
       ev.text = v.name + '在夜裡被野獸撲倒，受了傷，糧食也被拖走一些。';
@@ -623,7 +734,11 @@ function narrate(P, rep){
   });
   if (rst.length) L.push('　' + rst.map(function(w){ return w.name; }).join('、') + ' 休息');
 
-  if (rep.builtDone) L.push('　' + rep.builtDone.ico + ' ' + rep.builtDone.nm + ' 完工了（' + rep.builtDone.lv + '級）');
+  if (rep.builtDone){
+    L.push(rep.builtDone.custom
+      ? ('　' + rep.builtDone.ico + ' 「' + rep.builtDone.nm + '」蓋好了——' + rep.builtDone.desc)
+      : ('　' + rep.builtDone.ico + ' ' + rep.builtDone.nm + ' 完工了（' + rep.builtDone.lv + '級）'));
+  }
   rep.spots.forEach(function(s){ L.push('　' + s.ico + ' 發現「' + s.nm + '」——' + s.desc); });
   rep.events.forEach(function(e){ if (e.text) L.push('　' + (e.ico || '・') + ' ' + e.text); });
   rep.warn.forEach(function(w){ L.push('　⚠️ ' + w); });

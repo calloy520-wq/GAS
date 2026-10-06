@@ -482,10 +482,12 @@ function colorLog(txt){
 function openBuild(){
   var h = '<h3>🔨 工程</h3>';
   if (P.site){
-    var B = BUILDS[P.site.key];
+    var cst = P.site.custom;
+    var B = cst ? CUSTOM_ARCH[P.site.arch] : BUILDS[P.site.key];
     var pc = Math.min(100, P.site.work / P.site.need * 100);
     h += '<div class="card"><div class="row"><span class="bico">' + B.ico + '</span>' +
-      '<div class="sp"><b>' + B.nm + '</b> → ' + (P.site.lv + 1) + ' 級<br>' +
+      '<div class="sp"><b>' + esc(cst ? P.site.name : B.nm) + '</b> ' +
+      (cst ? '<span class="dim sm">' + B.nm + '</span>' : '→ ' + (P.site.lv + 1) + ' 級') + '<br>' +
       '<span class="sm dim">' + Math.round(P.site.work) + ' / ' + P.site.need + ' 工</span>' +
       '<div class="prog"><i style="width:' + pc + '%"></i></div></div></div>' +
       '<div class="row" style="margin-top:9px">' +
@@ -514,6 +516,27 @@ function openBuild(){
       '</div>';
   }).join('');
   h += '</div>';
+
+  // ── 自建建築
+  var used = customUsed(P), slots = customSlots(P);
+  h += '<h3 style="font-size:15px;margin-top:16px">🏮 自己想的建物 <span class="dim sm">' + used + ' / ' + slots + '</span></h3>';
+  h += '<p class="sm dim">在下面的輸入框打「蓋一座瞭望塔」之類的話，村民就會動工。' +
+       '名字你取，效果由它屬於哪一類決定。空地上限隨住所等級增加。</p>';
+  h += '<div class="card">';
+  if (!P.custom.length) h += '<p class="dim sm" style="margin:4px 0">還沒有。</p>';
+  else h += P.custom.map(function(cb){
+    var A = CUSTOM_ARCH[cb.arch];
+    return '<div class="bitem"><span class="bico">' + A.ico + '</span>' +
+      '<div class="sp"><b>' + esc(cb.name) + '</b> <span class="dim sm">' + A.nm + '</span><br>' +
+      '<span class="sm dim">' + A.desc + '</span></div></div>';
+  }).join('');
+  h += '</div>';
+  h += '<div class="card sm dim"><b style="color:var(--ink)">村民蓋得出來的類型</b><br>' +
+    Object.keys(CUSTOM_ARCH).map(function(k){
+      var A = CUSTOM_ARCH[k];
+      return A.ico + ' <b style="color:var(--ink)">' + A.nm + '</b>　' + A.desc +
+             '<br><span style="opacity:.6">例：' + A.key.slice(0, 4).join('、') + '…</span>';
+    }).join('<br><br>') + '</div>';
   openSheet(h);
 }
 function doStart(k){
@@ -595,14 +618,38 @@ function runCmd(){
   $('cmd').value = '';
   var txt = raw.replace(/\s+/g, '');
 
-  // ── 蓋建築
+  // ── 蓋建築（先比對既有的六種）
+  var wantsBuild = /蓋|建|造|修|搭|起|開工/.test(txt);
   for (var bk in BUILDS){
     var B = BUILDS[bk];
-    if (txt.indexOf(B.nm) >= 0 && /蓋|建|造|修|開工/.test(txt)){
+    if (txt.indexOf(B.nm) >= 0 && wantsBuild){
       var why = canBuild(P, bk);
       if (why){ cmdSay('🚧', why); return; }
       doStart(bk); cmdSay('🔨', B.nm + ' 開工了。'); return;
     }
+  }
+  // ── 玩家自己發明的建築
+  //    名字是他取的，效果一律從 CUSTOM_ARCH 的固定原型來 —— 文字不能決定數值。
+  if (wantsBuild){
+    var arch = classifyBuild(txt);
+    if (arch){
+      var why2 = canCustomBuild(P, txt);
+      if (why2){ cmdSay('🚧', why2); return; }
+      var nm = extractName(txt), A = CUSTOM_ARCH[arch];
+      var cost = CUSTOM_COST(customUsed(P));
+      try { startCustomBuild(P, txt); }
+      catch(e){ cmdSay('🚧', e.message); return; }
+      render(); saveSoon();
+      cmdSay(A.ico, '村民們聽懂了你的意思，開始動工蓋「' + esc(nm) + '」。\n' +
+        '　它會是一座' + A.nm + '的建物：' + A.desc + '。\n' +
+        '　已付出 ' + Object.keys(cost).map(function(k){ return resName(k) + ' ' + cost[k]; }).join('、') +
+        '，接下來要派人「🔨建造」把它蓋起來（' + P.site.need + ' 工）。');
+      return;
+    }
+    // 想蓋，但村民不知道那是什麼
+    cmdSay('🤷', '村民面面相覷——沒有人知道那該怎麼蓋。\n' +
+      '　他們蓋得出來的東西大概是：工坊、灶房、地窖、藥圃、瞭望塔、祠堂、棧道、漁棚這類。');
+    return;
   }
   // ── 過一天
   if (/^(過一天|下一天|繼續|天亮|睡吧|過日子)$/.test(txt)){ nextDay(); return; }
