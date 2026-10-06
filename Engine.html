@@ -159,7 +159,8 @@ function byId(P, id){ for (var i=0;i<P.people.length;i++) if (P.people[i].id ===
 // ---- 自建建築 ------------------------------------------------
 // 玩家自己發明的建築。名字是他取的，效果一律來自 CUSTOM_ARCH 的固定原型。
 function customEff(P){
-  var e = { work:{}, cap:{}, sick:1, heal:1, rot:1, eat:1, guard:1, mood:0 };
+  var e = { work:{}, cap:{}, sick:1, heal:1, rot:1, eat:1, guard:1, mood:0,
+            burn:1, waterYield:0, skill:1, rest:1, welcome:1, weather:1 };
   (P.custom || []).forEach(function(cb){
     var A = CUSTOM_ARCH[cb.arch];
     if (!A) return;
@@ -172,6 +173,12 @@ function customEff(P){
     if (f.eat)   e.eat   *= f.eat;
     if (f.guard) e.guard *= f.guard;
     if (f.mood)  e.mood  += f.mood;
+    if (f.burn)       e.burn       *= f.burn;
+    if (f.waterYield) e.waterYield += f.waterYield;
+    if (f.skill)      e.skill      *= f.skill;
+    if (f.rest)       e.rest       *= f.rest;
+    if (f.welcome)    e.welcome    *= f.welcome;
+    if (f.weather)    e.weather    *= f.weather;
   });
   return e;
 }
@@ -181,36 +188,44 @@ function customUsed(P){ return (P.custom || []).length; }
 // 把玩家打的字歸類到某個效果原型；比對不到就回 null（擋掉，不會憑空生效果）
 function classifyBuild(text){
   var t = (text || '').replace(/\s+/g, '');
+  // 取「最長」的匹配關鍵字，而不是宣告順序最前的 ——
+  // 否則「火塘」會被水利類的「塘」搶走，結果取決於資料表排列順序。
+  var best = null, bestLen = 0;
   for (var k in CUSTOM_ARCH){
     var A = CUSTOM_ARCH[k];
     for (var i = 0; i < A.key.length; i++){
-      if (t.indexOf(A.key[i]) >= 0) return k;
+      var kw = A.key[i];
+      if (kw.length > bestLen && t.indexOf(kw) >= 0){ best = k; bestLen = kw.length; }
     }
   }
-  return null;
+  return best;
 }
-// 從玩家的句子裡取出建築名（去掉「我想挖個…」「…到溪邊」這類贅詞與地點後綴）
+// 從玩家的句子裡取出建築名。
+// 做法是「以命中的關鍵字為錨點」往外抓名詞，而不是硬剝贅詞 ——
+// 硬剝的版本碰到「蓋個火塘讓大家冬天不要那麼冷」會留下「火塘讓大」。
 function extractName(text, arch){
-  var t = (text || '').replace(/\s+/g, '');
-  t = t.replace(/[。，、！？!?,.（）()]/g, '');
-  // 前綴：人稱 → 意願 → 動詞 → 量詞（各自可有可無，剝兩輪以處理「我想挖個…」）
-  for (var i = 0; i < 2; i++){
+  var t = (text || '').replace(/\s+/g, '').replace(/[。，、！？!?,.（）()]/g, '');
+  // 先剝掉前面的人稱／意願／動詞／數量詞（重複三輪，處理「我想挖個」「做幾盞」）
+  for (var i = 0; i < 3; i++){
     t = t.replace(/^(我們|我|咱|幫我|幫忙|請|來)/, '')
          .replace(/^(想要|想|要|打算|希望|可以|能不能)/, '')
-         .replace(/^(蓋|建造|建|造|修建|修|搭建|搭|起|挖掘|挖|做|弄|設置|設|築|開)/, '')
-         .replace(/^(一)?(座|間|棟|個|所|處|條|道|口|張|堵|排)/, '');
+         .replace(/^(蓋|建造|建|造|修建|修|搭建|搭|起|挖掘|挖|做|弄|設置|設|築|開|堆|砌|壘|立|架)/, '')
+         .replace(/^(幾|數|兩|三|四|五|一)?(座|間|棟|個|所|處|條|道|口|張|堵|排|盞|把|組)/, '');
   }
-  t = t.replace(/(在|到|於)[^]{0,8}$/, '');            // 「…到溪邊」這種地點後綴
-  t = t.replace(/(吧|啦|呢|唄|好嗎|可以嗎|如何|怎麼樣|好不好)$/, '');
-  // 剝到空、或剝不乾淨（還是一長串），就用比對到的關鍵字當名字
-  if (!t || t.length > 8){
-    var A = CUSTOM_ARCH[arch || classifyBuild(text)];
-    if (A){
-      for (var j = 0; j < A.key.length; j++){
-        var at = t.indexOf(A.key[j]);
-        if (at >= 0) return t.slice(at, at + A.key[j].length + 2) || A.key[j];
-      }
-      return A.key[0];
+  var A = CUSTOM_ARCH[arch || classifyBuild(text)];
+  var SUF = '房屋舍場所間臺台棚亭塔井渠倉窖堂館寮鋪坊園圃池';   // 建築常見後綴，要一起吃進名字
+  if (A){
+    var kw = '', at = -1;
+    for (var j = 0; j < A.key.length; j++){                      // 找實際命中的最長關鍵字
+      var pos = t.indexOf(A.key[j]);
+      if (pos >= 0 && A.key[j].length > kw.length){ kw = A.key[j]; at = pos; }
+    }
+    if (at >= 0){
+      var end = at + kw.length;
+      while (end < t.length && SUF.indexOf(t.charAt(end)) >= 0) end++;
+      var name = t.slice(0, end);          // 關鍵字前面的修飾詞保留（「會噴火的龍塔」）
+      if (name.length > 6) name = t.slice(at, end);   // 太長就只取關鍵字那一段
+      return name.slice(0, 8) || kw;
     }
   }
   return t.slice(0, 8) || '無名建物';
@@ -272,7 +287,7 @@ function workPower(P, p, job, R){
   v *= 0.75 + 0.25 * (p.mood / C.MOOD_MAX);              // 心情
 
   if (job === 'forage' || job === 'farm') v *= (job === 'farm' ? S.farm : S.forage);
-  if (J.out) v *= W.out;
+  if (J.out) v *= 1 - (1 - W.out) * customEff(P).weather;   // 燈火類可減輕壞天氣的影響
   if (job === 'scout' && W.scout) v *= W.scout;
 
   var e = spotEff(P);
@@ -370,6 +385,7 @@ function resolveDay(P, assign){
   function use(k, v){ if (!v) return; P.res[k] = (P.res[k] || 0) - v; rep.used[k] = r1((rep.used[k] || 0) + v); }
 
   var crew = alive(P);
+  var CEW = customEff(P);        // 工作階段要用到的自建建築效果
 
   // 2) 逐人結算工作
   crew.forEach(function(p){
@@ -381,7 +397,7 @@ function resolveDay(P, assign){
     var w = { id:p.id, name:p.name, job:job, jobNm:J.nm, ico:J.ico, out:0, note: blocked || '' };
 
     if (job === 'rest'){
-      p.stam = clamp(p.stam - J.stam, 0, C.STAM_MAX);     // stam 為負＝回復
+      p.stam = clamp(p.stam - J.stam * CEW.rest, 0, C.STAM_MAX);   // stam 為負＝回復
       p.mood = clamp(p.mood + 4, 0, C.MOOD_MAX);
     } else {
       var power = workPower(P, p, job, R);
@@ -421,7 +437,7 @@ function resolveDay(P, assign){
       p.stam = clamp(p.stam - cost, 0, C.STAM_MAX);
       if (J.skill){
         var cur = p.skills[J.skill] || 1;
-        p.skills[J.skill] = clamp(cur + SKILL_GAIN * (1 - (cur - 1) / (SKILL_MAX - 1)) , 1, SKILL_MAX);
+        p.skills[J.skill] = clamp(cur + SKILL_GAIN * CEW.skill * (1 - (cur - 1) / (SKILL_MAX - 1)) , 1, SKILL_MAX);
       }
       p.mood = clamp(p.mood - 1, 0, C.MOOD_MAX);
 
@@ -466,9 +482,10 @@ function resolveDay(P, assign){
   });
 
   // 5) 水井自動產水（只打到裝得下的量 —— 不然滿溢警告會天天洗版）
-  if (P.build.well > 0){
+  var dailyWater = (P.build.well > 0 ? (C.WELL_YIELD[P.build.well] || 0) : 0) + CEW.waterYield;
+  if (dailyWater > 0){
     var wcap = caps(P).water, room = Math.max(0, wcap - (P.res.water || 0));
-    gain('water', Math.min(C.WELL_YIELD[P.build.well] || 0, room));
+    gain('water', Math.min(dailyWater, room));
   }
 
   // 6) 每日消耗
@@ -476,7 +493,7 @@ function resolveDay(P, assign){
   var CE = customEff(P);                              // 自建建築的總效果
   var needFood  = n * C.EAT * (S.eat || 1) * CE.eat;  // 冬天禦寒要吃更多
   var needWater = n * C.DRINK * S.thirst * (W.water || 1);
-  var needWood  = S.warm ? n * C.BURN : 0;
+  var needWood  = S.warm ? n * C.BURN * CE.burn : 0;   // 取暖類可省柴
 
   var gotFood  = Math.min(P.res.food  || 0, needFood);
   var gotWater = Math.min(P.res.water || 0, needWater);
@@ -626,7 +643,7 @@ function rollEvent(P, R, rep, gain, use){
     if (e.id === 'bond'    && crew.length < 2) return;
     if (e.id === 'trader'  && !hasSpot(P, 'pass')) return;
     if (e.id === 'wreck'   && !WEATHER[P.run.weather].wreck) return;
-    pool[e.id] = e.w;
+    pool[e.id] = e.w * (e.id === 'wander' ? customEff(P).welcome : 1);
   });
   var id = wpick(R, pool);
   var ev = { id: id };

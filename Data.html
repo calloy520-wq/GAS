@@ -131,13 +131,41 @@ var CUSTOM_ARCH = {
              eff:{ work:{ scout:1.25 } } },
   field:   { nm:'漁獵類', ico:'🎣', desc:'採集與狩獵更有收穫',
              key:['漁','釣','獵','棚','陷坑','網','籠','蜂'],
-             eff:{ work:{ forage:1.18, hunt:1.18 } } }
+             eff:{ work:{ forage:1.18, hunt:1.18 } } },
+
+  warm:    { nm:'取暖類', ico:'🔥', desc:'冬天燒的柴少三成',
+             key:['火塘','暖','炕','壁爐','地爐','圍爐','柴房','烘'],
+             eff:{ burn:0.70 } },
+  agri:    { nm:'農事類', ico:'🪴', desc:'農耕收成更好',
+             key:['溫室','苗圃','田埂','堆肥','菜圃','瓜棚','果園','畦'],
+             eff:{ work:{ farm:1.25 } } },
+  water:   { nm:'水利類', ico:'🚰', desc:'取水更輕鬆，每日另有少量進水',
+             key:['水渠','引水','蓄水','水車','井欄','灌溉','陂'],
+             eff:{ work:{ water:1.30 }, waterYield:4 } },
+  teach:   { nm:'育才類', ico:'📚', desc:'做事學得更快，技能成長加速',
+             key:['學','塾','講','書','習','傳藝','道場'],
+             eff:{ skill:1.60 } },
+  bed:     { nm:'歇息類', ico:'🛏️', desc:'休息回復的體力更多',
+             key:['寢','臥','床','鋪','歇腳','涼亭','榻'],
+             eff:{ rest:1.45 } },
+  welcome: { nm:'接待類', ico:'🪧', desc:'更容易有人路過來投靠',
+             key:['客舍','客房','旅舍','旅店','客','旅','招待','驛','迎','村口','告示'],
+             eff:{ welcome:2.2 } },
+  lumber:  { nm:'儲材類', ico:'🪵', desc:'木材與石料存得更多',
+             key:['料場','材堆','柴垛','石堆','木場','堆置'],
+             eff:{ cap:{ wood:1.6, stone:1.6 } } },
+  light:   { nm:'燈火類', ico:'🕯️', desc:'壞天氣對工作的影響減半',
+             key:['燈','火把','照明','油坊','燭'],
+             eff:{ weather:0.5 } },
+  works:   { nm:'營建類', ico:'🪚', desc:'工程推進得更快',
+             key:['鷹架','工寮','棧房','作業場','工具'],
+             eff:{ work:{ build:1.30 } } }
 };
 // 自建建築的成本：越蓋越貴，不能無限擴張
 var CUSTOM_COST = function(n){
-  return { wood: 20 + n * 14, stone: 10 + n * 10 };
+  return { wood: 14 + n * 10, stone: n * 5 };
 };
-var CUSTOM_WORK = function(n){ return 36 + n * 16; };
+var CUSTOM_WORK = function(n){ return 24 + n * 13; };
 // 村子容得下幾棟自建建築：跟住所等級掛鉤（地要夠大才放得下）
 var CUSTOM_SLOTS = function(shelterLv){ return 2 + shelterLv; };
 
